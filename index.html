@@ -13,16 +13,17 @@ const c=document.createElement('canvas');
 c.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%;display:block;cursor:crosshair';
 document.body.appendChild(c);
 const g=c.getContext('2d');
-const Z=.8;      // zoom
-const HOLD=15;   // shotgun charge frames
-const WN=['PISTOL','SHOTGUN','ROCKET LAUNCHER'];
-let w=0,h=0,p={x:0,y:0},e=[],b=[],k={},score=0,H=0,dead=0,R=[],X=[],P=[],F=[],D=[],S=0,rc=0,L=0,T=0,fl=0,wk=0,fr=0,ci=0,md=0,hd=0,m={x:0,y:0},wp=0,po=0,O=[],G=[],hp=100,ih=0;
+const Z=.8;
+const WN=['PISTOL','SHOTGUN','ROCKET LAUNCHER','SMG'];
+let w=0,h=0,p={x:0,y:0},e=[],b=[],k={},score=0,H=0,dead=2,R=[],X=[],P=[],F=[],D=[],S=0,rc=0,L=0,T=0,fl=0,wk=0,fr=0,ci=0,md=0,m={x:0,y:0},wp=0,cd=0,W=[],own=[1,0,0,0],SC=[],po=0,O=[],G=[],hp=100,ih=0;
 const CH=[
 {n:'SOLDIER',shirt:'#4b5a32',vest:'#3a4526',pants:'#3b4028',helm:'#3d4a2a',skin:'#e0ac82',boot:'#1a1a1a'},
 {n:'SURVIVOR',shirt:'#8e2b2b',pants:'#2f4a6b',hair:'#5a3a1e',skin:'#f0c39a',pack:'#5d4a2f',boot:'#3b2a1a'},
 {n:'SWAT',shirt:'#1f2a3a',vest:'#0e141b',pants:'#141a22',helm:'#0d1117',skin:'#c68e62',boot:'#000'}];
 const SH=['#5d4037','#37474f','#4a5a3a','#6d4c41','#455a64','#5a5a5a'];
 const SK=['#8fa67a','#9aa88a','#7f9a72','#a3ad93'];
+try{SC=JSON.parse(localStorage.getItem('zs')||'[]')}catch(x){SC=[]}
+H=SC[0]||0;
 
 function pt(x,y,vx,vy,l,col,s,sm){P.push({x:x,y:y,vx:vx,vy:vy,life:l,max:l,col:col,s:s,sm:sm})}
 function el(x,y,rx,ry,col,r){g.fillStyle=col;g.beginPath();g.ellipse(x,y,rx,ry,r||0,0,7);g.fill()}
@@ -38,8 +39,20 @@ function gen(){
   }
   for(let i=0;i<300;i++)G.push({x:Math.random()*w,y:Math.random()*h,a:Math.random()*.8-.4,l:Math.random()<.4});
 }
+function spawnW(){
+  W=[];
+  [1,2,3].forEach(t=>{
+    for(let n=0;n<300;n++){
+      const x=80+Math.random()*(w-160),y=80+Math.random()*(h-160);
+      if(Math.hypot(x-w/2,y-h/2)>120&&O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+45)&&W.every(q=>Math.hypot(q.x-x,q.y-y)>150)){W.push({x:x,y:y,t:t});break}
+    }
+  });
+}
+function save(){
+  if(score>0){SC.push(score);SC.sort((a,b)=>b-a);SC=SC.slice(0,10);try{localStorage.setItem('zs',JSON.stringify(SC))}catch(x){}}
+}
 function sz(){c.width=innerWidth;c.height=innerHeight;w=c.width/Z;h=c.height/Z}
-function rs(){dead=0;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;hd=0;po=0;hp=100;ih=0;e=[];R=[];X=[];b=[];P=[];F=[];D=[];p={x:w/2,y:h/2};gen()}
+function rs(){dead=0;wp=0;cd=0;own=[1,0,0,0];score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;e=[];R=[];X=[];b=[];P=[];F=[];D=[];p={x:w/2,y:h/2};gen();spawnW()}
 sz();
 p={x:w/2,y:h/2};m={x:w/2+100,y:h/2};gen();
 onresize=sz;
@@ -59,6 +72,11 @@ function shoot(){
   b.push({x:p.x+Math.cos(a)*52,y:p.y+Math.sin(a)*52,vx:Math.cos(a)*14,vy:Math.sin(a)*14,life:999,t:1});
   fl=3;muzzle(a,5);
 }
+function smg(){
+  const a=Math.atan2(m.y-p.y,m.x-p.x)+(Math.random()-.5)*.12;
+  b.push({x:p.x+Math.cos(a)*52,y:p.y+Math.sin(a)*52,vx:Math.cos(a)*15,vy:Math.sin(a)*15,life:999,t:1});
+  fl=2;muzzle(a,2);S=Math.max(S,1.5);
+}
 function blast(){
   const a0=Math.atan2(m.y-p.y,m.x-p.x);
   for(let i=0;i<10;i++){
@@ -72,28 +90,20 @@ function blast(){
 /* ---------- input ---------- */
 c.oncontextmenu=q=>q.preventDefault();
 c.onmousemove=q=>{const r=c.getBoundingClientRect();m={x:(q.clientX-r.left)/Z,y:(q.clientY-r.top)/Z}};
-c.onmousedown=q=>{
-  if(dead||q.button!=0)return;
-  md=1;hd=0;
-  if(wp==0)shoot();
-  else if(wp==2&&rc<=0&&L<=0){L=25;rc=90}
-};
-onmouseup=q=>{
-  if(md&&!dead&&q.button==0&&wp==1&&hd>=HOLD)blast();
-  md=0;hd=0;
-};
-onblur=()=>{md=0;hd=0;k={}};
+c.onmousedown=q=>{if(dead||q.button!=0)return;md=1};
+onmouseup=()=>{md=0};
+onblur=()=>{md=0;k={}};
 onkeydown=q=>{
   const n=q.key.toLowerCase();
   if(n.indexOf('arrow')==0||n==' ')q.preventDefault();
   k[n]=1;
-  if(dead){if(n>='1'&&n<='3'){ci=n-1;rs()}return}
-  if(n=='e'&&!q.repeat&&L<=0){wp=(wp+1)%3;hd=0}
+  if(dead){if(n>='1'&&n<='3'){ci=n-1;rs()}else if(n=='enter'||n==' ')rs();return}
+  if(n=='e'&&!q.repeat&&L<=0){for(let i=1;i<=4;i++){const t=(wp+i)%4;if(own[t]){wp=t;break}}}
 };
 onkeyup=q=>{k[q.key.toLowerCase()]=0};
 c.onclick=q=>{
   if(!dead)return;
-  const r=c.getBoundingClientRect(),mx=q.clientX-r.left,my=q.clientY-r.top,cy=c.height/2,bx=c.width/2-215;
+  const r=c.getBoundingClientRect(),mx=q.clientX-r.left,my=q.clientY-r.top,cy=c.height/2,bx=c.width/2-325;
   for(let i=0;i<3;i++){const x=bx+i*150;if(mx>x&&mx<x+130&&my>cy-40&&my<cy+90){ci=i;rs()}}
 };
 
@@ -111,6 +121,12 @@ setInterval(()=>{
 },1000);
 
 /* ---------- drawing characters ---------- */
+function gun(t){
+  g.rotate(-.4);
+  if(t==1){g.fillStyle='#5a3a1e';g.fillRect(-24,-3,14,7);g.fillStyle='#333';g.fillRect(-10,-3,36,5);g.fillStyle='#555';g.fillRect(-6,2,26,3)}
+  else if(t==2){g.fillStyle='#4b5320';g.fillRect(-24,-5,48,10);g.fillStyle='#2a2a2a';g.fillRect(-27,-6.5,5,13);g.fillStyle='#c0392b';g.beginPath();g.moveTo(24,-5);g.lineTo(32,0);g.lineTo(24,5);g.fill()}
+  else{g.fillStyle='#222';g.fillRect(-18,-3,34,6);g.fillStyle='#111';g.fillRect(16,-1.5,10,3);g.fillStyle='#333';g.fillRect(-4,3,7,14);g.fillRect(-16,3,5,5)}
+}
 function human(x,y,a,ch,wk,s,L,fl){
   g.save();g.translate(x,y);g.scale(s,s);
   el(2,3,20,17,'rgba(0,0,0,.35)');
@@ -155,7 +171,7 @@ function zom(q,a){
   g.save();g.translate(q.x,q.y);g.scale(1.3,1.3);
   el(2,3,20,17,'rgba(0,0,0,.35)');
   g.rotate(a+Math.sin(q.wk)*.1);
-  if(q.ty==1)g.scale(1,.7); // thin zombie
+  if(q.ty==1)g.scale(1,.7);
   const sw=Math.sin(q.wk)*5,ar=Math.sin(q.wk*.7)*3;
   el(sw,-6,10,5.5,'#2b2f36');el(-sw,6,10,5.5,'#2b2f36');
   el(sw+7,-6,5,4.5,'#3a2a20');el(-sw+5,6,5,4.5,'#3a2a20');
@@ -186,7 +202,6 @@ function game(){
   g.save();
   if(S>0){g.translate((Math.random()-.5)*S,(Math.random()-.5)*S);S*=.88;if(S<.5)S=0}
   g.scale(Z,Z);
-  // grass
   g.fillStyle='#2f6a2a';g.fillRect(-40,-40,w+80,h+80);
   g.fillStyle='#347230';
   for(let i=0;i<w;i+=70)for(let j=0;j<h;j+=70)g.fillRect(i,j,66,66);
@@ -202,7 +217,6 @@ function game(){
     g.beginPath();g.ellipse(q.x,q.y,q.r*1.4,q.r,q.a,0,7);g.fill();
     g.beginPath();g.arc(q.x+Math.cos(q.a)*q.r*2,q.y+Math.sin(q.a)*q.r*2,q.r*.25,0,7);g.fill();
   });
-  // rocks and tree trunks
   O.forEach(o=>{
     if(o.t){
       el(o.x+4,o.y+6,o.r*1.1,o.r*.9,'rgba(0,0,0,.3)');
@@ -215,19 +229,40 @@ function game(){
     }
   });
 
+  // weapon pickups
+  W.forEach(q=>{
+    el(q.x+3,q.y+12,26,8,'rgba(0,0,0,.3)');
+    g.save();g.translate(q.x,q.y+Math.sin(fr*.08+q.x)*3);
+    g.strokeStyle='rgba(255,212,0,'+(.4+Math.sin(fr*.1)*.2)+')';g.lineWidth=3;
+    g.beginPath();g.arc(0,0,30,0,7);g.stroke();
+    gun(q.t);
+    g.restore();
+    g.fillStyle='#ffd400';g.font='bold 13px Arial';g.textAlign='center';
+    g.fillText(WN[q.t],q.x,q.y-40);
+    if(!dead&&Math.hypot(p.x-q.x,p.y-q.y)<40){own[q.t]=1;if(L<=0)wp=q.t;q.got=1}
+  });
+  W=W.filter(q=>!q.got);
+
   if(rc>0)rc--;
   if(fl>0)fl--;
   if(po>0)po--;
   if(ih>0)ih--;
   if(!dead){
     T++;
-    let mv=0;const v=po>0?2:4; // poison slows you
+    let mv=0;const v=po>0?2:4;
     if(k.w||k.arrowup){p.y-=v;mv=1}
     if(k.s||k.arrowdown){p.y+=v;mv=1}
     if(k.a||k.arrowleft){p.x-=v;mv=1}
     if(k.d||k.arrowright){p.x+=v;mv=1}
     if(mv)wk+=po>0?.14:.28;
-    if(md)hd++;
+    // constant fire rate while holding
+    if(cd>0)cd--;
+    if(md&&cd<=0){
+      if(wp==0){shoot();cd=12}
+      else if(wp==1){blast();cd=40}
+      else if(wp==3){smg();cd=4}
+      else if(wp==2&&rc<=0&&L<=0){L=25;rc=90}
+    }
     if(L>0){
       L--;
       if(L==0){
@@ -242,20 +277,8 @@ function game(){
   const sp=1.2+Math.min(2.3,T/3600);
 
   human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),CH[ci],wk,1.3,wp==2?1:0,fl);
-  // player health bar
   {const f=Math.max(0,hp/100);g.fillStyle='rgba(0,0,0,.65)';g.fillRect(p.x-27,p.y-47,54,9);
   g.fillStyle=f>.6?'#2ecc71':f>.3?'#f1c40f':'#e74c3c';g.fillRect(p.x-25,p.y-45,50*f,5)}
-
-  // shotgun charge ring
-  if(md&&!dead&&wp==1&&hd>3){
-    const rdy=hd>=HOLD;
-    g.lineWidth=rdy?5:3;
-    g.strokeStyle=rdy?(fr%10<5?'#ff6a00':'#ffd400'):'#ffd400';
-    g.beginPath();
-    g.arc(p.x,p.y,rdy?50+Math.sin(fr*.5)*2:46,-Math.PI/2,-Math.PI/2+Math.min(1,hd/HOLD)*6.283);
-    g.stroke();
-    if(rdy){g.fillStyle='#ff6a00';g.font='bold 14px Arial';g.textAlign='center';g.fillText('RELEASE!',p.x,p.y-64)}
-  }
 
   // bullets and pellets
   b.forEach(q=>{
@@ -296,7 +319,6 @@ function game(){
         }
       });
       col(q,14);
-      // poison aura: sets timer (does not stack)
       if(q.ty==2&&Math.hypot(q.x-p.x,q.y-p.y)<q.ar)po=180;
     }
     if(q.ty==2){
@@ -304,7 +326,7 @@ function game(){
       g.beginPath();g.arc(q.x,q.y,q.ar,0,7);g.fill();
       g.strokeStyle='rgba(120,255,60,.35)';g.lineWidth=2;g.stroke();
     }
-    if(!dead&&ih<=0&&Math.hypot(q.x-p.x,q.y-p.y)<34){hp-=q.ty==1?12:q.ty==2?15:20;ih=40;S=Math.max(S,6);const d=Math.atan2(q.y-p.y,q.x-p.x);q.x+=Math.cos(d)*30;q.y+=Math.sin(d)*30;if(hp<=0){hp=0;dead=1}}
+    if(!dead&&ih<=0&&Math.hypot(q.x-p.x,q.y-p.y)<34){hp-=q.ty==1?12:q.ty==2?15:20;ih=40;S=Math.max(S,6);const d=Math.atan2(q.y-p.y,q.x-p.x);q.x+=Math.cos(d)*30;q.y+=Math.sin(d)*30;if(hp<=0){hp=0;dead=1;save()}}
     zom(q,a);
     if(q.mh>1){
       g.fillStyle='rgba(0,0,0,.6)';g.fillRect(q.x-16,q.y-34,32,5);
@@ -363,7 +385,7 @@ function game(){
     g.globalAlpha=1;
   });
 
-  // tree canopies (drawn over everything, slightly see-through)
+  // tree canopies
   O.forEach(o=>{
     if(o.t)return;
     g.globalAlpha=.85;
@@ -388,9 +410,7 @@ function game(){
   if(score>H)H=score;
   g.restore();
 
-  // poison tint
   if(po>0&&!dead){g.fillStyle='rgba(70,200,40,.13)';g.fillRect(0,0,c.width,c.height)}
-  // damage flash
   if(ih>30&&!dead){g.fillStyle='rgba(200,0,0,.15)';g.fillRect(0,0,c.width,c.height)}
 
   // HUD
@@ -398,23 +418,23 @@ function game(){
   g.fillStyle='rgba(0,0,0,.5)';g.fillRect(8,8,290,po>0?150:122);
   g.fillStyle='white';g.font='bold 22px Arial';g.fillText('SCORE: '+score,15,32);
   g.fillStyle='#ffd400';g.font='16px Arial';g.fillText('BEST: '+H,15,58);
-  g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+WN[wp]+'  [E]',15,88);
+  g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+WN[wp]+(own.filter(x=>x).length>1?'  [E]':''),15,88);
   g.font='18px Arial';
-  g.fillStyle=rc>0?'#e74c3c':'#2ecc71';
-  g.fillText(L>0?'ROCKET: AIMING...':rc>0?'ROCKET: RELOADING':'ROCKET: READY',15,114);
+  g.fillStyle=!own[2]?'#888':rc>0?'#e74c3c':'#2ecc71';
+  g.fillText(!own[2]?'ROCKET: NOT FOUND':L>0?'ROCKET: AIMING...':rc>0?'ROCKET: RELOADING':'ROCKET: READY',15,114);
   if(po>0){g.fillStyle='#7ccf4a';g.fillText('POISONED (slowed) '+(po/60).toFixed(1)+'s',15,140)}
   g.fillStyle='white';g.font='18px Arial';
-  g.fillText('WASD = MOVE | E = SWAP GUN | CLICK = FIRE (SHOTGUN: HOLD + RELEASE)',15,c.height-15);
+  g.fillText('WASD = MOVE | E = SWAP GUN | HOLD CLICK = FIRE | WALK OVER GUNS TO PICK THEM UP',15,c.height-15);
 
-  // death screen
+  // start screen / death screen
   if(dead){
-    const cy=c.height/2,bx=c.width/2-215;
+    const st=dead==2,cy=c.height/2,cx=c.width/2-110,bx=cx-215;
     g.fillStyle='rgba(0,0,0,.78)';g.fillRect(0,0,c.width,c.height);
     g.textAlign='center';
-    g.fillStyle='#c0392b';g.font='bold 44px Arial';g.fillText('YOU DIED',c.width/2,cy-130);
+    g.fillStyle=st?'#7ccf4a':'#c0392b';g.font='bold 44px Arial';g.fillText(st?'ZOMBIE SHOOTER':'YOU DIED',cx,cy-130);
     g.fillStyle='white';g.font='20px Arial';
-    g.fillText('SCORE: '+score+'   BEST: '+H+(score>0&&score==H?'  (NEW BEST!)':''),c.width/2,cy-92);
-    g.fillStyle='#aaa';g.font='14px Arial';g.fillText('CHOOSE YOUR SURVIVOR',c.width/2,cy-62);
+    g.fillText(st?'You start with a pistol. Find the other guns on the ground!':'SCORE: '+score+'   BEST: '+H+(score>0&&score==H?'  (NEW BEST!)':''),cx,cy-92);
+    g.fillStyle='#aaa';g.font='14px Arial';g.fillText('CHOOSE YOUR SURVIVOR',cx,cy-62);
     for(let i=0;i<3;i++){
       const x=bx+i*150,y=cy-40;
       g.fillStyle=i==ci?'rgba(255,212,0,.15)':'rgba(255,255,255,.07)';g.fillRect(x,y,130,130);
@@ -424,7 +444,20 @@ function game(){
       g.textAlign='left';g.fillStyle='#888';g.font='12px Arial';g.fillText('['+(i+1)+']',x+6,y+16);
     }
     g.textAlign='center';g.fillStyle='white';g.font='16px Arial';
-    g.fillText('CLICK A SURVIVOR OR PRESS 1 / 2 / 3 TO RESTART',c.width/2,cy+120);
+    g.fillText(st?'CLICK A SURVIVOR, OR PRESS 1 / 2 / 3, TO START':'CLICK A SURVIVOR OR PRESS 1 / 2 / 3 TO RESTART',cx,cy+120);
+    g.fillStyle='#aaa';g.font='13px Arial';g.fillText('ENTER = PLAY AS '+CH[ci].n,cx,cy+144);
+    // scoreboard
+    const x0=cx+240,y0=cy-140,hl=st?-1:SC.indexOf(score);
+    g.fillStyle='rgba(255,255,255,.07)';g.fillRect(x0,y0,190,290);
+    g.strokeStyle='#555';g.lineWidth=2;g.strokeRect(x0,y0,190,290);
+    g.textAlign='center';g.fillStyle='#ffd400';g.font='bold 16px Arial';g.fillText('TOP 10 SCORES',x0+95,y0+24);
+    g.font='15px Arial';
+    for(let i=0;i<10;i++){
+      g.fillStyle=i==hl?'#ffd400':'white';
+      g.textAlign='left';g.fillText((i+1)+'.',x0+16,y0+52+i*22);
+      g.textAlign='right';g.fillText(SC[i]!=null?SC[i]:'-',x0+174,y0+52+i*22);
+    }
+    g.textAlign='center';g.fillStyle='#7ccf4a';g.font='bold 15px Arial';g.fillText('YOUR BEST: '+H,x0+95,y0+278);
     g.textAlign='left';
   }
   requestAnimationFrame(game);
