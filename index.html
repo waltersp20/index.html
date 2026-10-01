@@ -550,6 +550,8 @@ function spawnBoss(){
 }
 setInterval(()=>{
   if(dead||bossCutscene>0)return;
+  // Hard cap on simultaneously living zombies; level-specific total spawn limits remain below.
+  if(e.reduce((count,z)=>count+(!z.dead?1:0),0)>=30)return;
   if(level==1&&totalSpawned>=120)return;
   if(level===3&&level3Spawned>=160)return;
   if(level===4&&level4Spawned>=75)return;
@@ -1104,7 +1106,9 @@ function game(){
       return;
     }
     if(!dead&&bossCutscene<=0){
-      const v=q.boss ? sp*q.sv : sp*(q.ty==1 ? 1.15+Math.min(1.6,score/70) : q.sv);
+      // Cap movement speed so enemies remain manageable late in a long run.
+      const rawSpeed=q.boss ? sp*q.sv : sp*(q.ty==1 ? 1.15+Math.min(1.6,score/70) : q.sv);
+      const v=Math.min(q.boss?1.5:3.2,rawSpeed);
       q.x+=Math.cos(a)*v;q.y+=Math.sin(a)*v;q.wk+=v*.1;
       e.forEach(o=>{
         if(o!==q){
@@ -1234,13 +1238,7 @@ function game(){
   });
   pears=pears.filter(a=>!a.got);
 
-  // tree canopies
-  O.forEach(o=>{
-    if(o.t||level===4)return;
-    g.globalAlpha=.85;
-    cc(o.x,o.y,36,level===3?'#08120c':'#1c5220');cc(o.x-9,o.y-8,24,level===3?'#102016':'#2a7a2c');cc(o.x+11,o.y-4,17,level===3?'#17291b':'#3a9a3a');cc(o.x+2,o.y+10,15,level===3?'#102016':'#2a7a2c');
-    g.globalAlpha=1;
-  });
+  // Tree foliage is drawn once in the environment pass above, using the blended palette.
 
   // +1 popups
   F.forEach(q=>{
