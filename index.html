@@ -959,8 +959,35 @@ function game(){
         q.vy=Math.sin(next)*speed;
       }
     }
+    const prevX=q.x,prevY=q.y;
     q.x+=q.vx;q.y+=q.vy;q.life--;
-    if(O.some(o=>Math.hypot(q.x-o.x,q.y-o.y)<o.r)||BLD.some(o=>pointWallDist(q.x,q.y,o)<o.th/2+3)){
+
+    // Handle each bullet's collision once, before drawing it. Segment collision
+    // prevents fast bullets from passing through a zombie between frames.
+    if(!q.dead){
+      let target=null,nearest=Infinity;
+      const dx=q.x-prevX,dy=q.y-prevY,den=dx*dx+dy*dy;
+      for(const z of e){
+        if(z.dead)continue;
+        const u=den?Math.max(0,Math.min(1,((z.x-prevX)*dx+(z.y-prevY)*dy)/den)):0;
+        const cx=prevX+u*dx,cy=prevY+u*dy;
+        const d=Math.hypot(z.x-cx,z.y-cy);
+        const radius=q.orb?24:z.boss?38:z.ty===4?30:25;
+        if(d<radius&&u<nearest){nearest=u;target=z;}
+      }
+      if(target){
+        q.x=prevX+nearest*dx;q.y=prevY+nearest*dy;
+        if(q.orb){
+          q.dead=1;X.push({x:q.x,y:q.y,t:0,purple:1});
+          for(const z of e){if(!z.dead&&Math.hypot(z.x-q.x,z.y-q.y)<82)hit(z,q.dmg||1);}
+          for(let i=0;i<20;i++){const aa=Math.random()*6.283,ss=1+Math.random()*4;pt(q.x,q.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#b65cff',3,0);}
+        }else{
+          q.dead=1;hit(target,q.dmg||1);
+          for(let i=0;i<7;i++)pt(target.x,target.y,q.vx*.15+(Math.random()-.5)*5,q.vy*.15+(Math.random()-.5)*5,14+Math.random()*10|0,target.ty==2?'#5ab82a':'#7a0c0c',2+Math.random()*2,0);
+        }
+      }
+    }
+    if(!q.dead&&(O.some(o=>Math.hypot(q.x-o.x,q.y-o.y)<o.r)||BLD.some(o=>pointWallDist(q.x,q.y,o)<o.th/2+3))){
       if(q.orb&&!q.dead){
         q.dead=1;X.push({x:q.x,y:q.y,t:0,purple:1});
         e.forEach(target=>{if(!target.dead&&Math.hypot(target.x-q.x,target.y-q.y)<82)hit(target,q.dmg);});
@@ -1104,22 +1131,6 @@ function game(){
         g.textAlign='left';
       }
     }
-    b.forEach(z=>{
-      if(!q.dead&&!z.dead&&Math.hypot(z.x-q.x,z.y-q.y)<(q.orb?20:28)){
-        if(q.orb){
-          q.dead=1;X.push({x:q.x,y:q.y,t:0,purple:1});
-          e.forEach(target=>{if(!target.dead&&Math.hypot(target.x-q.x,target.y-q.y)<82)hit(target,q.dmg);});
-          for(let i=0;i<20;i++){const aa=Math.random()*6.283,ss=1+Math.random()*4;pt(q.x,q.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#b65cff',3,0);}
-        }else{
-          // q is the zombie being iterated; z is the bullet. The old code
-          // mistakenly called hit() on the bullet, whose hp is undefined.
-          // That produced NaN and prevented score/death animation from running.
-          z.dead=1;
-          hit(q,z.dmg||1);
-          for(let i=0;i<7;i++)pt(q.x,q.y,z.vx*.15+(Math.random()-.5)*5,z.vy*.15+(Math.random()-.5)*5,14+Math.random()*10|0,q.ty==2?'#5ab82a':'#7a0c0c',2+Math.random()*2,0);
-        }
-      }
-    });
   });
 
   // particles
