@@ -75,7 +75,7 @@ watchAdBtn.onclick=()=>{
 skipAdBtn.onclick=()=>{hideRevivePopup();save()};
 const Z=.8;
 const WN=['PISTOL','SHOTGUN','ROCKET LAUNCHER','SMG','HOMING GUN','VOID ORB'];
-let w=0,h=0,p={x:0,y:0},e=[],b=[],k={},score=0,H=0,dead=2,R=[],X=[],P=[],F=[],D=[],S=0,rc=0,L=0,T=0,fl=0,wk=0,fr=0,ci=0,md=0,m={x:0,y:0},wp=0,cd=0,BLD=[],WPN=[],own=[1,0,0,0,0,0],SC=[],po=0,O=[],G=[],hp=100,ih=0,apples=[],appleCount=0,AEX=[],buildHeld=0,buildPreview=null,gunMult=[1,1,1,1,1,1],upgrades=[],nextUpgrade=20,level=1,levelBanner=0,totalSpawned=0,level2Kills=0,bossSpawned=0,bossCutscene=0,level2Spawned=0,level2PostBossSpawned=0,level2PostBossKills=0,level3Spawned=0,level3Kills=0,level4Spawned=0,level4Kills=0,firePatches=[],fireHitCooldown=0,halfHealthBlastUsed=false,reviveUsed=false,reviveTimer=0,scoreSaved=false;
+let w=0,h=0,p={x:0,y:0},e=[],b=[],k={},score=0,H=0,dead=2,R=[],X=[],P=[],F=[],D=[],S=0,rc=0,L=0,T=0,fl=0,wk=0,fr=0,ci=0,md=0,m={x:0,y:0},wp=0,cd=0,BLD=[],WPN=[],own=[1,0,0,0,0,0],SC=[],po=0,O=[],G=[],hp=100,ih=0,apples=[],appleCount=0,AEX=[],buildHeld=0,buildPreview=null,gunMult=[1,1,1,1,1,1],upgrades=[],nextUpgrade=20,level=1,levelBanner=0,totalSpawned=0,level2Kills=0,bossSpawned=0,bossCutscene=0,level2Spawned=0,level2PostBossSpawned=0,level2PostBossKills=0,level3Spawned=0,level3Kills=0,level4Spawned=0,level4Kills=0,firePatches=[],fireHitCooldown=0,halfHealthBlastUsed=false,reviveUsed=false,reviveTimer=0,scoreSaved=false,wallCharges=5;
 const CH=[
 {n:'SOLDIER',shirt:'#4b5a32',vest:'#3a4526',pants:'#3b4028',helm:'#3d4a2a',skin:'#e0ac82',boot:'#1a1a1a'},
 {n:'SURVIVOR',shirt:'#8e2b2b',pants:'#2f4a6b',hair:'#5a3a1e',skin:'#f0c39a',pack:'#5d4a2f',boot:'#3b2a1a'},
@@ -99,8 +99,9 @@ function hit(z,d){
   z.hp-=d;
   if(z.hp<=0&&!z.dead){
     z.dead=1;
+    if(!z.scored){z.scored=true;score++;}
+
     z.deathT=0;
-    score++;
     if(level==2&&z.boss){
       // Boss death starts the transition. The second 100-zombie phase waits
       // until the cutscene finishes.
@@ -132,6 +133,7 @@ function hit(z,d){
   }
 }
 function activateLevel2(){
+  wallCharges+=5;
   level=2;
   levelBanner=180;
   e=[];
@@ -169,6 +171,7 @@ function activateLevel2(){
   // No new floor guns are spawned when Level 2 begins.
 }
 function activateLevel3(){
+  wallCharges+=5;
   level=3;
   levelBanner=240;
   e=[];
@@ -221,6 +224,7 @@ function activateLevel3(){
   }
 }
 function activateLevel4(){
+  wallCharges+=5;
   level=4;
   levelBanner=240;
   // Any remaining living zombies and their death animations are cleared at a level change.
@@ -326,14 +330,14 @@ function save(){
   }
 }
 function sz(){c.width=innerWidth;c.height=innerHeight;w=c.width/Z;h=c.height/Z}
-function rs(){dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p={x:w/2,y:h/2};gen();spawnW()}
+function rs(){dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p={x:w/2,y:h/2};gen();spawnW()}
 sz();
 p={x:w/2,y:h/2};m={x:w/2+100,y:h/2};gen();
 onresize=sz;
 
 /* ---------- walls / apples ---------- */
 function wallAt(x,y,ang,make=false){
-  const len=150,th=44;
+  const len=190,th=18;
   return {x:x,y:y,a:ang,len:len,th:th,hp:220,mhp:220};
 }
 function wallRect(q){
@@ -361,11 +365,27 @@ function collWall(q,r){
     }
   });
 }
+function wallsOverlap(a,b){
+  const pa=wallRect(a),pb=wallRect(b);
+  // Separating-axis test: touching edges are allowed, actual overlap is not.
+  for(const poly of [pa,pb]){
+    for(let i=0;i<poly.length;i++){
+      const p1=poly[i],p2=poly[(i+1)%poly.length];
+      const ax=-(p2.y-p1.y),ay=p2.x-p1.x;
+      let amin=Infinity,amax=-Infinity,bmin=Infinity,bmax=-Infinity;
+      for(const v of pa){const d=v.x*ax+v.y*ay;amin=Math.min(amin,d);amax=Math.max(amax,d)}
+      for(const v of pb){const d=v.x*ax+v.y*ay;bmin=Math.min(bmin,d);bmax=Math.max(bmax,d)}
+      if(amax<=bmin+0.01||bmax<=amin+0.01)return false;
+    }
+  }
+  return true;
+}
 function canBuild(q){
+  if(wallCharges<=0)return false;
   if(Math.hypot(q.x-p.x,q.y-p.y)<35)return false;
   if(q.x<35||q.x>w-35||q.y<35||q.y>h-35)return false;
   if(O.some(o=>pointWallDist(o.x,o.y,q)<o.r+q.th/2+4))return false;
-  if(BLD.some(o=>pointWallDist(q.x,q.y,o)<(q.len+o.len)/3))return false;
+  if(BLD.some(o=>wallsOverlap(q,o)))return false;
   return true;
 }
 function triggerHalfHealthBlast(){
@@ -469,7 +489,7 @@ onkeydown=q=>{
 onkeyup=q=>{
   const n=q.key.toLowerCase();
   k[n]=0;
-  if(n=='b'&&buildHeld){buildHeld=0;if(buildPreview&&canBuild(buildPreview)){BLD.push(buildPreview);buildPreview=null}else buildPreview=null;}
+  if(n=='b'&&buildHeld){buildHeld=0;if(buildPreview&&canBuild(buildPreview)){BLD.push(buildPreview);wallCharges--;buildPreview=null}else buildPreview=null;}
 };
 c.onclick=q=>{
   if(!dead)return;
@@ -1012,7 +1032,7 @@ function game(){
         drawSkeleton(q,0,1,24*ease,Math.PI/2*(1-ease));
         if(t%5===0)pt(q.x,q.y-8,(Math.random()-.5)*1.1,-1-Math.random(),12,'#d8d2bb',1.5,0);
       }else{
-        q.dead=0;q.ty=6;q.hp=2+Math.floor(score/50);q.mh=q.hp;q.sh='#a8a391';q.sk='#ded8c3';q.sv=1.05+Math.random()*.18;q.wk=0;q.ar=55;q.deathT=0;
+        q.dead=0;q.scored=false;q.ty=6;q.hp=2+Math.floor(score/50);q.mh=q.hp;q.sh='#a8a391';q.sk='#ded8c3';q.sv=1.05+Math.random()*.18;q.wk=0;q.ar=55;q.deathT=0;
       }
       g.globalAlpha=1;
       return;
@@ -1198,11 +1218,12 @@ function game(){
   g.fillText('LEVEL: '+level+(level==2?(bossSpawned===0?'  PRE-BOSS: '+level2Spawned+'/55':bossSpawned===1?'  BOSS FIGHT':bossCutscene>0?'  BOSS DEFEATED':'  AFTER BOSS: '+level2PostBossSpawned+'/100'):level===3?'  DARK FOREST: '+level3Kills+'/150  |  SPAWNED: '+level3Spawned+'/160':level===4?'  CRIMSON FOREST: '+level4Kills+' KILLS  |  SPAWNED: '+level4Spawned+'/75':''),15,48);
   g.fillStyle='#ffd400';g.font='16px Arial';g.fillText('BEST: '+H,15,66);
   g.fillStyle='#aaa';g.font='14px Arial';g.fillText('PLAYER: '+playerName,15,83);
-  g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+WN[wp]+(own.filter(x=>x).length>1?'  [E]':'')+'  DMG x'+gunMult[wp],15,104);
+  g.fillStyle='#d8c0a0';g.font='14px Arial';g.fillText('WALLS LEFT: '+wallCharges,15,98);
+  g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+WN[wp]+(own.filter(x=>x).length>1?'  [E]':'')+'  DMG x'+gunMult[wp],15,119);
   g.font='18px Arial';
   g.fillStyle=!own[2]?'#888':rc>0?'#e74c3c':'#2ecc71';
-  g.fillText(!own[2]?'ROCKET: NOT FOUND':L>0?'ROCKET: AIMING...':rc>0?'ROCKET: RELOADING':'ROCKET: READY',15,130);
-  if(po>0){g.fillStyle='#7ccf4a';g.fillText('POISONED (slowed) '+(po/60).toFixed(1)+'s',15,140)}
+  g.fillText(!own[2]?'ROCKET: NOT FOUND':rc>0?'ROCKET: RELOADING':'ROCKET: READY',15,145);
+  if(po>0){g.fillStyle='#7ccf4a';g.fillText('POISONED (slowed) '+(po/60).toFixed(1)+'s',15,155)}
   g.fillStyle='white';g.font='18px Arial';
   g.fillText('WASD = MOVE | E = SWAP | HOLD CLICK = FIRE | HOLD B + RELEASE = BUILD WALL | F = EAT APPLE',15,c.height-15);
   g.fillStyle='#ffd66b';g.font='bold 16px Arial';g.fillText('APPLES: '+appleCount+'   HP: '+Math.ceil(hp)+'%',15,164);
