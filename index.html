@@ -1111,8 +1111,12 @@ function game(){
           e.forEach(target=>{if(!target.dead&&Math.hypot(target.x-q.x,target.y-q.y)<82)hit(target,q.dmg);});
           for(let i=0;i<20;i++){const aa=Math.random()*6.283,ss=1+Math.random()*4;pt(q.x,q.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#b65cff',3,0);}
         }else{
-          q.dead=1;hit(z,q.dmg||1);
-          for(let i=0;i<7;i++)pt(z.x,z.y,q.vx*.15+(Math.random()-.5)*5,q.vy*.15+(Math.random()-.5)*5,14+Math.random()*10|0,z.ty==2?'#5ab82a':'#7a0c0c',2+Math.random()*2,0);
+          // q is the zombie being iterated; z is the bullet. The old code
+          // mistakenly called hit() on the bullet, whose hp is undefined.
+          // That produced NaN and prevented score/death animation from running.
+          z.dead=1;
+          hit(q,z.dmg||1);
+          for(let i=0;i<7;i++)pt(q.x,q.y,z.vx*.15+(Math.random()-.5)*5,z.vy*.15+(Math.random()-.5)*5,14+Math.random()*10|0,q.ty==2?'#5ab82a':'#7a0c0c',2+Math.random()*2,0);
         }
       }
     });
