@@ -31,18 +31,18 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
 .field-label{display:block;color:#c4d0c5;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:7px}.name-row{display:flex;gap:8px}.name-row input{min-width:0;flex:1;background:#090e0b;border:1px solid #465847;border-radius:8px;color:white;padding:11px 12px;font-size:14px;outline:none}.name-row input:focus{border-color:var(--lime)}
 .primary-btn{width:100%;margin-top:13px;padding:14px 16px;border:0;border-radius:9px;background:linear-gradient(135deg,#b2f37b,#79c84d);color:#12200d;font-size:14px;font-weight:900;letter-spacing:1.2px;cursor:pointer;box-shadow:0 7px 22px #74bd4428;transition:transform .15s,filter .15s}.primary-btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
 .char-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.char-option{border:1px solid #3b493c;border-radius:10px;background:linear-gradient(180deg,#111a13,#0a100c);color:#dfe9df;padding:10px 5px 11px;cursor:pointer;text-align:center;min-height:138px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;transition:border-color .15s,background .15s,transform .15s}.char-option:hover{transform:translateY(-2px);border-color:#71876b}.char-option .avatar{width:78px;height:88px;display:block;overflow:visible;margin:0 auto 3px;filter:drop-shadow(0 5px 4px #0008)}.char-option .avatar svg{width:100%;height:100%;display:block}.char-option strong{font-size:10px;letter-spacing:.7px}.char-option .char-subtitle{font-size:9px;color:#91a291;line-height:1.2}.char-option.selected{border-color:var(--lime);background:linear-gradient(180deg,#8bcf4d1b,#0c120e);box-shadow:inset 0 0 0 1px #9be56435}
-.score-list{display:grid;gap:5px}.score-row{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12px;padding:6px 7px;border-radius:6px;background:#ffffff05;color:#d8e2d9}.score-row:first-child{color:#f0d58a;background:#d5ad3910}.score-row .rank{color:#839783}.score-row .score{font-weight:800;font-variant-numeric:tabular-nums}.empty-score{font-size:12px;color:#829084;line-height:1.5;padding:8px 2px}
+.mode-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0 12px}.mode-card{border:1px solid #344437;border-radius:10px;background:#0d140f;color:#e5eee5;padding:12px 10px;text-align:left;cursor:pointer;min-height:116px;transition:.15s}.mode-card:hover{border-color:#71876b;transform:translateY(-1px)}.mode-card.selected{border-color:var(--lime);background:linear-gradient(150deg,#8bcf4d20,#0d140f);box-shadow:inset 0 0 0 1px #9be56430}.mode-icon{font-size:23px;display:block;margin-bottom:7px}.mode-card strong{display:block;font-size:11px;letter-spacing:.6px;margin-bottom:5px}.mode-card span:last-child{display:block;color:#9eada0;font-size:10px;line-height:1.4}.mode-status{font-size:11px;line-height:1.5;color:#b8c9b8;background:#0b110d;border:1px solid #2b3a2d;padding:9px 10px;border-radius:8px;margin-top:9px}.coop-row{display:flex;gap:8px;align-items:center;margin-top:10px;color:#b9c8ba;font-size:11px}.coop-row input{accent-color:#9be564}.utility-panel{position:fixed;z-index:50;right:14px;bottom:14px;width:min(390px,calc(100vw - 28px));max-height:75vh;overflow:auto;background:#101812;border:1px solid #536b52;border-radius:14px;box-shadow:0 18px 60px #000b;padding:16px;display:none;color:#edf5ed}.utility-panel.open{display:block}.utility-panel h2{font-size:14px;margin:0 0 8px;color:#b9ed9c}.utility-panel p{font-size:12px;line-height:1.5;color:#b4c3b6}.utility-panel input,.utility-panel select,.utility-panel textarea{box-sizing:border-box;width:100%;margin:5px 0;padding:9px;background:#080d0a;color:#fff;border:1px solid #3a4b3b;border-radius:7px}.utility-panel button{padding:8px 10px;background:#273a28;color:#e9f6e5;border:1px solid #4a6349;border-radius:7px;cursor:pointer}.utility-panel .panel-close{float:right}.utility-panel .chat-log{height:160px;overflow:auto;background:#080d0a;border:1px solid #2b392d;border-radius:7px;padding:8px;font-size:12px}.utility-panel .small-note{font-size:10px;color:#849487}.score-list{display:grid;gap:5px}.score-row{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12px;padding:6px 7px;border-radius:6px;background:#ffffff05;color:#d8e2d9}.score-row:first-child{color:#f0d58a;background:#d5ad3910}.score-row .rank{color:#839783}.score-row .score{font-weight:800;font-variant-numeric:tabular-nums}.empty-score{font-size:12px;color:#829084;line-height:1.5;padding:8px 2px}
 .personal-best{margin-top:12px;padding-top:11px;border-top:1px solid #2c3a2e;display:flex;justify-content:space-between;font-size:12px;color:#b9c7bb}.personal-best strong{color:var(--lime);font-size:16px}
 .howto{margin-top:16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.howto-item{border:1px solid #28372b;border-radius:10px;padding:11px;background:#0d140f}.howto-item b{display:block;color:#d6edc9;font-size:11px;margin-bottom:4px}.howto-item span{display:block;color:#9eada0;font-size:11px;line-height:1.45}
 .home-rail{display:flex;flex-direction:column;gap:16px;min-width:0}.ad-card{min-height:250px;flex:1;border:1px dashed #40513f;border-radius:16px;background:linear-gradient(160deg,#111812,#0b100c);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px;color:#647465;font-size:11px}.ad-card .ad-label{align-self:flex-start;text-transform:uppercase;letter-spacing:1.5px;font-size:9px;color:#536354;margin-bottom:auto}.side-info{border:1px solid #2e3e30;border-radius:14px;background:#111812;padding:16px}.side-info h3{margin:0 0 8px;color:#b8e99d;font-size:12px;letter-spacing:1px;text-transform:uppercase}.side-info p{margin:0;color:#aebcaf;font-size:12px;line-height:1.6}
 #nameBox{display:none!important}
 /* Responsive AdSense strips on the homepage only. The game itself remains unobstructed. */
 .edge-ad{display:none;position:fixed;left:0;right:0;z-index:25;box-sizing:border-box;min-height:90px;padding:5px 16px;background:rgba(5,9,6,.97);border-color:#283629;border-style:solid;align-items:center;justify-content:center;overflow:hidden}
-.edge-ad-top{top:0;border-width:0 0 1px}.edge-ad-bottom{bottom:0;border-width:1px 0 0}
+.edge-ad-bottom{bottom:0;border-width:1px 0 0}
 .edge-ad .adsbygoogle{display:block;width:100%;max-width:970px;min-height:70px;margin:0 auto}
 #homePage:not(.hidden) ~ .edge-ad{display:flex}
 @media(max-width:980px){body{overflow:auto}#homePage{align-items:flex-start;padding:104px 14px 104px}.home-layout{grid-template-columns:minmax(0,1fr)}.home-rail{display:none}.hero{padding:22px}.home-content{grid-template-columns:minmax(0,1fr) minmax(230px,.8fr)}}
-@media(max-width:620px){.edge-ad{min-height:64px;padding:3px 8px}.edge-ad .adsbygoogle{min-height:50px}#homePage{padding:74px 10px 74px}.home-content{grid-template-columns:1fr}.howto{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:19px}.panel{padding:15px}.home-layout{gap:12px}}
+@media(max-width:620px){.mode-grid{grid-template-columns:1fr}.mode-card{min-height:0}.edge-ad{min-height:64px;padding:3px 8px}.edge-ad .adsbygoogle{min-height:50px}#homePage{padding:24px 10px 74px}.home-content{grid-template-columns:1fr}.howto{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:19px}.panel{padding:15px}.home-layout{gap:12px}}
 </style>
 </head>
 <body>
@@ -60,13 +60,22 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
           <h2 id="play-heading">Prepare for your run</h2>
           <label class="field-label" for="homeUsername">YOUR USERNAME</label>
           <div class="name-row"><input id="homeUsername" maxlength="16" placeholder="Enter username" autocomplete="nickname"><button id="saveHomeName" type="button" style="padding:0 12px;border:1px solid #465847;border-radius:8px;background:#202d22;color:#d8f0ce;font-weight:700;cursor:pointer">Save</button></div>
+          <div class="field-label" style="margin-top:16px">CHOOSE A GAME MODE</div>
+          <div class="mode-grid" role="group" aria-label="Game mode">
+            <button class="mode-card selected" data-mode="classic" type="button" aria-pressed="true"><span class="mode-icon">☠</span><strong>CLASSIC LEVELS</strong><span>Four environments, a boss and the original survival challenge.</span></button>
+            <button class="mode-card" data-mode="infinite" type="button" aria-pressed="false"><span class="mode-icon">∞</span><strong>INFINITE</strong><span>Endless waves. Difficulty keeps rising and there is no final level.</span></button>
+            <button class="mode-card" data-mode="base" type="button" aria-pressed="false"><span class="mode-icon">⌂</span><strong>BASE WORLD</strong><span>Early prototype: grid-aligned walls persist in this browser. Shared world needs setup.</span></button>
+          </div>
+          <label class="coop-row"><input id="coopToggle" type="checkbox"><span>Co-op with friends (up to 4 players) — requires multiplayer setup</span></label>
+          <div id="modeStatus" class="mode-status" aria-live="polite">Classic mode keeps the original four-level game.</div>
           <div class="field-label" style="margin-top:16px">CHOOSE YOUR SURVIVOR</div>
           <div class="char-grid">
             <button class="char-option selected" data-char="0" type="button" aria-pressed="true"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 80 90"><ellipse cx="40" cy="84" rx="24" ry="4" fill="#000" opacity=".35"/><path d="M23 55 18 82 31 82 37 61 43 61 49 82 62 82 57 55Z" fill="#3b4028" stroke="#20291b" stroke-width="2"/><path d="M24 37 Q40 30 56 37 L61 62 50 69 30 69 19 62Z" fill="#4b5a32" stroke="#26321f" stroke-width="2"/><path d="M29 40 40 46 51 40 54 61 46 64 34 64 26 61Z" fill="#3a4526"/><path d="M25 42 16 49 20 62 28 59M55 42 64 49 60 62 52 59" fill="#4b5a32" stroke="#26321f" stroke-width="2"/><rect x="33" y="25" width="14" height="15" rx="5" fill="#e0ac82"/><path d="M25 25 Q25 9 40 9 Q56 9 55 25 L51 30 29 30Z" fill="#3d4a2a" stroke="#20291b" stroke-width="2"/><path d="M23 24 Q40 17 57 24 L55 29 25 29Z" fill="#596b3b"/><path d="M30 32h20" stroke="#b5c08b" stroke-width="2"/><circle cx="35" cy="26" r="1.5" fill="#20251b"/><circle cx="45" cy="26" r="1.5" fill="#20251b"/></svg></span><strong>SOLDIER</strong><span class="char-subtitle">Armoured & ready</span></button>
             <button class="char-option" data-char="1" type="button" aria-pressed="false"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 80 90"><ellipse cx="40" cy="84" rx="24" ry="4" fill="#000" opacity=".35"/><path d="M24 55 19 82 32 82 37 62 43 62 48 82 61 82 56 55Z" fill="#2f4a6b" stroke="#182a3b" stroke-width="2"/><path d="M24 38 Q40 31 56 38 L61 63 51 69 29 69 19 63Z" fill="#8e2b2b" stroke="#4c2020" stroke-width="2"/><path d="M28 42 16 49 20 62 28 59M52 42 64 49 60 62 52 59" fill="#8e2b2b" stroke="#4c2020" stroke-width="2"/><path d="M49 43 58 47 56 66 48 64Z" fill="#5d4a2f" stroke="#342a1b" stroke-width="2"/><rect x="33" y="25" width="14" height="15" rx="5" fill="#f0c39a"/><path d="M26 24 Q26 10 40 10 Q55 10 54 26 L49 31 29 29Z" fill="#5a3a1e"/><path d="M29 32h22" stroke="#d8a77d" stroke-width="2"/><circle cx="35" cy="26" r="1.5" fill="#33241b"/><circle cx="45" cy="26" r="1.5" fill="#33241b"/><path d="M31 48 40 53 49 48" fill="none" stroke="#d66b5b" stroke-width="2"/></svg></span><strong>SURVIVOR</strong><span class="char-subtitle">Quick & resourceful</span></button>
             <button class="char-option" data-char="2" type="button" aria-pressed="false"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 80 90"><ellipse cx="40" cy="84" rx="24" ry="4" fill="#000" opacity=".35"/><path d="M23 55 18 82 31 82 37 62 43 62 49 82 62 82 57 55Z" fill="#141a22" stroke="#080c10" stroke-width="2"/><path d="M24 37 Q40 31 56 37 L61 63 51 69 29 69 19 63Z" fill="#1f2a3a" stroke="#0d141c" stroke-width="2"/><path d="M27 40 53 40 56 62 24 62Z" fill="#0e141b" stroke="#40505d" stroke-width="2"/><path d="M29 43 40 48 51 43 49 57 31 57Z" fill="#253341"/><path d="M24 42 15 49 19 62 28 59M56 42 65 49 61 62 52 59" fill="#1f2a3a" stroke="#0d141c" stroke-width="2"/><rect x="33" y="25" width="14" height="15" rx="5" fill="#c68e62"/><path d="M24 24 Q24 9 40 9 Q56 9 56 24 L52 29 28 29Z" fill="#0d1117" stroke="#05080b" stroke-width="2"/><path d="M22 24h36v5H22Z" fill="#263544"/><path d="M29 26h22v5H29Z" fill="#0a1118"/><path d="M30 32h20" stroke="#6d8291" stroke-width="2"/><circle cx="35" cy="27" r="1.5" fill="#b6d5f4"/><circle cx="45" cy="27" r="1.5" fill="#b6d5f4"/><path d="M34 47h12" stroke="#8295a4" stroke-width="2"/></svg></span><strong>SWAT</strong><span class="char-subtitle">Tactical gear</span></button>
           </div>
-          <button id="startGameBtn" class="primary-btn" type="button">▶ &nbsp; START SURVIVING</button>
+          <button id="startGameBtn" class="primary-btn" type="button">▶ &nbsp; START CLASSIC SURVIVAL</button>
+          <button id="openChatBtn" type="button" style="display:none;width:100%;margin-top:8px;padding:9px;background:#18241a;border:1px solid #344437;border-radius:8px;color:#cce5c3;cursor:pointer">Open world chat / local rooms</button>
           <div style="margin-top:9px;text-align:center;color:#829183;font-size:10px">Choose a character, then start your run.</div>
         </section>
         <section class="panel" aria-labelledby="score-heading"><h2 id="score-heading">Hall of survival</h2><div id="homeScoreList" class="score-list"><div class="empty-score">Your best runs will appear here.</div></div><div class="personal-best"><span>YOUR PERSONAL BEST</span><strong id="homeBest">0</strong></div><p style="font-size:10px;color:#77877a;line-height:1.45;margin:10px 0 0">Scores are saved in this browser on this device.</p></section>
@@ -76,35 +85,20 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
     <aside class="home-rail" aria-label="Additional information"><div class="ad-card" aria-label="Advertisement"><span class="ad-label">Advertisement</span><ins class="adsbygoogle"
      style="display:block;width:100%;min-height:250px"
      data-ad-client="ca-pub-5823089544936874"
-     data-ad-slot="2228817248"
+     data-ad-slot="1653178731"
      data-ad-format="auto"
      data-full-width-responsive="true"></ins>
 <script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div><div class="side-info"><h3>Survive the changes</h3><p>Travel from green grasslands into autumn woods, a dark forest and the crimson endgame. Watch your health, use supplies carefully and keep moving.</p></div><div class="side-info"><h3>About this game</h3><p>Zombie Shooter is a free, keyboard-and-mouse browser game. Scores are stored locally and aren't shared between visitors.</p></div></aside>
   </div>
 </main>
 
-<!-- Top-of-screen AdSense unit; the shared AdSense loader is already in the head. -->
-<div class="edge-ad edge-ad-top" aria-label="Advertisement at top of homepage">
-  <ins class="adsbygoogle"
-       style="display:block"
-       data-ad-client="ca-pub-5823089544936874"
-       data-ad-slot="1653178731"
-       data-ad-format="auto"
-       data-full-width-responsive="true"></ins>
-  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-</div>
+<div id="chatPanel" class="utility-panel" aria-label="Chat panel"><button class="panel-close" data-close="chatPanel">Close</button><h2>World & local chat</h2><p>Global chat and joinable local rooms will be shared between players once Firebase is connected.</p><div id="chatConnection" class="mode-status">Offline prototype — no Firebase project configured.</div><label class="field-label" for="roomSelect">LOCAL ROOM</label><select id="roomSelect"><option value="general">General</option><option value="north">Northern camp</option><option value="south">Southern camp</option><option value="trade">Trading post</option></select><div id="chatLog" class="chat-log" aria-live="polite">Chat is waiting for the multiplayer backend.</div><form id="chatForm"><input id="chatMessage" maxlength="240" placeholder="Message (online setup required)" disabled><button type="submit" disabled>Send</button></form><p class="small-note">Chat moderation, rate limits and bans must be enforced by the backend, not just by this page.</p></div>
 
-<!-- Bottom-of-screen AdSense unit. -->
-<div class="edge-ad edge-ad-bottom" aria-label="Advertisement at bottom of homepage">
-  <ins class="adsbygoogle"
-       style="display:block"
-       data-ad-client="ca-pub-5823089544936874"
-       data-ad-slot="1653178731"
-       data-ad-format="auto"
-       data-full-width-responsive="true"></ins>
-  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-</div>
+<div id="adminPanel" class="utility-panel" aria-label="Admin moderation panel"><button class="panel-close" data-close="adminPanel">Close</button><h2>Admin moderation</h2><p>This panel is intentionally hidden. Press Ctrl + Shift + A to open it. It will only become operational after Firebase Authentication and server-side admin permissions are configured.</p><div id="adminConnection" class="mode-status">LOCKED — backend not configured. No global changes can be made yet.</div><label class="field-label" for="adminTarget">PLAYER UID (not display name)</label><input id="adminTarget" placeholder="Firebase user UID" disabled><label class="field-label" for="adminReason">REASON</label><textarea id="adminReason" rows="2" placeholder="Reason for moderation action" disabled></textarea><div style="display:flex;gap:8px"><button disabled>Ban player</button><button disabled>Unban player</button><button disabled>Remove global score</button></div><p class="small-note">Do not put an admin password or private server key in this HTML file. Admin rights should be assigned with trusted server-side tools/custom claims.</p></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script>
 (()=>{
 const c=document.createElement('canvas');
@@ -124,6 +118,66 @@ const saveUsernameBtn=document.getElementById('saveHomeName');
 const homeScoreList=document.getElementById('homeScoreList');
 const homeBest=document.getElementById('homeBest');
 const startGameBtn=document.getElementById('startGameBtn');
+let gameMode='classic';
+let infiniteNextBossScore=75;
+let coopRequested=false;
+const modeStatus=document.getElementById('modeStatus');
+const modeDescriptions={classic:'Classic mode keeps the original four-level game.',infinite:'Endless survival: every zombie type can appear, bosses are rare, and difficulty rises gradually. Gun upgrades are disabled.',base:'Base World prototype: chat is available only in this mode. Grid-aligned walls currently save locally; shared online persistence, mining, resource costs and turrets still need implementing.'};
+function chooseMode(mode){
+  gameMode=mode;
+  document.querySelectorAll('.mode-card').forEach(btn=>{const yes=btn.dataset.mode===mode;btn.classList.toggle('selected',yes);btn.setAttribute('aria-pressed',String(yes));});
+  modeStatus.textContent=modeDescriptions[mode]+(coopRequested?' Co-op is selected but unavailable until multiplayer synchronisation is implemented and Firebase is configured.':'');
+  startGameBtn.textContent=mode==='classic'?'▶  START CLASSIC SURVIVAL':mode==='infinite'?'▶  START INFINITE SURVIVAL':'▶  ENTER BASE WORLD';
+  const chatBtn=document.getElementById('openChatBtn');
+  chatBtn.style.display=mode==='base'?'block':'none';
+  if(mode!=='base')document.getElementById('chatPanel').classList.remove('open');
+}
+document.querySelectorAll('.mode-card').forEach(btn=>btn.addEventListener('click',()=>chooseMode(btn.dataset.mode)));
+document.getElementById('coopToggle').addEventListener('change',ev=>{coopRequested=ev.target.checked;chooseMode(gameMode);});
+document.getElementById('openChatBtn').addEventListener('click',()=>{if(gameMode==='base')document.getElementById('chatPanel').classList.add('open');});
+document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>document.getElementById(btn.dataset.close).classList.remove('open')));
+document.getElementById('chatForm').addEventListener('submit',ev=>ev.preventDefault());
+window.addEventListener('keydown',ev=>{if(ev.ctrlKey&&ev.shiftKey&&ev.key.toLowerCase()==='a'){ev.preventDefault();document.getElementById('adminPanel').classList.toggle('open');}});
+// FIREBASE SETUP: create a Firebase project, enable Anonymous Authentication and Realtime Database,
+// then replace null with the Firebase WEB APP config. Web config is public; never paste service-account keys here.
+const FIREBASE_CONFIG = null; // Example: { apiKey:'...', authDomain:'...', databaseURL:'...', projectId:'...', appId:'...' }
+let firebaseDb=null, firebaseUser=null, activeChatRef=null, chatUnsubscribe=null;
+const chatLog=document.getElementById('chatLog');
+const chatConnection=document.getElementById('chatConnection');
+function safeChatText(v){return String(v||'').replace(/[<>]/g,'').trim().slice(0,240)}
+function appendChatMessage(msg){
+  const row=document.createElement('div');row.style.marginBottom='7px';
+  const name=document.createElement('strong');name.style.color='#b9ed9c';name.textContent=(safeChatText(msg.name)||'Player')+': ';
+  const body=document.createElement('span');body.textContent=safeChatText(msg.text);
+  row.append(name,body);chatLog.appendChild(row);while(chatLog.children.length>80)chatLog.firstChild.remove();chatLog.scrollTop=chatLog.scrollHeight;
+}
+function watchChat(){
+  if(!firebaseDb||!firebaseUser)return;
+  if(activeChatRef&&chatUnsubscribe)activeChatRef.off('child_added',chatUnsubscribe);
+  const room=document.getElementById('roomSelect').value;
+  activeChatRef=room==='global'?firebaseDb.ref('chats/global'):firebaseDb.ref('chats/rooms/'+room);
+  chatLog.textContent='Loading messages…';
+  chatUnsubscribe=snap=>appendChatMessage(snap.val()||{});
+  activeChatRef.limitToLast(60).on('child_added',chatUnsubscribe);
+  document.getElementById('chatConnection').textContent=room==='global'?'Connected to global chat.':'Connected to local room: '+room+'.';
+}
+document.getElementById('roomSelect').insertAdjacentHTML('afterbegin','<option value="global">Global chat</option>');
+document.getElementById('roomSelect').value='global';
+document.getElementById('roomSelect').addEventListener('change',()=>{if(firebaseDb&&firebaseUser)watchChat();});
+document.getElementById('chatForm').addEventListener('submit',async ev=>{
+  ev.preventDefault();const input=document.getElementById('chatMessage');const text=safeChatText(input.value);
+  if(!text||!firebaseDb||!firebaseUser)return;
+  try{await firebaseDb.ref('chats/'+(document.getElementById('roomSelect').value==='global'?'global':'rooms/'+document.getElementById('roomSelect').value)).push({uid:firebaseUser.uid,name:playerName||'Player',text,ts:firebase.database.ServerValue.TIMESTAMP});input.value='';}
+  catch(err){chatConnection.textContent='Message not sent. Check Firebase Database rules and connection.';}
+});
+if(FIREBASE_CONFIG){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);firebaseDb=firebase.database();
+    firebase.auth().signInAnonymously().then(cred=>{firebaseUser=cred.user;document.getElementById('chatMessage').disabled=false;document.querySelector('#chatForm button').disabled=false;watchChat();chatConnection.textContent='Connected. Chat moderation rules are active only if configured in Firebase.';})
+      .catch(err=>{chatConnection.textContent='Firebase sign-in failed: '+err.message;});
+  }catch(err){chatConnection.textContent='Firebase config error. Check the web app config.';}
+}
+
 const saveHomeNameBtn=document.getElementById('saveHomeName');
 function refreshHome(){
   homeBest.textContent=String(H||0);
@@ -150,7 +204,7 @@ document.querySelectorAll('.char-option').forEach(btn=>btn.addEventListener('cli
   ci=Number(btn.dataset.char);
   document.querySelectorAll('.char-option').forEach(b=>{const selected=b===btn;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});
 }));
-startGameBtn.onclick=()=>{setHomeName();rs();};
+startGameBtn.onclick=()=>{setHomeName();if(coopRequested){modeStatus.textContent='Co-op is not playable yet: Firebase configuration alone is not enough. Player, enemy and combat synchronisation still need to be implemented.';}rs();};
 refreshHome();
 const watchAdBtn=document.getElementById('watchAdBtn');
 const skipAdBtn=document.getElementById('skipAdBtn');
@@ -222,6 +276,10 @@ function hit(z,d){
     score+=1;
 
     z.deathT=0;
+    if(gameMode==='infinite'&&z.boss){
+      bossSpawned=0;
+      infiniteNextBossScore=score+80+Math.floor(Math.random()*61);
+    }
     if(level==2&&z.boss){
       // Boss death starts the transition. The second 100-zombie phase waits
       // until the cutscene finishes.
@@ -249,7 +307,7 @@ function hit(z,d){
     }
     F.push({x:z.x,y:z.y,t:0});
     splat(z.x,z.y);
-    if(score>=100&&level===1)activateLevel2();
+    if(gameMode==='classic'&&score>=100&&level===1)activateLevel2();
   }
 }
 const ENV_PALETTES={
@@ -478,7 +536,7 @@ function save(){
   }
 }
 function sz(){c.width=innerWidth;c.height=innerHeight;w=c.width/Z;h=c.height/Z}
-function rs(){dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p={x:w/2,y:h/2};gen();spawnW()}
+function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:w*.16,y:h*.52}:{x:w/2,y:h/2};gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}spawnW()}
 sz();
 p={x:w/2,y:h/2};m={x:w/2+100,y:h/2};gen();
 onresize=sz;
@@ -529,7 +587,8 @@ function wallsOverlap(a,b){
   return true;
 }
 function canBuild(q){
-  if(wallCharges<=0)return false;
+  if(gameMode!=='base'&&wallCharges<=0)return false;
+  if(gameMode==='base'){q.x=Math.round(q.x/40)*40;q.y=Math.round(q.y/40)*40;q.a=Math.round(q.a/(Math.PI/2))*(Math.PI/2);q.len=80;q.th=18;q.hp=180;q.mhp=180;}
   if(Math.hypot(q.x-p.x,q.y-p.y)<35)return false;
   if(q.x<35||q.x>w-35||q.y<35||q.y>h-35)return false;
   if(O.some(o=>pointWallDist(o.x,o.y,q)<o.r+q.th/2+4))return false;
@@ -640,7 +699,7 @@ onkeydown=q=>{
 onkeyup=q=>{
   const n=q.key.toLowerCase();
   k[n]=0;
-  if(n=='b'&&buildHeld){buildHeld=0;if(buildPreview&&canBuild(buildPreview)){BLD.push(buildPreview);wallCharges--;buildPreview=null}else buildPreview=null;}
+  if(n=='b'&&buildHeld){buildHeld=0;if(buildPreview&&canBuild(buildPreview)){BLD.push(buildPreview);if(gameMode==='base'){try{localStorage.setItem('zs_base_walls',JSON.stringify(BLD))}catch(_){}}else wallCharges--;buildPreview=null}else buildPreview=null;}
 };
 c.onclick=q=>{if(!dead&&q.button===0){} };
 
@@ -663,7 +722,8 @@ setInterval(()=>{
   if(dead||bossCutscene>0)return;
   // Hard cap on simultaneously living zombies; level-specific total spawn limits remain below.
   if(e.reduce((count,z)=>count+(!z.dead?1:0),0)>=30)return;
-  if(level==1&&totalSpawned>=120)return;
+  if(gameMode==='infinite'&&score>=infiniteNextBossScore&&!e.some(z=>z.boss&&!z.dead)){spawnBoss();return;}
+  if(level==1&&totalSpawned>=120&&gameMode!=='infinite')return;
   if(level===3&&level3Spawned>=160)return;
   if(level===4&&level4Spawned>=75)return;
 
@@ -682,19 +742,29 @@ setInterval(()=>{
 
   const r=Math.random();
   let ty=score>=10&&r<.2?2:score>=4&&r<.5?1:0;
+  if(gameMode==='infinite'){
+    // All regular enemy families can appear in endless mode, including later-game types.
+    const variety=Math.random();
+    if(variety<.10)ty=2;
+    else if(variety<.24)ty=1;
+    else if(variety<.38)ty=4;
+    else if(variety<.52)ty=5;
+  }
 
   // New Level 2 zombie: BRUTE. Slow, tough and strong against walls.
-  if(level==2&&Math.random()<.18)ty=4;
-  if(level==3&&Math.random()<.27)ty=5;
-  if(level===4&&Math.random()<.42)ty=5;
+  if(gameMode!=='infinite'){
+    if(level==2&&Math.random()<.18)ty=4;
+    if(level==3&&Math.random()<.27)ty=5;
+    if(level===4&&Math.random()<.42)ty=5;
+  }
 
   let sh=SH[Math.random()*SH.length|0],sk=SK[Math.random()*SK.length|0],
-      hp=Math.max(1,Math.ceil((1+Math.floor(score/10))*(level==2?1.15:1))),
+      hp=Math.max(1,Math.ceil((1+Math.floor(score/(gameMode==='infinite'?25:10)))*(level==2?1.15:1))),
       sv=.75+Math.random()*.3;
   if(ty==1){
     sh='#5a5a6a';sk='#c9d0b8';
     hp=Math.max(1,Math.ceil(1*(level==2?1.15:1)));
-    sv=1.5+Math.min(1.8,score/60);
+    sv=1.5+Math.min(1.8,score/(gameMode==='infinite'?150:60));
   }
   if(ty==2){
     sh='#197a2b';sk='#8eea4f';
@@ -824,7 +894,7 @@ function drawSkeleton(q,a,alpha=1,rise=0,fall=0){
 }
 function drawZombie(q,a){if(q.ty===6)drawSkeleton(q,a,1,0,0);else zom(q,a)}
 function zom(q,a){
-  g.save();g.translate(q.x,q.y);g.scale(q.boss?2.1:q.ty==4?1.55:q.ty==5?1.05:1.3,q.boss?2.1:q.ty==4?1.55:q.ty==5?1.05:1.3);
+  g.save();g.translate(q.x,q.y);const zScale=q.boss?(gameMode==='infinite'?1.12:1.35):q.ty==4?1.55:q.ty==5?1.05:1.3;g.scale(zScale,zScale);
   el(2,3,20,17,'rgba(0,0,0,.35)');
   g.rotate(a+Math.sin(q.wk)*.1);
   if(q.ty==1)g.scale(1,.7);
@@ -860,6 +930,59 @@ function zom(q,a){
   g.restore();
 }
 
+
+function drawWorldBiomes(){
+  // Organic, overlapping biome shapes instead of hard-edged square regions.
+  const blobs=[
+    {x:w*.20,y:h*.49,rx:w*.31,ry:h*.55,c:'#426d35',label:'SAFE CAMP / GRASSLANDS'},
+    {x:w*.47,y:h*.27,rx:w*.28,ry:h*.43,c:'#78623a',label:'AUTUMN WILDLANDS'},
+    {x:w*.66,y:h*.70,rx:w*.30,ry:h*.40,c:'#273d30',label:'DARK FOREST'},
+    {x:w*.86,y:h*.45,rx:w*.27,ry:h*.60,c:'#54232b',label:'CRIMSON FOREST • HIGH RISK'}
+  ];
+  blobs.forEach((b,i)=>{
+    const grad=g.createRadialGradient(b.x,b.y,Math.min(b.rx,b.ry)*.12,b.x,b.y,Math.max(b.rx,b.ry));
+    grad.addColorStop(0,b.c);grad.addColorStop(.67,b.c+'cc');grad.addColorStop(1,'rgba(8,13,10,0)');
+    g.fillStyle=grad;g.beginPath();g.ellipse(b.x,b.y,b.rx,b.ry,[-.18,.35,-.3,.18][i],0,Math.PI*2);g.fill();
+    g.save();g.globalAlpha=.65;g.fillStyle='#f2f4e8';g.font='bold 12px Arial';g.textAlign='center';g.fillText(b.label,b.x,b.y-b.ry*.42);g.restore();
+  });
+  // The safe camp is a small, clearly marked pocket to one side of the centre.
+  const sx=w*.16,sy=h*.52,r=Math.min(w,h)*.105;
+  g.save();g.fillStyle='rgba(160,220,130,.12)';g.strokeStyle='rgba(190,244,157,.8)';g.lineWidth=2;
+  g.beginPath();g.arc(sx,sy,r,0,Math.PI*2);g.fill();g.setLineDash([7,5]);g.stroke();g.setLineDash([]);
+  g.fillStyle='#d7f5c7';g.font='bold 11px Arial';g.textAlign='center';g.fillText('SAFE SPAWN',sx,sy-r-9);g.restore();
+  // A broken trail leads toward the dangerous central endgame zone.
+  g.save();g.strokeStyle='rgba(224,210,160,.38)';g.lineWidth=5;g.setLineDash([10,13]);g.beginPath();g.moveTo(sx+r,sy);g.bezierCurveTo(w*.36,h*.28,w*.48,h*.8,w*.63,h*.65);g.stroke();g.setLineDash([]);g.restore();
+}
+function drawWorldMinimap(){
+  const mw=Math.min(205,w*.34),mh=mw*.68,mx=w-mw-15,my=15;
+  g.save();
+  g.fillStyle='rgba(4,9,6,.88)';g.strokeStyle='rgba(210,230,205,.7)';g.lineWidth=1.5;
+  g.beginPath();g.roundRect(mx,my,mw,mh,9);g.fill();g.stroke();
+  g.save();g.beginPath();g.roundRect(mx+5,my+5,mw-10,mh-10,6);g.clip();
+  const regions=[
+    {x:.19,y:.5,rx:.28,ry:.48,c:'#527d3e'}, {x:.44,y:.27,rx:.27,ry:.40,c:'#9b7a43'},
+    {x:.65,y:.69,rx:.28,ry:.36,c:'#294c39'}, {x:.86,y:.45,rx:.25,ry:.55,c:'#792d39'}
+  ];
+  regions.forEach((r)=>{g.fillStyle=r.c;g.beginPath();g.ellipse(mx+r.x*mw,my+r.y*mh,r.rx*mw,r.ry*mh,-.2,0,Math.PI*2);g.fill()});
+  // Safe zone and biome labels.
+  g.fillStyle='rgba(190,244,157,.16)';g.strokeStyle='#c7f4a5';g.lineWidth=1;g.beginPath();g.arc(mx+mw*.16,my+mh*.52,Math.min(mw,mh)*.095,0,Math.PI*2);g.fill();g.stroke();
+  g.font='bold 7px Arial';g.textAlign='center';g.fillStyle='#f0f5e9';
+  g.fillText('GRASS',mx+mw*.18,my+mh*.2);g.fillText('AUTUMN',mx+mw*.44,my+mh*.12);g.fillText('DARK',mx+mw*.65,my+mh*.87);g.fillText('CRIMSON',mx+mw*.84,my+mh*.2);
+  // Outbreaks: cluster nearby zombies and draw a small boss marker in each outbreak.
+  const clusters=new Map();
+  e.filter(z=>!z.dead).forEach(z=>{const gx=Math.max(0,Math.min(5,Math.floor(z.x/w*6))),gy=Math.max(0,Math.min(3,Math.floor(z.y/h*4))),key=gx+','+gy;if(!clusters.has(key))clusters.set(key,{x:(gx+.5)/6,y:(gy+.5)/4,n:0,boss:false});const q=clusters.get(key);q.n++;if(z.boss)q.boss=true;});
+  clusters.forEach(q=>{if(q.n<3&&!q.boss)return;const x=mx+q.x*mw,y=my+q.y*mh;g.fillStyle=q.boss?'#ffdf70':'#ff6b61';g.strokeStyle='#25100f';g.lineWidth=1;g.beginPath();g.arc(x,y,Math.min(7,3+q.n*.35),0,Math.PI*2);g.fill();g.stroke();if(q.boss){g.fillStyle='#fff2bd';g.beginPath();g.arc(x,y,2.1,0,Math.PI*2);g.fill();}});
+  // Player marker.
+  const px=mx+Math.max(0,Math.min(1,p.x/w))*mw,py=my+Math.max(0,Math.min(1,p.y/h))*mh;
+  g.fillStyle='#ffffff';g.strokeStyle='#142014';g.lineWidth=2;g.beginPath();g.arc(px,py,3.3,0,Math.PI*2);g.fill();g.stroke();
+  // Direction arrow along the minimap edge points toward the map centre / crimson endgame.
+  const dx=mx+mw-12,dy=my+mh*.52;g.fillStyle='#ffe7a0';g.beginPath();g.moveTo(dx+5,dy);g.lineTo(dx-5,dy-4);g.lineTo(dx-4,dy+4);g.closePath();g.fill();
+  g.restore();
+  g.fillStyle='#f1f4e9';g.font='bold 9px Arial';g.textAlign='left';g.fillText('WORLD MAP',mx+9,my+mh+12);
+  g.fillStyle='#ff8177';g.fillRect(mx+mw-92,my+mh+7,6,6);g.fillStyle='#c8d0c7';g.font='9px Arial';g.fillText('OUTBREAK',mx+mw-82,my+mh+13);
+  g.restore();
+}
+
 /* ---------- main loop ---------- */
 function game(){
   fr++;
@@ -869,8 +992,8 @@ function game(){
   // Blend the ground palette gradually between biomes instead of snapping to new colours.
   environmentBlend=Math.min(1,environmentBlend+0.012);
   g.fillStyle=envColour('ground');g.fillRect(-40,-40,w+80,h+80);
-  g.fillStyle=envColour('tile');
-  for(let i=0;i<w;i+=70)for(let j=0;j<h;j+=70)g.fillRect(i,j,66,66);
+  if(gameMode==='base') drawWorldBiomes();
+  else { g.fillStyle=envColour('tile'); for(let i=0;i<w;i+=70)for(let j=0;j<h;j+=70)g.fillRect(i,j,66,66); }
   if(level===3||level===4){
     for(let i=0;i<(level===3?7:16);i++){
       const x=(i*173+fr*.025)%w,y=(i*127+fr*.015)%h;
@@ -967,7 +1090,7 @@ function game(){
   const sp=1.2+Math.min(2.3,T/3600);
   if(!dead&&bossCutscene<=0){
     T++;
-    if(T>=nextUpgrade){
+    if(gameMode!=='infinite'&&T>=nextUpgrade){
       if(spawnUpgrade()){
         nextUpgrade+=
           T<2400 ? 750 :
@@ -1024,7 +1147,7 @@ function game(){
   g.fillStyle=f>.6?'#2ecc71':f>.3?'#f1c40f':'#e74c3c';g.fillRect(p.x-25,p.y-45,50*f,5)}
 
   // gun upgrade parts
-  upgrades.forEach(q=>{
+  if(gameMode!=='infinite')upgrades.forEach(q=>{
     if(q.got)return;
     const pulse=.7+Math.sin(fr*.12)*.15;
     g.save();
@@ -1053,7 +1176,7 @@ function game(){
       for(let i=0;i<16;i++)pt(q.x,q.y,(Math.random()-.5)*4,(Math.random()-.5)*4,20,'#00d9ff',3,0);
     }
   });
-  upgrades=upgrades.filter(q=>!q.got);
+  upgrades=gameMode==='infinite'?[]:upgrades.filter(q=>!q.got);
 
   // built walls
   BLD.forEach(q=>{
@@ -1416,10 +1539,10 @@ function game(){
   g.fillStyle='white';g.font='bold 22px Arial';g.fillText('SCORE: '+score,15,32);
   g.fillStyle=level===4?'#ff6578':level===3?'#a98bd4':level==2?'#f2d39b':'#7ccf4a';
   g.font='bold 14px Arial';
-  g.fillText('LEVEL: '+level+(level==2?(bossSpawned===0?'  PRE-BOSS: '+level2Spawned+'/55':bossSpawned===1?'  BOSS FIGHT':bossCutscene>0?'  BOSS DEFEATED':'  AFTER BOSS: '+level2PostBossSpawned+'/100'):level===3?'  DARK FOREST: '+level3Kills+'/150  |  SPAWNED: '+level3Spawned+'/160':level===4?'  CRIMSON FOREST: '+level4Kills+' KILLS  |  SPAWNED: '+level4Spawned+'/75':''),15,48);
+  g.fillText((gameMode==='infinite'?'INFINITE • WAVES '+Math.floor(score/10):gameMode==='base'?'BASE WORLD':'LEVEL: '+level)+(gameMode==='infinite'?'':level==2?(bossSpawned===0?'  PRE-BOSS: '+level2Spawned+'/55':bossSpawned===1?'  BOSS FIGHT':bossCutscene>0?'  BOSS DEFEATED':'  AFTER BOSS: '+level2PostBossSpawned+'/100'):level===3?'  DARK FOREST: '+level3Kills+'/150  |  SPAWNED: '+level3Spawned+'/160':level===4?'  CRIMSON FOREST: '+level4Kills+' KILLS  |  SPAWNED: '+level4Spawned+'/75':''),15,48);
   g.fillStyle='#ffd400';g.font='16px Arial';g.fillText('BEST: '+H,15,66);
   g.fillStyle='#aaa';g.font='14px Arial';g.fillText('PLAYER: '+playerName,15,83);
-  g.fillStyle='#d8c0a0';g.font='14px Arial';g.fillText('WALLS LEFT: '+wallCharges,15,98);
+  g.fillStyle='#d8c0a0';g.font='14px Arial';g.fillText('WALLS LEFT: '+(gameMode==='base'?'GRID BUILD':wallCharges),15,98);
   g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+WN[wp]+(own.filter(x=>x).length>1?'  [E]':'')+'  DMG x'+gunMult[wp],15,119);
   g.font='18px Arial';
   g.fillStyle=!own[2]?'#888':rc>0?'#e74c3c':'#2ecc71';
