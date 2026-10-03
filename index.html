@@ -159,7 +159,8 @@ const homeBest=document.getElementById('homeBest');
 const startGameBtn=document.getElementById('startGameBtn');
 let gameMode='classic';
 let cameraX=0,cameraY=0;
-const BASE_WORLD_W=4800, BASE_WORLD_H=3200;
+const BASE_WORLD_W=9000, BASE_WORLD_H=6200;
+const BASE_ZOOM=0.62; // Lower zoom shows a wider area of the world at once.
 function worldW(){return gameMode==='base'?BASE_WORLD_W:w;}
 function worldH(){return gameMode==='base'?BASE_WORLD_H:h;}
 let infiniteNextBossScore=75;
@@ -690,7 +691,7 @@ function save(){
   }
 }
 function sz(){c.width=innerWidth;c.height=innerHeight;w=c.width/Z;h=c.height/Z}
-function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:BASE_WORLD_W*.10,y:BASE_WORLD_H*.58}:{x:w/2,y:h/2};cameraX=0;cameraY=0;gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}spawnW()}
+function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:BASE_WORLD_W*.12,y:BASE_WORLD_H*.48}:{x:w/2,y:h/2};cameraX=0;cameraY=0;gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}spawnW()}
 sz();
 p={x:w/2,y:h/2};m={x:w/2+100,y:h/2};gen();
 onresize=sz;
@@ -836,7 +837,7 @@ usernameInput.oninput=()=>{usernameInput.value=usernameInput.value.replace(/[^a-
 
 /* ---------- input ---------- */
 c.oncontextmenu=q=>q.preventDefault();
-c.onmousemove=q=>{const r=c.getBoundingClientRect();m={x:(q.clientX-r.left)/Z+(gameMode==='base'?cameraX:0),y:(q.clientY-r.top)/Z+(gameMode==='base'?cameraY:0)}};
+c.onmousemove=q=>{const r=c.getBoundingClientRect();const zoom=gameMode==='base'?BASE_ZOOM:1;m={x:(q.clientX-r.left)/(Z*zoom)+(gameMode==='base'?cameraX:0),y:(q.clientY-r.top)/(Z*zoom)+(gameMode==='base'?cameraY:0)}};
 c.onmousedown=q=>{if(dead||q.button!=0)return;md=1};
 onmouseup=()=>{md=0};
 onblur=()=>{md=0;k={}};
@@ -874,7 +875,7 @@ function spawnBoss(){
 }
 setInterval(()=>{
   if(dead||bossCutscene>0)return;
-  if(gameMode==='base'&&Math.random()<0.95)return; // Extremely low spawn frequency in the open world.
+  if(gameMode==='base'&&Math.random()<0.97)return; // Very rare ambient spawns in the open world.
   // Hard cap on simultaneously living zombies; level-specific total spawn limits remain below.
   if(e.reduce((count,z)=>count+(!z.dead?1:0),0)>=30)return;
   if(gameMode==='infinite'&&score>=infiniteNextBossScore&&!e.some(z=>z.boss&&!z.dead)){spawnBoss();return;}
@@ -1094,63 +1095,76 @@ function zom(q,a){
 }
 
 
+function seededNoise(n){const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v)}
 function drawWorldBiomes(){
-  // Organic, overlapping biome shapes instead of hard-edged square regions.
+  // Huge irregular biome regions. A deterministic radial contour gives each region a natural coastline rather than an ellipse.
   const blobs=[
-    {x:BASE_WORLD_W*.15,y:BASE_WORLD_H*.57,rx:BASE_WORLD_W*.27,ry:BASE_WORLD_H*.43,c:'#426d35',label:'GREENHAVEN GRASSLANDS'},
-    {x:BASE_WORLD_W*.30,y:BASE_WORLD_H*.22,rx:BASE_WORLD_W*.24,ry:BASE_WORLD_H*.38,c:'#78623a',label:'AUTUMN WILDLANDS'},
-    {x:BASE_WORLD_W*.49,y:BASE_WORLD_H*.76,rx:BASE_WORLD_W*.27,ry:BASE_WORLD_H*.35,c:'#294b3b',label:'DARK FOREST'},
-    {x:BASE_WORLD_W*.76,y:BASE_WORLD_H*.35,rx:BASE_WORLD_W*.24,ry:BASE_WORLD_H*.38,c:'#b9d5df',label:'FROSTPEAK SNOWFIELDS'},
-    {x:BASE_WORLD_W*.84,y:BASE_WORLD_H*.78,rx:BASE_WORLD_W*.22,ry:BASE_WORLD_H*.33,c:'#54232b',label:'CRIMSON OUTBREAK • HIGH RISK'}
+    {x:BASE_WORLD_W*.17,y:BASE_WORLD_H*.60,rx:BASE_WORLD_W*.36,ry:BASE_WORLD_H*.43,c:'#426d35',label:'GREENHAVEN GRASSLANDS',seed:2},
+    {x:BASE_WORLD_W*.34,y:BASE_WORLD_H*.20,rx:BASE_WORLD_W*.34,ry:BASE_WORLD_H*.35,c:'#78623a',label:'AUTUMN WILDLANDS',seed:7},
+    {x:BASE_WORLD_W*.51,y:BASE_WORLD_H*.52,rx:BASE_WORLD_W*.34,ry:BASE_WORLD_H*.40,c:'#203e30',label:'THE BLACKWOOD • DANGER ZONE',seed:13},
+    {x:BASE_WORLD_W*.78,y:BASE_WORLD_H*.27,rx:BASE_WORLD_W*.30,ry:BASE_WORLD_H*.38,c:'#b9d5df',label:'FROSTPEAK SNOWFIELDS',seed:21},
+    {x:BASE_WORLD_W*.80,y:BASE_WORLD_H*.78,rx:BASE_WORLD_W*.31,ry:BASE_WORLD_H*.34,c:'#54232b',label:'CRIMSON OUTBREAK • HIGH RISK',seed:33}
   ];
   blobs.forEach((b,i)=>{
-    const grad=g.createRadialGradient(b.x,b.y,Math.min(b.rx,b.ry)*.12,b.x,b.y,Math.max(b.rx,b.ry));
-    grad.addColorStop(0,b.c);grad.addColorStop(.67,b.c+'cc');grad.addColorStop(1,'rgba(8,13,10,0)');
-    g.fillStyle=grad;g.beginPath();g.ellipse(b.x,b.y,b.rx,b.ry,[-.18,.35,-.3,.18][i],0,Math.PI*2);g.fill();
-    g.save();g.globalAlpha=.65;g.fillStyle='#f2f4e8';g.font='bold 12px Arial';g.textAlign='center';g.fillText(b.label,b.x,b.y-b.ry*.42);g.restore();
+    const pts=96;g.save();g.beginPath();
+    for(let j=0;j<=pts;j++){
+      const a=j/pts*Math.PI*2;
+      const wobble=1+0.105*Math.sin(a*3+b.seed)+0.075*Math.sin(a*5+b.seed*1.7)+0.045*Math.sin(a*9+b.seed*.7)+(seededNoise(j+b.seed*100)-.5)*.045;
+      const x=b.x+Math.cos(a)*b.rx*wobble, y=b.y+Math.sin(a)*b.ry*wobble;
+      if(j===0)g.moveTo(x,y);else g.lineTo(x,y);
+    }
+    g.closePath();g.fillStyle=b.c;g.fill();
+    // Soft inner transition and subtle terrain grain, clipped to the organic biome outline.
+    g.clip();const grad=g.createRadialGradient(b.x,b.y,Math.min(b.rx,b.ry)*.08,b.x,b.y,Math.max(b.rx,b.ry));
+    grad.addColorStop(0,'rgba(255,255,255,.055)');grad.addColorStop(1,'rgba(0,0,0,.12)');g.fillStyle=grad;g.fillRect(b.x-b.rx,b.y-b.ry,b.rx*2,b.ry*2);
+    g.globalAlpha=.15;for(let n=0;n<190;n++){const tx=b.x+(seededNoise(n+b.seed*31)-.5)*b.rx*1.9,ty=b.y+(seededNoise(n+b.seed*73)-.5)*b.ry*1.9;g.fillStyle=i===3?'#fff':i===4?'#f36b74':i===1?'#d4a85c':'#a6c78c';g.beginPath();g.arc(tx,ty,2+seededNoise(n+44)*5,0,Math.PI*2);g.fill();}g.restore();
+    g.save();g.globalAlpha=.9;g.fillStyle='#f2f4e8';g.strokeStyle='rgba(0,0,0,.55)';g.lineWidth=4;g.font='bold 30px Arial';g.textAlign='center';g.strokeText(b.label,b.x,b.y);g.fillText(b.label,b.x,b.y);g.restore();
   });
-  // The safe camp is a small, clearly marked pocket to one side of the centre.
-  const sx=BASE_WORLD_W*.10,sy=BASE_WORLD_H*.58,r=190;
-  g.save();g.fillStyle='rgba(160,220,130,.12)';g.strokeStyle='rgba(190,244,157,.8)';g.lineWidth=2;
-  g.beginPath();g.arc(sx,sy,r,0,Math.PI*2);g.fill();g.setLineDash([7,5]);g.stroke();g.setLineDash([]);
-  g.fillStyle='#d7f5c7';g.font='bold 11px Arial';g.textAlign='center';g.fillText('SAFE SPAWN',sx,sy-r-9);g.restore();
-  // A broken trail leads toward the dangerous central endgame zone.
-  g.save();g.strokeStyle='rgba(224,210,160,.38)';g.lineWidth=5;g.setLineDash([10,13]);g.beginPath();g.moveTo(sx+r,sy);g.bezierCurveTo(BASE_WORLD_W*.25,BASE_WORLD_H*.24,BASE_WORLD_W*.38,BASE_WORLD_H*.85,BASE_WORLD_W*.50,BASE_WORLD_H*.70);g.stroke();g.setLineDash([]);g.restore();
+  // Large landmarks, roads and safe camp help make the world legible.
+  const poi=[
+    {x:BASE_WORLD_W*.12,y:BASE_WORLD_H*.48,n:'SAFE CAMP'},
+    {x:BASE_WORLD_W*.31,y:BASE_WORLD_H*.16,n:'OLD TOWN'},
+    {x:BASE_WORLD_W*.43,y:BASE_WORLD_H*.42,n:'MILITARY OUTPOST'},
+    {x:BASE_WORLD_W*.74,y:BASE_WORLD_H*.17,n:'FROZEN VILLAGE'},
+    {x:BASE_WORLD_W*.52,y:BASE_WORLD_H*.55,n:'BLACKWOOD RUINS'},
+    {x:BASE_WORLD_W*.82,y:BASE_WORLD_H*.80,n:'CRIMSON LAB'}
+  ];
+  // Broken road network between settlements.
+  g.save();g.lineCap='round';g.strokeStyle='rgba(220,205,158,.22)';g.lineWidth=24;g.beginPath();g.moveTo(poi[0].x,poi[0].y);g.bezierCurveTo(BASE_WORLD_W*.22,BASE_WORLD_H*.32,BASE_WORLD_W*.25,BASE_WORLD_H*.25,poi[1].x,poi[1].y);g.moveTo(poi[1].x,poi[1].y);g.bezierCurveTo(BASE_WORLD_W*.38,BASE_WORLD_H*.28,BASE_WORLD_W*.39,BASE_WORLD_H*.34,poi[2].x,poi[2].y);g.moveTo(poi[2].x,poi[2].y);g.bezierCurveTo(BASE_WORLD_W*.59,BASE_WORLD_H*.29,BASE_WORLD_W*.67,BASE_WORLD_H*.19,poi[3].x,poi[3].y);g.stroke();g.strokeStyle='rgba(30,25,20,.25)';g.lineWidth=5;g.stroke();g.restore();
+  poi.forEach((q,i)=>{g.save();g.fillStyle=i===0?'#bde6a3':i===5?'#ff6d75':'#d8cba7';g.strokeStyle='#171914';g.lineWidth=4;g.beginPath();g.arc(q.x,q.y,i===0?32:23,0,Math.PI*2);g.fill();g.stroke();g.fillStyle='#fff';g.font='bold 19px Arial';g.textAlign='center';g.strokeText(q.n,q.x,q.y-37);g.fillText(q.n,q.x,q.y-37);g.restore();});
+  const sx=BASE_WORLD_W*.12,sy=BASE_WORLD_H*.48,r=190;
+  g.save();g.fillStyle='rgba(160,220,130,.12)';g.strokeStyle='rgba(190,244,157,.8)';g.lineWidth=4;g.beginPath();g.arc(sx,sy,r,0,Math.PI*2);g.fill();g.setLineDash([14,10]);g.stroke();g.setLineDash([]);g.restore();
 }
 function isInsideBaseSafeZone(x,y){
-  return gameMode==='base' && Math.hypot(x-BASE_WORLD_W*.10,y-BASE_WORLD_H*.58)<220;
+  return gameMode==='base' && Math.hypot(x-BASE_WORLD_W*.12,y-BASE_WORLD_H*.48)<220;
 }
 
 function drawWorldMinimap(){
-  const mw=Math.min(420,w*.48),mh=mw*.68,mx=w-mw-18,my=18;
-  g.save();
-  g.fillStyle='rgba(4,9,6,.88)';g.strokeStyle='rgba(210,230,205,.7)';g.lineWidth=1.5;
-  g.beginPath();g.roundRect(mx,my,mw,mh,9);g.fill();g.stroke();
-  g.save();g.beginPath();g.roundRect(mx+5,my+5,mw-10,mh-10,6);g.clip();
+  const mw=Math.min(500,w*.56),mh=mw*(BASE_WORLD_H/BASE_WORLD_W),mx=w-mw-18,my=18;
+  g.save();g.fillStyle='rgba(4,7,12,.94)';g.strokeStyle='rgba(225,230,245,.85)';g.lineWidth=2;
+  g.beginPath();g.roundRect(mx,my,mw,mh,10);g.fill();g.stroke();
+  g.save();g.beginPath();g.roundRect(mx+5,my+5,mw-10,mh-10,7);g.clip();
+  const mapX=x=>mx+x/BASE_WORLD_W*mw,mapY=y=>my+y/BASE_WORLD_H*mh;
+  g.fillStyle='#263a2a';g.fillRect(mx,my,mw,mh);
   const regions=[
-    {x:.15,y:.57,rx:.27,ry:.43,c:'#527d3e'}, {x:.30,y:.22,rx:.24,ry:.38,c:'#9b7a43'},
-    {x:.49,y:.76,rx:.27,ry:.35,c:'#294c39'}, {x:.76,y:.35,rx:.24,ry:.38,c:'#d5e7ec'}, {x:.84,y:.78,rx:.22,ry:.33,c:'#792d39'}
+    {x:.17,y:.60,rx:.36,ry:.43,c:'#527d3e',seed:2},{x:.34,y:.20,rx:.34,ry:.35,c:'#9b7a43',seed:7},
+    {x:.51,y:.52,rx:.34,ry:.40,c:'#294c39',seed:13},{x:.78,y:.27,rx:.30,ry:.38,c:'#d5e7ec',seed:21},{x:.80,y:.78,rx:.31,ry:.34,c:'#792d39',seed:33}
   ];
-  regions.forEach((r)=>{g.fillStyle=r.c;g.beginPath();g.ellipse(mx+r.x*mw,my+r.y*mh,r.rx*mw,r.ry*mh,-.2,0,Math.PI*2);g.fill()});
-  // Safe zone and biome labels.
-  g.fillStyle='rgba(190,244,157,.16)';g.strokeStyle='#c7f4a5';g.lineWidth=1;g.beginPath();g.arc(mx+mw*.10,my+mh*.58,Math.min(mw,mh)*.055,0,Math.PI*2);g.fill();g.stroke();
-  g.font='bold 7px Arial';g.textAlign='center';g.fillStyle='#f0f5e9';
-  g.fillText('GRASSLANDS',mx+mw*.15,my+mh*.40);g.fillText('AUTUMN',mx+mw*.30,my+mh*.10);g.fillText('DARK',mx+mw*.49,my+mh*.91);g.fillText('SNOW',mx+mw*.76,my+mh*.13);g.fillText('CRIMSON',mx+mw*.83,my+mh*.62);
-  // Outbreaks: cluster nearby zombies and draw a small boss marker in each outbreak.
-  const clusters=new Map();
-  e.filter(z=>!z.dead).forEach(z=>{const gx=Math.max(0,Math.min(5,Math.floor(z.x/(gameMode==='base'?BASE_WORLD_W:w)*6))),gy=Math.max(0,Math.min(3,Math.floor(z.y/(gameMode==='base'?BASE_WORLD_H:h)*4))),key=gx+','+gy;if(!clusters.has(key))clusters.set(key,{x:(gx+.5)/6,y:(gy+.5)/4,n:0,boss:false});const q=clusters.get(key);q.n++;if(z.boss)q.boss=true;});
-  clusters.forEach(q=>{if(q.n<3&&!q.boss)return;const x=mx+q.x*mw,y=my+q.y*mh;g.fillStyle=q.boss?'#ffdf70':'#ff6b61';g.strokeStyle='#25100f';g.lineWidth=1;g.beginPath();g.arc(x,y,Math.min(7,3+q.n*.35),0,Math.PI*2);g.fill();g.stroke();if(q.boss){g.fillStyle='#fff2bd';g.beginPath();g.arc(x,y,2.1,0,Math.PI*2);g.fill();}});
-  // Player marker.
-  const px=mx+Math.max(0,Math.min(1,p.x/(gameMode==='base'?BASE_WORLD_W:w)))*mw,py=my+Math.max(0,Math.min(1,p.y/(gameMode==='base'?BASE_WORLD_H:h)))*mh;
-  g.fillStyle='#ffffff';g.strokeStyle='#142014';g.lineWidth=2;g.beginPath();g.arc(px,py,3.3,0,Math.PI*2);g.fill();g.stroke();
-  // Direction arrow along the minimap edge points toward the map centre / crimson endgame.
-  const dx=mx+mw-12,dy=my+mh*.52;g.fillStyle='#ffe7a0';g.beginPath();g.moveTo(dx+5,dy);g.lineTo(dx-5,dy-4);g.lineTo(dx-4,dy+4);g.closePath();g.fill();
-  g.restore();
-  g.fillStyle='#f1f4e9';g.font='bold 9px Arial';g.textAlign='left';g.fillText('WORLD MAP',mx+9,my+mh+12);
-  g.fillStyle='#ff8177';g.fillRect(mx+mw-92,my+mh+7,6,6);g.fillStyle='#c8d0c7';g.font='9px Arial';g.fillText('OUTBREAK',mx+mw-82,my+mh+13);
-  g.restore();
+  regions.forEach(r=>{g.fillStyle=r.c;g.beginPath();for(let j=0;j<=64;j++){const a=j/64*Math.PI*2,wobble=1+.105*Math.sin(a*3+r.seed)+.075*Math.sin(a*5+r.seed*1.7)+.045*Math.sin(a*9+r.seed*.7);const x=mapX((r.x+Math.cos(a)*r.rx*wobble)*BASE_WORLD_W),y=mapY((r.y+Math.sin(a)*r.ry*wobble)*BASE_WORLD_H);if(!j)g.moveTo(x,y);else g.lineTo(x,y);}g.closePath();g.fill();});
+  // Fine grid, rivers/roads and region names add useful geographic detail.
+  g.strokeStyle='rgba(255,255,255,.12)';g.lineWidth=.6;for(let i=1;i<8;i++){g.beginPath();g.moveTo(mx+mw*i/8,my);g.lineTo(mx+mw*i/8,my+mh);g.stroke();}for(let i=1;i<6;i++){g.beginPath();g.moveTo(mx,my+mh*i/6);g.lineTo(mx+mw,my+mh*i/6);g.stroke();}
+  g.strokeStyle='rgba(220,205,158,.55)';g.lineWidth=1.6;g.beginPath();g.moveTo(mapX(BASE_WORLD_W*.12),mapY(BASE_WORLD_H*.48));g.bezierCurveTo(mapX(BASE_WORLD_W*.22),mapY(BASE_WORLD_H*.32),mapX(BASE_WORLD_W*.25),mapY(BASE_WORLD_H*.25),mapX(BASE_WORLD_W*.31),mapY(BASE_WORLD_H*.16));g.bezierCurveTo(mapX(BASE_WORLD_W*.38),mapY(BASE_WORLD_H*.28),mapX(BASE_WORLD_W*.39),mapY(BASE_WORLD_H*.34),mapX(BASE_WORLD_W*.43),mapY(BASE_WORLD_H*.42));g.stroke();
+  g.font='bold 8px Arial';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.fillText('GREENHAVEN',mapX(BASE_WORLD_W*.17),mapY(BASE_WORLD_H*.60));g.fillText('AUTUMN',mapX(BASE_WORLD_W*.34),mapY(BASE_WORLD_H*.20));g.fillText('BLACKWOOD',mapX(BASE_WORLD_W*.51),mapY(BASE_WORLD_H*.52));g.fillText('FROSTPEAK',mapX(BASE_WORLD_W*.78),mapY(BASE_WORLD_H*.27));g.fillText('CRIMSON',mapX(BASE_WORLD_W*.80),mapY(BASE_WORLD_H*.78));
+  const pois=[ [.12,.48,'CAMP'],[.31,.16,'OLD TOWN'],[.43,.42,'BASE'],[.74,.17,'VILLAGE'],[.52,.55,'RUINS'],[.82,.80,'LAB'] ];
+  pois.forEach((q,i)=>{const x=mapX(q[0]*BASE_WORLD_W),y=mapY(q[1]*BASE_WORLD_H);g.fillStyle=i===0?'#c7f4a5':i===5?'#ff6d75':'#f0e2bd';g.strokeStyle='#151515';g.lineWidth=1;g.beginPath();g.arc(x,y,2.6,0,Math.PI*2);g.fill();g.stroke();});
+  // Zombie clusters; bosses are marked in gold.
+  const clusters=new Map();e.filter(z=>!z.dead).forEach(z=>{const gx=Math.floor(z.x/BASE_WORLD_W*10),gy=Math.floor(z.y/BASE_WORLD_H*7),key=gx+','+gy;if(!clusters.has(key))clusters.set(key,{x:(gx+.5)/10,y:(gy+.5)/7,n:0,boss:false});const q=clusters.get(key);q.n++;if(z.boss)q.boss=true;});
+  clusters.forEach(q=>{if(q.n<2&&!q.boss)return;const x=mapX(q.x*BASE_WORLD_W),y=mapY(q.y*BASE_WORLD_H);g.fillStyle=q.boss?'#ffe16b':'#ff655f';g.beginPath();g.arc(x,y,q.boss?3.5:2.2,0,Math.PI*2);g.fill();});
+  // Outline the current visible viewport so the minimap communicates scale and position.
+  const viewW=w/BASE_ZOOM,viewH=h/BASE_ZOOM;g.strokeStyle='#ffffff';g.lineWidth=1.2;g.strokeRect(mapX(cameraX),mapY(cameraY),viewW/BASE_WORLD_W*mw,viewH/BASE_WORLD_H*mh);
+  const px=mapX(p.x),py=mapY(p.y);g.fillStyle='#fff';g.strokeStyle='#101010';g.lineWidth=1.5;g.beginPath();g.arc(px,py,3.2,0,Math.PI*2);g.fill();g.stroke();
+  g.restore();g.fillStyle='#f1f4e9';g.font='bold 10px Arial';g.textAlign='left';g.fillText('WORLD MAP',mx+8,my+mh+14);g.fillStyle='#ff8177';g.fillRect(mx+mw-84,my+mh+8,6,6);g.fillStyle='#c8d0c7';g.font='9px Arial';g.fillText('ZOMBIES',mx+mw-74,my+mh+14);g.restore();
 }
-
 /* ---------- main loop ---------- */
 function game(){
   fr++;
@@ -1158,9 +1172,11 @@ function game(){
   if(S>0){g.translate((Math.random()-.5)*S,(Math.random()-.5)*S);S*=.88;if(S<.5)S=0}
   g.scale(Z,Z);
   if(gameMode==='base'){
-    cameraX=Math.max(0,Math.min(BASE_WORLD_W-w,p.x-w/2));
-    cameraY=Math.max(0,Math.min(BASE_WORLD_H-h,p.y-h/2));
-    g.fillStyle='#203b2a';g.fillRect(0,0,w,h);
+    const viewW=w/BASE_ZOOM,viewH=h/BASE_ZOOM;
+    cameraX=Math.max(0,Math.min(BASE_WORLD_W-viewW,p.x-viewW/2));
+    cameraY=Math.max(0,Math.min(BASE_WORLD_H-viewH,p.y-viewH/2));
+    g.scale(BASE_ZOOM,BASE_ZOOM);
+    g.fillStyle='#203b2a';g.fillRect(0,0,viewW,viewH);
     g.translate(-cameraX,-cameraY);
     g.fillStyle='#203b2a';g.fillRect(cameraX,cameraY,w,h);
   }
@@ -1291,10 +1307,8 @@ function game(){
     // constant fire rate while holding
     if(cd>0)cd--;
     if(md&&cd<=0){
-      // The safe camp is a true sanctuary: weapons cannot fire from inside it.
-      const inSafeZone=isInsideBaseSafeZone(p.x,p.y);
-      if(inSafeZone){cd=8;}
-      else if(wp==0){shoot();cd=12}
+      // Firing is allowed inside the safe camp; sanctuary protection only blocks incoming zombie damage.
+      if(wp==0){shoot();cd=12}
       else if(wp==1){blast();cd=40}
       else if(wp==3){smg();cd=4}
       else if(wp==4){homing();cd=10}
