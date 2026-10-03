@@ -10,38 +10,7 @@
 <title>Zombie Shooter | Survival Game</title>
 <meta name="description" content="Play Zombie Shooter, a browser-based survival game. Choose your character, survive waves of zombies, collect supplies, and try to beat your high score. Includes keyboard controls and a local high-score board.">
 <style>html,body{margin:0;height:100%;overflow:hidden;background:#0b0b0b}
-/* Homepage palette: purple, crimson and black. Game-world colours are intentionally unchanged. */
-:root{color-scheme:dark;--lime:#c084fc;--lime2:#9333ea;--panel:#151019;--line:#48233f;--muted:#b7a9bc}
-html,body{background:#08060b;color:#f7effb}
-body{background:radial-gradient(ellipse at 12% 0%,#351044 0%,#100911 38%,#070609 78%);}
-.hero{background:linear-gradient(135deg,#211027 0%,#100b14 65%,#210b17 100%);border-color:#54244f}
-.brand-mark{background:linear-gradient(135deg,#d8b4fe,#a21caf 58%,#be123c);color:#fff;box-shadow:0 6px 24px #a21caf45}
-.hero h1 span{color:#fb7185;text-shadow:0 0 26px #e11d4830}
-.eyebrow,.panel h2,.auth-card h3,.side-info h3{color:#d8b4fe}
-.panel{background:linear-gradient(145deg,#19121e,#0e0a11);border-color:#48233f}
-.field-label{color:#d2c2d7}
-.name-row input{background:#09070b;border-color:#51344f}
-.name-row input:focus{border-color:#c084fc}
-.primary-btn{background:linear-gradient(120deg,#c084fc,#a855f7 52%,#e11d48);color:#fff;box-shadow:0 7px 24px #a21caf35}
-.char-option{border-color:#45243f;background:linear-gradient(180deg,#1b1120,#0b080d);color:#f4eaf7}
-.char-option:hover{border-color:#c084fc}
-.char-option.selected{border-color:#c084fc;background:linear-gradient(180deg,#a855f725,#0d080f);box-shadow:inset 0 0 0 1px #c084fc35}
-.mode-card{border-color:#48233f;background:#100b13;color:#f5edf8}
-.mode-card:hover{border-color:#fb7185}
-.mode-card.selected{border-color:#c084fc;background:linear-gradient(150deg,#a855f729,#e11d4810,#100b13);box-shadow:inset 0 0 0 1px #c084fc30}
-.mode-status{color:#d7c7dd;background:#0c080f;border-color:#39203a}
-.coop-row input{accent-color:#c084fc}
-.howto-item{border-color:#382039;background:#100b13}
-.howto-item b{color:#fda4af}
-.howto-item span,.lede,.hero-pills{color:#c4b5ca}
-.auth-card,.side-info{border-color:#48233f;background:linear-gradient(160deg,#1c1121,#0c080f)}
-.auth-card button{background:#38203f;border-color:#68406f;color:#f8effb}
-.ad-card{border-color:#48233f;background:linear-gradient(160deg,#151019,#09070b)}
-.score-row:first-child{color:#fda4af;background:#e11d4810}
-.utility-panel{background:#110b15;border-color:#68406f;color:#f7effb}
-.utility-panel h2{color:#d8b4fe}
-.utility-panel input,.utility-panel select,.utility-panel textarea,.utility-panel .chat-log{background:#09070b;border-color:#48233f;color:#fff}
-.utility-panel button{background:#38203f;border-color:#68406f;color:#f8effb}
+
 
 </style>
 <style>
@@ -78,6 +47,40 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
 #homePage:not(.hidden) ~ .edge-ad{display:flex}
 @media(max-width:980px){body{overflow:auto}#homePage{align-items:flex-start;padding:104px 14px 104px}.home-layout{grid-template-columns:minmax(0,1fr)}.home-rail{display:flex;flex-direction:row;flex-wrap:wrap}.home-rail>*{flex:1 1 220px}.ad-card{min-height:280px}.hero{padding:22px}.home-content{grid-template-columns:minmax(0,1fr) minmax(230px,.8fr)}}
 @media(max-width:620px){.mode-grid{grid-template-columns:1fr}.mode-card{min-height:0}.edge-ad{min-height:64px;padding:3px 8px}.edge-ad .adsbygoogle{min-height:50px}#homePage{padding:24px 10px 74px}.home-content{grid-template-columns:1fr}.howto{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:19px}.panel{padding:15px}.home-layout{gap:12px}.home-rail{display:flex;flex-direction:column}.home-rail>*{flex:initial}.ad-card{min-height:280px}}
+</style>
+<style id="homepage-purple-red-black-theme">
+/* Final homepage theme overrides: deliberately scoped to the menu, not the game canvas. */
+:root{color-scheme:dark;--lime:#c084fc;--lime2:#9333ea;--panel:#151019;--line:#48233f;--muted:#b7a9bc}
+html,body{background:#08060b;color:#f7effb}
+#homePage{background:radial-gradient(ellipse at 15% 0%,rgba(112,35,140,.42),transparent 48%),radial-gradient(ellipse at 95% 85%,rgba(190,18,60,.18),transparent 42%),linear-gradient(135deg,#070609,#100911 55%,#090609)!important;color:#f7effb}
+#homePage .hero{background:linear-gradient(125deg,#24102e,#100b14 64%,#260b18)!important;border-color:#54244f!important}
+#homePage .hero:after{border-color:#c084fc30;box-shadow:0 0 0 25px #a21caf12,0 0 0 55px #e11d4810}
+#homePage .brand-mark{background:linear-gradient(135deg,#d8b4fe,#a21caf 58%,#be123c)!important;color:#fff!important;box-shadow:0 6px 24px #a21caf45}
+#homePage .hero h1 span{color:#fb7185!important;text-shadow:0 0 26px #e11d4830}
+#homePage .eyebrow,#homePage .panel h2,#homePage .auth-card h3,#homePage .side-info h3{color:#d8b4fe!important}
+#homePage .panel{background:linear-gradient(145deg,#19121e,#0e0a11)!important;border-color:#48233f!important}
+#homePage .field-label{color:#d2c2d7!important}
+#homePage .name-row input{background:#09070b!important;border-color:#51344f!important;color:#fff}
+#homePage .name-row input:focus{border-color:#c084fc!important}
+#homePage .primary-btn{background:linear-gradient(120deg,#c084fc,#a855f7 52%,#e11d48)!important;color:#fff!important;box-shadow:0 7px 24px #a21caf35}
+#homePage .char-option{border-color:#45243f!important;background:linear-gradient(180deg,#1b1120,#0b080d)!important;color:#f4eaf7!important}
+#homePage .char-option:hover,#homePage .mode-card:hover{border-color:#fb7185!important}
+#homePage .char-option.selected{border-color:#c084fc!important;background:linear-gradient(180deg,#a855f725,#0d080f)!important;box-shadow:inset 0 0 0 1px #c084fc35}
+#homePage .mode-card{border-color:#48233f!important;background:#100b13!important;color:#f5edf8!important}
+#homePage .mode-card.selected{border-color:#c084fc!important;background:linear-gradient(150deg,#a855f729,#e11d4810,#100b13)!important;box-shadow:inset 0 0 0 1px #c084fc30}
+#homePage .mode-status{color:#d7c7dd!important;background:#0c080f!important;border-color:#39203a!important}
+#homePage .coop-row input{accent-color:#c084fc}
+#homePage .howto-item{border-color:#382039!important;background:#100b13!important}
+#homePage .howto-item b{color:#fda4af!important}
+#homePage .howto-item span,#homePage .lede,#homePage .hero-pills{color:#c4b5ca!important}
+#homePage .ad-card{border-color:#48233f!important;background:linear-gradient(160deg,#151019,#09070b)!important}
+#homePage .score-row:first-child{color:#fda4af;background:#e11d4810}
+#homePage .side-info{border-color:#48233f!important;background:linear-gradient(160deg,#1c1121,#0c080f)!important}
+#homePage .utility-panel{background:#110b15!important;border-color:#68406f!important;color:#f7effb!important}
+#homePage .utility-panel h2{color:#d8b4fe!important}
+#homePage .utility-panel input,#homePage .utility-panel select,#homePage .utility-panel textarea,#homePage .utility-panel .chat-log{background:#09070b!important;border-color:#48233f!important;color:#fff!important}
+#homePage .utility-panel button{background:#38203f!important;border-color:#68406f!important;color:#f8effb!important}
+.edge-ad{background:rgba(8,6,11,.97)!important;border-color:#48233f!important}
 </style>
 </head>
 <body>
@@ -288,7 +291,7 @@ if(guestSignInBtn) guestSignInBtn.addEventListener('click',async()=>{
     const current=firebase.auth().currentUser;
     if(current && !current.isAnonymous){authStatus.textContent='You are already signed in with Google.';}
     else if(!current){await firebase.auth().signInAnonymously();}
-  }catch(err){authStatus.textContent='Guest sign-in failed: '+err.message;}
+  }catch(err){if(authStatus) authStatus.textContent='Guest sign-in failed: '+err.message;}
   finally{setAuthBusy(false);}
 });
 if(linkGoogleBtn) linkGoogleBtn.addEventListener('click',async()=>{setAuthBusy(true);try{await googleSignIn();}finally{setAuthBusy(false);}});
@@ -306,7 +309,7 @@ if(FIREBASE_CONFIG && FIREBASE_CONFIG.databaseURL){
       showAuthUser(null);
       // Start as a guest by default so existing players can enter Base World chat without a forced login.
       try{await firebase.auth().signInAnonymously();}
-      catch(err){authStatus.textContent='';}
+      catch(err){if(authStatus) authStatus.textContent=''; /* Anonymous auth may be disabled; local gameplay remains available. */}
     });
     chatConnection.textContent='Firebase connected. Sign in to enable chat.';
   }catch(err){
