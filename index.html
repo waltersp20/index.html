@@ -30,14 +30,19 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
 .panel{background:linear-gradient(145deg,#151d18,#101612);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}.panel h2{font-size:13px;letter-spacing:1.4px;text-transform:uppercase;color:#c9e4bf;margin:0 0 13px}
 .field-label{display:block;color:#c4d0c5;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:7px}.name-row{display:flex;gap:8px}.name-row input{min-width:0;flex:1;background:#090e0b;border:1px solid #465847;border-radius:8px;color:white;padding:11px 12px;font-size:14px;outline:none}.name-row input:focus{border-color:var(--lime)}
 .primary-btn{width:100%;margin-top:13px;padding:14px 16px;border:0;border-radius:9px;background:linear-gradient(135deg,#b2f37b,#79c84d);color:#12200d;font-size:14px;font-weight:900;letter-spacing:1.2px;cursor:pointer;box-shadow:0 7px 22px #74bd4428;transition:transform .15s,filter .15s}.primary-btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
-.char-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.char-option{border:1px solid #3b493c;border-radius:10px;background:#0c120e;color:#dfe9df;padding:12px 5px 10px;cursor:pointer;text-align:center;min-height:83px}.char-option .avatar{width:34px;height:34px;margin:0 auto 8px;border-radius:50%;display:grid;place-items:center;background:#35472d;color:#c8f3a6;font-size:19px}.char-option:nth-child(2) .avatar{background:#542e2d;color:#f1b2a2}.char-option:nth-child(3) .avatar{background:#26384a;color:#b6d5f4}.char-option strong{font-size:10px;letter-spacing:.5px}.char-option.selected{border-color:var(--lime);background:#8bcf4d15;box-shadow:inset 0 0 0 1px #9be56435}
+.char-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.char-option{border:1px solid #3b493c;border-radius:10px;background:linear-gradient(180deg,#111a13,#0a100c);color:#dfe9df;padding:10px 5px 11px;cursor:pointer;text-align:center;min-height:138px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;transition:border-color .15s,background .15s,transform .15s}.char-option:hover{transform:translateY(-2px);border-color:#71876b}.char-option .avatar{width:78px;height:88px;display:block;overflow:visible;margin:0 auto 3px;filter:drop-shadow(0 5px 4px #0008)}.char-option .avatar svg{width:100%;height:100%;display:block}.char-option strong{font-size:10px;letter-spacing:.7px}.char-option .char-subtitle{font-size:9px;color:#91a291;line-height:1.2}.char-option.selected{border-color:var(--lime);background:linear-gradient(180deg,#8bcf4d1b,#0c120e);box-shadow:inset 0 0 0 1px #9be56435}
 .score-list{display:grid;gap:5px}.score-row{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12px;padding:6px 7px;border-radius:6px;background:#ffffff05;color:#d8e2d9}.score-row:first-child{color:#f0d58a;background:#d5ad3910}.score-row .rank{color:#839783}.score-row .score{font-weight:800;font-variant-numeric:tabular-nums}.empty-score{font-size:12px;color:#829084;line-height:1.5;padding:8px 2px}
 .personal-best{margin-top:12px;padding-top:11px;border-top:1px solid #2c3a2e;display:flex;justify-content:space-between;font-size:12px;color:#b9c7bb}.personal-best strong{color:var(--lime);font-size:16px}
 .howto{margin-top:16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.howto-item{border:1px solid #28372b;border-radius:10px;padding:11px;background:#0d140f}.howto-item b{display:block;color:#d6edc9;font-size:11px;margin-bottom:4px}.howto-item span{display:block;color:#9eada0;font-size:11px;line-height:1.45}
 .home-rail{display:flex;flex-direction:column;gap:16px;min-width:0}.ad-card{min-height:250px;flex:1;border:1px dashed #40513f;border-radius:16px;background:linear-gradient(160deg,#111812,#0b100c);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px;color:#647465;font-size:11px}.ad-card .ad-label{align-self:flex-start;text-transform:uppercase;letter-spacing:1.5px;font-size:9px;color:#536354;margin-bottom:auto}.side-info{border:1px solid #2e3e30;border-radius:14px;background:#111812;padding:16px}.side-info h3{margin:0 0 8px;color:#b8e99d;font-size:12px;letter-spacing:1px;text-transform:uppercase}.side-info p{margin:0;color:#aebcaf;font-size:12px;line-height:1.6}
 #nameBox{display:none!important}
-@media(max-width:980px){body{overflow:auto}#homePage{align-items:flex-start;padding:14px}.home-layout{grid-template-columns:minmax(0,1fr)}.home-rail{display:none}.hero{padding:22px}.home-content{grid-template-columns:minmax(0,1fr) minmax(230px,.8fr)}}
-@media(max-width:620px){.home-content{grid-template-columns:1fr}.howto{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:19px}.panel{padding:15px}#homePage{padding:10px}.home-layout{gap:12px}}
+/* Responsive AdSense strips on the homepage only. The game itself remains unobstructed. */
+.edge-ad{display:none;position:fixed;left:0;right:0;z-index:25;box-sizing:border-box;min-height:90px;padding:5px 16px;background:rgba(5,9,6,.97);border-color:#283629;border-style:solid;align-items:center;justify-content:center;overflow:hidden}
+.edge-ad-top{top:0;border-width:0 0 1px}.edge-ad-bottom{bottom:0;border-width:1px 0 0}
+.edge-ad .adsbygoogle{display:block;width:100%;max-width:970px;min-height:70px;margin:0 auto}
+#homePage:not(.hidden) ~ .edge-ad{display:flex}
+@media(max-width:980px){body{overflow:auto}#homePage{align-items:flex-start;padding:104px 14px 104px}.home-layout{grid-template-columns:minmax(0,1fr)}.home-rail{display:none}.hero{padding:22px}.home-content{grid-template-columns:minmax(0,1fr) minmax(230px,.8fr)}}
+@media(max-width:620px){.edge-ad{min-height:64px;padding:3px 8px}.edge-ad .adsbygoogle{min-height:50px}#homePage{padding:74px 10px 74px}.home-content{grid-template-columns:1fr}.howto{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:19px}.panel{padding:15px}.home-layout{gap:12px}}
 </style>
 </head>
 <body>
@@ -45,7 +50,7 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
   <div class="home-layout">
     <div class="home-main">
       <header class="hero">
-        <div class="brand-row"><div class="brand-mark" aria-hidden="true">Z</div><div><div class="eyebrow">Browser survival game</div><div style="font-size:12px;color:#a8b9a8;margin-top:4px">A survival challenge by Walter</div></div></div>
+        <div class="brand-row"><div class="brand-mark" aria-hidden="true">Z</div><div><div class="eyebrow">Browser survival game</div><div style="font-size:12px;color:#a8b9a8;margin-top:4px">A forest survival challenge</div></div></div>
         <h1>THE FOREST IS <span>INFESTED.</span></h1>
         <p class="lede">Enter a hostile forest, survive increasingly dangerous waves, collect supplies and see how high you can push your score. Every run is different — how long can you last?</p>
         <div class="hero-pills"><span class="pill">4 evolving environments</span><span class="pill">Survival & high scores</span><span class="pill">Free browser game</span></div>
@@ -56,7 +61,11 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
           <label class="field-label" for="homeUsername">YOUR USERNAME</label>
           <div class="name-row"><input id="homeUsername" maxlength="16" placeholder="Enter username" autocomplete="nickname"><button id="saveHomeName" type="button" style="padding:0 12px;border:1px solid #465847;border-radius:8px;background:#202d22;color:#d8f0ce;font-weight:700;cursor:pointer">Save</button></div>
           <div class="field-label" style="margin-top:16px">CHOOSE YOUR SURVIVOR</div>
-          <div class="char-grid"><button class="char-option selected" data-char="0" type="button"><span class="avatar">♟</span><strong>SOLDIER</strong></button><button class="char-option" data-char="1" type="button"><span class="avatar">♟</span><strong>SURVIVOR</strong></button><button class="char-option" data-char="2" type="button"><span class="avatar">♟</span><strong>SWAT</strong></button></div>
+          <div class="char-grid">
+            <button class="char-option selected" data-char="0" type="button" aria-pressed="true"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 80 90"><ellipse cx="40" cy="84" rx="24" ry="4" fill="#000" opacity=".35"/><path d="M23 55 18 82 31 82 37 61 43 61 49 82 62 82 57 55Z" fill="#3b4028" stroke="#20291b" stroke-width="2"/><path d="M24 37 Q40 30 56 37 L61 62 50 69 30 69 19 62Z" fill="#4b5a32" stroke="#26321f" stroke-width="2"/><path d="M29 40 40 46 51 40 54 61 46 64 34 64 26 61Z" fill="#3a4526"/><path d="M25 42 16 49 20 62 28 59M55 42 64 49 60 62 52 59" fill="#4b5a32" stroke="#26321f" stroke-width="2"/><rect x="33" y="25" width="14" height="15" rx="5" fill="#e0ac82"/><path d="M25 25 Q25 9 40 9 Q56 9 55 25 L51 30 29 30Z" fill="#3d4a2a" stroke="#20291b" stroke-width="2"/><path d="M23 24 Q40 17 57 24 L55 29 25 29Z" fill="#596b3b"/><path d="M30 32h20" stroke="#b5c08b" stroke-width="2"/><circle cx="35" cy="26" r="1.5" fill="#20251b"/><circle cx="45" cy="26" r="1.5" fill="#20251b"/></svg></span><strong>SOLDIER</strong><span class="char-subtitle">Armoured & ready</span></button>
+            <button class="char-option" data-char="1" type="button" aria-pressed="false"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 80 90"><ellipse cx="40" cy="84" rx="24" ry="4" fill="#000" opacity=".35"/><path d="M24 55 19 82 32 82 37 62 43 62 48 82 61 82 56 55Z" fill="#2f4a6b" stroke="#182a3b" stroke-width="2"/><path d="M24 38 Q40 31 56 38 L61 63 51 69 29 69 19 63Z" fill="#8e2b2b" stroke="#4c2020" stroke-width="2"/><path d="M28 42 16 49 20 62 28 59M52 42 64 49 60 62 52 59" fill="#8e2b2b" stroke="#4c2020" stroke-width="2"/><path d="M49 43 58 47 56 66 48 64Z" fill="#5d4a2f" stroke="#342a1b" stroke-width="2"/><rect x="33" y="25" width="14" height="15" rx="5" fill="#f0c39a"/><path d="M26 24 Q26 10 40 10 Q55 10 54 26 L49 31 29 29Z" fill="#5a3a1e"/><path d="M29 32h22" stroke="#d8a77d" stroke-width="2"/><circle cx="35" cy="26" r="1.5" fill="#33241b"/><circle cx="45" cy="26" r="1.5" fill="#33241b"/><path d="M31 48 40 53 49 48" fill="none" stroke="#d66b5b" stroke-width="2"/></svg></span><strong>SURVIVOR</strong><span class="char-subtitle">Quick & resourceful</span></button>
+            <button class="char-option" data-char="2" type="button" aria-pressed="false"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 80 90"><ellipse cx="40" cy="84" rx="24" ry="4" fill="#000" opacity=".35"/><path d="M23 55 18 82 31 82 37 62 43 62 49 82 62 82 57 55Z" fill="#141a22" stroke="#080c10" stroke-width="2"/><path d="M24 37 Q40 31 56 37 L61 63 51 69 29 69 19 63Z" fill="#1f2a3a" stroke="#0d141c" stroke-width="2"/><path d="M27 40 53 40 56 62 24 62Z" fill="#0e141b" stroke="#40505d" stroke-width="2"/><path d="M29 43 40 48 51 43 49 57 31 57Z" fill="#253341"/><path d="M24 42 15 49 19 62 28 59M56 42 65 49 61 62 52 59" fill="#1f2a3a" stroke="#0d141c" stroke-width="2"/><rect x="33" y="25" width="14" height="15" rx="5" fill="#c68e62"/><path d="M24 24 Q24 9 40 9 Q56 9 56 24 L52 29 28 29Z" fill="#0d1117" stroke="#05080b" stroke-width="2"/><path d="M22 24h36v5H22Z" fill="#263544"/><path d="M29 26h22v5H29Z" fill="#0a1118"/><path d="M30 32h20" stroke="#6d8291" stroke-width="2"/><circle cx="35" cy="27" r="1.5" fill="#b6d5f4"/><circle cx="45" cy="27" r="1.5" fill="#b6d5f4"/><path d="M34 47h12" stroke="#8295a4" stroke-width="2"/></svg></span><strong>SWAT</strong><span class="char-subtitle">Tactical gear</span></button>
+          </div>
           <button id="startGameBtn" class="primary-btn" type="button">▶ &nbsp; START SURVIVING</button>
           <div style="margin-top:9px;text-align:center;color:#829183;font-size:10px">Choose a character, then start your run.</div>
         </section>
@@ -64,9 +73,37 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
       </div>
       <section class="howto" aria-label="How to play"><div class="howto-item"><b>MOVE</b><span>W A S D or arrow keys</span></div><div class="howto-item"><b>AIM & FIRE</b><span>Use your mouse to aim and click to fire</span></div><div class="howto-item"><b>SUPPLIES</b><span>Collect apples to heal and pears for a burst</span></div><div class="howto-item"><b>BUILD</b><span>Hold B and release to place a wall</span></div></section>
     </div>
-    <aside class="home-rail" aria-label="Additional information"><div class="ad-card"><span class="ad-label">Advertisement</span><span>Ad space</span><span style="margin-top:8px;max-width:170px;line-height:1.5">A place for a future display ad</span></div><div class="side-info"><h3>Survive the changes</h3><p>Travel from green grasslands into autumn woods, a dark forest and the crimson endgame. Watch your health, use supplies carefully and keep moving.</p></div><div class="side-info"><h3>About this game</h3><p>Zombie Shooter is a free, keyboard-and-mouse browser game. Scores are stored locally and aren't shared between visitors.</p></div></aside>
+    <aside class="home-rail" aria-label="Additional information"><div class="ad-card" aria-label="Advertisement"><span class="ad-label">Advertisement</span><ins class="adsbygoogle"
+     style="display:block;width:100%;min-height:250px"
+     data-ad-client="ca-pub-5823089544936874"
+     data-ad-slot="2228817248"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div><div class="side-info"><h3>Survive the changes</h3><p>Travel from green grasslands into autumn woods, a dark forest and the crimson endgame. Watch your health, use supplies carefully and keep moving.</p></div><div class="side-info"><h3>About this game</h3><p>Zombie Shooter is a free, keyboard-and-mouse browser game. Scores are stored locally and aren't shared between visitors.</p></div></aside>
   </div>
 </main>
+
+<!-- Top-of-screen AdSense unit; the shared AdSense loader is already in the head. -->
+<div class="edge-ad edge-ad-top" aria-label="Advertisement at top of homepage">
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-5823089544936874"
+       data-ad-slot="1653178731"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+
+<!-- Bottom-of-screen AdSense unit. -->
+<div class="edge-ad edge-ad-bottom" aria-label="Advertisement at bottom of homepage">
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-5823089544936874"
+       data-ad-slot="1653178731"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
 
 <script>
 (()=>{
@@ -75,19 +112,15 @@ c.style.cssText='position:fixed;left:0;top:0;width:100%;height:100%;display:bloc
 document.body.appendChild(c);
 const g=c.getContext('2d');
 
-const nameBox=document.createElement('div');
-nameBox.style.cssText='position:fixed;left:50%;top:calc(50% + 175px);transform:translateX(-50%);z-index:10;display:flex;gap:8px;align-items:center;font-family:Arial,sans-serif;';
-nameBox.innerHTML='<label style="color:white;font-weight:bold">USERNAME:</label><input id="usernameInput" maxlength="16" placeholder="Enter username" style="width:180px;padding:9px 12px;border:2px solid #555;border-radius:6px;background:#222;color:white;font-size:15px;outline:none"><button id="saveUsername" style="padding:9px 13px;border:0;border-radius:6px;background:#7ccf4a;color:#111;font-weight:bold;cursor:pointer">Set Username</button>';
-document.body.appendChild(nameBox);
-
 const reviveBox=document.createElement('div');
 reviveBox.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;display:none;width:360px;padding:24px;background:rgba(18,18,18,.97);border:2px solid #555;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.7);font-family:Arial,sans-serif;text-align:center;color:white;';
 reviveBox.innerHTML='<div id=\"reviveTitle\" style=\"font-size:24px;font-weight:bold;margin-bottom:10px;color:#ffd400\">WATCH AN AD TO REVIVE?</div><div id=\"reviveText\" style=\"font-size:15px;color:#ccc;line-height:1.45;margin-bottom:18px\">You can revive once per run with 50% HP.</div><div style=\"display:flex;gap:10px;justify-content:center\"><button id=\"watchAdBtn\" style=\"padding:11px 16px;border:0;border-radius:7px;background:#7ccf4a;color:#111;font-weight:bold;cursor:pointer\">Watch Ad & Revive</button><button id=\"skipAdBtn\" style=\"padding:11px 16px;border:0;border-radius:7px;background:#444;color:white;font-weight:bold;cursor:pointer\">No Thanks</button></div>';
 document.body.appendChild(reviveBox);
-const usernameInput=document.getElementById('usernameInput');
-const saveUsernameBtn=document.getElementById('saveUsername');
 const homePage=document.getElementById('homePage');
 const homeUsername=document.getElementById('homeUsername');
+// Reuse the visible homepage field throughout the game; no duplicate floating field.
+const usernameInput=homeUsername;
+const saveUsernameBtn=document.getElementById('saveHomeName');
 const homeScoreList=document.getElementById('homeScoreList');
 const homeBest=document.getElementById('homeBest');
 const startGameBtn=document.getElementById('startGameBtn');
@@ -115,7 +148,7 @@ saveHomeNameBtn.onclick=setHomeName;
 homeUsername.addEventListener('keydown',q=>{if(q.key==='Enter'){q.preventDefault();setHomeName();}});
 document.querySelectorAll('.char-option').forEach(btn=>btn.addEventListener('click',()=>{
   ci=Number(btn.dataset.char);
-  document.querySelectorAll('.char-option').forEach(b=>b.classList.toggle('selected',b===btn));
+  document.querySelectorAll('.char-option').forEach(b=>{const selected=b===btn;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});
 }));
 startGameBtn.onclick=()=>{setHomeName();rs();};
 refreshHome();
@@ -585,8 +618,7 @@ function setPlayerName(){
   usernameInput.value=playerName;
   try{localStorage.setItem('zs_name',playerName)}catch(x){}
 }
-saveUsernameBtn.onclick=()=>setPlayerName();
-usernameInput.onkeydown=q=>{if(q.key==='Enter'){q.preventDefault();setPlayerName();}};
+saveUsernameBtn.onclick=()=>setHomeName();
 usernameInput.oninput=()=>{usernameInput.value=usernameInput.value.replace(/[^a-zA-Z0-9 _-]/g,'').slice(0,16);};
 
 /* ---------- input ---------- */
@@ -600,7 +632,7 @@ onkeydown=q=>{
   if(n.indexOf('arrow')==0||n==' ')q.preventDefault();
   k[n]=1;
   if(n=='b'&&!q.repeat&&!dead){buildHeld=1;}
-  if(dead){if(document.activeElement===homeUsername)return;if(n>='1'&&n<='3'){ci=n-1;document.querySelectorAll('.char-option').forEach(b=>b.classList.toggle('selected',Number(b.dataset.char)===ci));}else if(n=='enter'||n==' ')rs();return}
+  if(dead){if(document.activeElement===homeUsername)return;if(n>='1'&&n<='3'){ci=n-1;document.querySelectorAll('.char-option').forEach(b=>{const selected=Number(b.dataset.char)===ci;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});}else if(n=='enter'||n==' ')rs();return}
   if(n=='e'&&!q.repeat&&L<=0){for(let i=1;i<=6;i++){const t=(wp+i)%6;if(own[t]){wp=t;break}}}
   if(n=='f'&&!q.repeat)eatApple();
   if(n=='g'&&!q.repeat)eatPear();
@@ -1409,7 +1441,6 @@ function game(){
   }
 
   // The accessible HTML homepage is shown for both first launch and after death.
-  nameBox.style.display='none';
   const showHome=dead!==0;
   const wasHomeVisible=!homePage.classList.contains('hidden');
   homePage.classList.toggle('hidden',!showHome);
