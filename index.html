@@ -3,6 +3,7 @@
 <head>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5823089544936874"
      crossorigin="anonymous"></script>
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Zombie Shooter - Username Scoreboard</title>
@@ -20,57 +21,6 @@ const nameBox=document.createElement('div');
 nameBox.style.cssText='position:fixed;left:50%;top:calc(50% + 175px);transform:translateX(-50%);z-index:10;display:flex;gap:8px;align-items:center;font-family:Arial,sans-serif;';
 nameBox.innerHTML='<label style="color:white;font-weight:bold">USERNAME:</label><input id="usernameInput" maxlength="16" placeholder="Enter username" style="width:180px;padding:9px 12px;border:2px solid #555;border-radius:6px;background:#222;color:white;font-size:15px;outline:none"><button id="saveUsername" style="padding:9px 13px;border:0;border-radius:6px;background:#7ccf4a;color:#111;font-weight:bold;cursor:pointer">Set Username</button>';
 document.body.appendChild(nameBox);
-
-// Add your AdSense display-ad slot ID in the setting below. The publisher ID alone
-// loads the library but is not enough to request a display ad.
-const ADSENSE_SLOT_ID='REPLACE_WITH_YOUR_AD_SLOT_ID';
-const adBanner=document.createElement('div');
-adBanner.id='characterSelectAd';
-adBanner.style.cssText='position:fixed;left:50%;bottom:4px;transform:translateX(-50%);z-index:5;width:min(728px,calc(100vw - 16px));min-height:90px;display:none;text-align:center;overflow:hidden;';
-let adsenseRequested=false;
-if(ADSENSE_SLOT_ID!=='REPLACE_WITH_YOUR_AD_SLOT_ID'){
-  adBanner.innerHTML='<ins class="adsbygoogle" style="display:block;width:100%;min-height:90px" data-ad-client="ca-pub-5823089544936874" data-ad-slot="'+ADSENSE_SLOT_ID+'" data-ad-format="auto" data-full-width-responsive="true"></ins>';
-  document.body.appendChild(adBanner);
-}
-
-// Rewarded web ads require a Google Ad Manager rewarded-ad unit, not just AdSense.
-// Replace this with the ad-unit path supplied by your Google Ad Manager account.
-const GAM_REWARDED_AD_UNIT='/REPLACE_WITH_NETWORK_CODE/game/revive-rewarded';
-let activeRewardedSlot=null;
-let rewardGranted=false;
-let gptReady=false;
-window.googletag=window.googletag||{cmd:[]};
-googletag.cmd.push(function(){
-  googletag.pubads().addEventListener('rewardedSlotReady',function(evt){
-    if(evt.slot===activeRewardedSlot){
-      reviveTitle.textContent='AD READY';
-      reviveText.textContent='Your rewarded ad is ready. Close it after viewing to return to the game.';
-      if(!evt.makeRewardedVisible()){
-        reviveText.textContent='The ad could not be displayed. Please try again later.';
-        watchAdBtn.disabled=false;skipAdBtn.disabled=false;
-      }else{
-        reviveTitle.textContent='AD PLAYING...';
-        reviveText.textContent='Complete the ad to earn your revive.';
-      }
-    }
-  });
-  googletag.pubads().addEventListener('rewardedSlotGranted',function(evt){
-    if(evt.slot===activeRewardedSlot){rewardGranted=true;revivePlayer();}
-  });
-  googletag.pubads().addEventListener('rewardedSlotClosed',function(evt){
-    if(evt.slot!==activeRewardedSlot)return;
-    if(!rewardGranted&&dead===1){
-      reviveTitle.textContent='AD CLOSED';
-      reviveText.textContent='The revive is only granted after the ad reward is confirmed.';
-      watchAdBtn.disabled=false;watchAdBtn.textContent='Try Again';skipAdBtn.disabled=false;
-    }
-    googletag.destroySlots([activeRewardedSlot]);
-    activeRewardedSlot=null;
-    rewardGranted=false;
-  });
-  googletag.enableServices();
-  gptReady=true;
-});
 
 const reviveBox=document.createElement('div');
 reviveBox.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;display:none;width:360px;padding:24px;background:rgba(18,18,18,.97);border:2px solid #555;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.7);font-family:Arial,sans-serif;text-align:center;color:white;';
@@ -111,32 +61,8 @@ function revivePlayer(){
 }
 watchAdBtn.onclick=()=>{
   if(reviveUsed||dead!==1)return;
-  if(GAM_REWARDED_AD_UNIT.includes('REPLACE_WITH_NETWORK_CODE')){
-    reviveTitle.textContent='REWARDED AD NOT CONFIGURED';
-    reviveText.textContent='A Google Ad Manager rewarded-ad unit must be configured before this button can grant a revive.';
-    return;
-  }
-  if(!window.googletag||!gptReady){
-    reviveTitle.textContent='ADS NOT READY';
-    reviveText.textContent='The ad service has not loaded. Please try again in a moment.';
-    return;
-  }
-  watchAdBtn.disabled=true;
-  skipAdBtn.disabled=true;
-  reviveTitle.textContent='LOADING REWARDED AD...';
-  reviveText.textContent='Please wait while an ad is requested.';
-  googletag.cmd.push(function(){
-    activeRewardedSlot=googletag.defineOutOfPageSlot(GAM_REWARDED_AD_UNIT,googletag.enums.OutOfPageFormat.REWARDED);
-    if(!activeRewardedSlot){
-      reviveTitle.textContent='NO AD AVAILABLE';
-      reviveText.textContent='A rewarded ad is not available right now. You can try again later.';
-      watchAdBtn.disabled=false;skipAdBtn.disabled=false;
-      return;
-    }
-    rewardGranted=false;
-    activeRewardedSlot.addService(googletag.pubads());
-    googletag.display(activeRewardedSlot);
-  });
+  reviveTitle.textContent='REWARDED AD NOT CONFIGURED';
+  reviveText.textContent='The AdSense verification script is installed, but it does not itself provide rewarded revive ads.';
 };
 skipAdBtn.onclick=()=>{hideRevivePopup();save()};
 const Z=.8;
@@ -1397,12 +1323,6 @@ function game(){
 
   // start screen / death screen
   nameBox.style.display=dead?'flex':'none';
-  const showMenuAd=!!dead&&reviveBox.style.display==='none'&&ADSENSE_SLOT_ID!=='REPLACE_WITH_YOUR_AD_SLOT_ID';
-  if(adBanner)adBanner.style.display=showMenuAd?'block':'none';
-  if(showMenuAd&&!adsenseRequested){
-    adsenseRequested=true;
-    try{(window.adsbygoogle=window.adsbygoogle||[]).push({})}catch(err){console.warn('AdSense ad could not be requested:',err)}
-  }
   if(dead==2)hideRevivePopup();
   if(dead){
     const st=dead==2,cy=c.height/2,cx=c.width/2-110,bx=cx-215;
