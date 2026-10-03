@@ -160,7 +160,7 @@ const startGameBtn=document.getElementById('startGameBtn');
 let gameMode='classic';
 let cameraX=0,cameraY=0;
 const BASE_WORLD_W=9000, BASE_WORLD_H=6200;
-const BASE_ZOOM=0.62; // Lower zoom shows a wider area of the world at once.
+const BASE_ZOOM=1; // Match the original game's field of view; the world itself remains much larger.
 function worldW(){return gameMode==='base'?BASE_WORLD_W:w;}
 function worldH(){return gameMode==='base'?BASE_WORLD_H:h;}
 let infiniteNextBossScore=75;
@@ -419,6 +419,12 @@ function pt(x,y,vx,vy,l,col,s,sm){if(P.length>=500)P.shift();P.push({x:x,y:y,vx:
 function el(x,y,rx,ry,col,r){g.fillStyle=col;g.beginPath();g.ellipse(x,y,rx,ry,r||0,0,7);g.fill()}
 function cc(x,y,r,col){g.fillStyle=col;g.beginPath();g.arc(x,y,r,0,7);g.fill()}
 function splat(x,y){D.push({x:x,y:y,r:7+Math.random()*9,a:Math.random()*6.28});if(D.length>60)D.shift()}
+function damagePlayer(amount){
+  if(gameMode==='base' && isInsideBaseSafeZone(p.x,p.y)) return false;
+  hp=Math.max(0,hp-amount);
+  return true;
+}
+
 function hit(z,d){
   z.hp-=d;
   if(z.hp<=0&&!z.dead){
@@ -837,7 +843,7 @@ usernameInput.oninput=()=>{usernameInput.value=usernameInput.value.replace(/[^a-
 
 /* ---------- input ---------- */
 c.oncontextmenu=q=>q.preventDefault();
-c.onmousemove=q=>{const r=c.getBoundingClientRect();const zoom=gameMode==='base'?BASE_ZOOM:1;m={x:(q.clientX-r.left)/(Z*zoom)+(gameMode==='base'?cameraX:0),y:(q.clientY-r.top)/(Z*zoom)+(gameMode==='base'?cameraY:0)}};
+c.onmousemove=q=>{const r=c.getBoundingClientRect();const sx=(q.clientX-r.left)/Math.max(1,r.width)*w;const sy=(q.clientY-r.top)/Math.max(1,r.height)*h;/* Match the complete render transform: global canvas scale Z, then Base World zoom, then camera translation. */const renderScale=Z*(gameMode==='base'?BASE_ZOOM:1);m={x:sx/renderScale+(gameMode==='base'?cameraX:0),y:sy/renderScale+(gameMode==='base'?cameraY:0)}};
 c.onmousedown=q=>{if(dead||q.button!=0)return;md=1};
 onmouseup=()=>{md=0};
 onblur=()=>{md=0;k={}};
@@ -1307,7 +1313,7 @@ function game(){
     // constant fire rate while holding
     if(cd>0)cd--;
     if(md&&cd<=0){
-      // Firing is allowed inside the safe camp; sanctuary protection only blocks incoming zombie damage.
+      // Weapon firing is permitted everywhere, including the safe camp.
       if(wp==0){shoot();cd=12}
       else if(wp==1){blast();cd=40}
       else if(wp==3){smg();cd=4}
@@ -1334,7 +1340,7 @@ function game(){
     }
   }
 
-  human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),CH[ci],wk,gameMode==='base'?0.62:0.95,wp==2?1:0,fl);
+  human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),CH[ci],wk,0.95,wp==2?1:0,fl);
   {const f=Math.max(0,hp/100);g.fillStyle='rgba(0,0,0,.65)';g.fillRect(p.x-27,p.y-47,54,9);
   g.fillStyle=f>.6?'#2ecc71':f>.3?'#f1c40f':'#e74c3c';g.fillRect(p.x-25,p.y-45,50*f,5)}
 
