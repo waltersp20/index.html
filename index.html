@@ -9,7 +9,41 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cdefs%3E%3ClinearGradient id=%22bg%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop stop-color=%22%23131f1a%22/%3E%3Cstop offset=%221%22 stop-color=%22%233e762e%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%2264%22 height=%2264%22 rx=%2215%22 fill=%22url(%23bg)%22/%3E%3Cpath d=%22M12 27 18 15 27 10 38 11 47 18 52 29 49 42 43 48 42 55 22 55 21 49 14 42Z%22 fill=%22%23e8eadb%22 stroke=%22%23aab99b%22 stroke-width=%222%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M17 29 25 24 29 32 23 37 17 34Z%22 fill=%22%23131b17%22/%3E%3Cpath d=%22M36 32 40 24 48 29 48 34 42 37Z%22 fill=%22%23131b17%22/%3E%3Cpath d=%22M29 39 35 39 32 45Z%22 fill=%22%23131b17%22/%3E%3Cpath d=%22M23 48h18v5H23z%22 fill=%22%23131b17%22/%3E%3Cpath d=%22M27 48v5m5-5v5m5-5v5%22 stroke=%22%23e8eadb%22 stroke-width=%222%22/%3E%3Cpath d=%22M45 8 54 5 51 15 44 18 41 14Z%22 fill=%22%237ccf4a%22 stroke=%22%23131f1a%22 stroke-width=%221.5%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
 <title>Zombie Shooter | Survival Game</title>
 <meta name="description" content="Play Zombie Shooter, a browser-based survival game. Choose your character, survive waves of zombies, collect supplies, and try to beat your high score. Includes keyboard controls and a local high-score board.">
-<style>html,body{margin:0;height:100%;overflow:hidden;background:#0b0b0b}</style>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0b0b0b}
+/* Homepage palette: purple, crimson and black. Game-world colours are intentionally unchanged. */
+:root{color-scheme:dark;--lime:#c084fc;--lime2:#9333ea;--panel:#151019;--line:#48233f;--muted:#b7a9bc}
+html,body{background:#08060b;color:#f7effb}
+body{background:radial-gradient(ellipse at 12% 0%,#351044 0%,#100911 38%,#070609 78%);}
+.hero{background:linear-gradient(135deg,#211027 0%,#100b14 65%,#210b17 100%);border-color:#54244f}
+.brand-mark{background:linear-gradient(135deg,#d8b4fe,#a21caf 58%,#be123c);color:#fff;box-shadow:0 6px 24px #a21caf45}
+.hero h1 span{color:#fb7185;text-shadow:0 0 26px #e11d4830}
+.eyebrow,.panel h2,.auth-card h3,.side-info h3{color:#d8b4fe}
+.panel{background:linear-gradient(145deg,#19121e,#0e0a11);border-color:#48233f}
+.field-label{color:#d2c2d7}
+.name-row input{background:#09070b;border-color:#51344f}
+.name-row input:focus{border-color:#c084fc}
+.primary-btn{background:linear-gradient(120deg,#c084fc,#a855f7 52%,#e11d48);color:#fff;box-shadow:0 7px 24px #a21caf35}
+.char-option{border-color:#45243f;background:linear-gradient(180deg,#1b1120,#0b080d);color:#f4eaf7}
+.char-option:hover{border-color:#c084fc}
+.char-option.selected{border-color:#c084fc;background:linear-gradient(180deg,#a855f725,#0d080f);box-shadow:inset 0 0 0 1px #c084fc35}
+.mode-card{border-color:#48233f;background:#100b13;color:#f5edf8}
+.mode-card:hover{border-color:#fb7185}
+.mode-card.selected{border-color:#c084fc;background:linear-gradient(150deg,#a855f729,#e11d4810,#100b13);box-shadow:inset 0 0 0 1px #c084fc30}
+.mode-status{color:#d7c7dd;background:#0c080f;border-color:#39203a}
+.coop-row input{accent-color:#c084fc}
+.howto-item{border-color:#382039;background:#100b13}
+.howto-item b{color:#fda4af}
+.howto-item span,.lede,.hero-pills{color:#c4b5ca}
+.auth-card,.side-info{border-color:#48233f;background:linear-gradient(160deg,#1c1121,#0c080f)}
+.auth-card button{background:#38203f;border-color:#68406f;color:#f8effb}
+.ad-card{border-color:#48233f;background:linear-gradient(160deg,#151019,#09070b)}
+.score-row:first-child{color:#fda4af;background:#e11d4810}
+.utility-panel{background:#110b15;border-color:#68406f;color:#f7effb}
+.utility-panel h2{color:#d8b4fe}
+.utility-panel input,.utility-panel select,.utility-panel textarea,.utility-panel .chat-log{background:#09070b;border-color:#48233f;color:#fff}
+.utility-panel button{background:#38203f;border-color:#68406f;color:#f8effb}
+
+</style>
 <style>
 :root{color-scheme:dark;--lime:#9be564;--lime2:#5caa37;--panel:#151c18;--line:#344437;--muted:#aab8ad}
 html,body{margin:0;min-height:100%;background:#080d0a;color:#eef5ef;font-family:Arial,Helvetica,sans-serif}
@@ -200,6 +234,8 @@ function setAuthBusy(busy){
 }
 function showAuthUser(user){
   firebaseUser=user||null;
+  // Account controls are optional on this homepage; don't let their absence stop the game.
+  if(!authSignedOut || !authSignedIn || !authStatus || !authUserLabel) return;
   if(!user){
     authSignedOut.hidden=false;authSignedIn.hidden=true;
     authStatus.textContent='Not signed in. Choose Google or guest play.';
@@ -208,7 +244,7 @@ function showAuthUser(user){
   authSignedOut.hidden=true;authSignedIn.hidden=false;
   const label=user.displayName || (user.isAnonymous?'Guest player':'Google account');
   authUserLabel.textContent='Signed in as '+label;
-  linkGoogleBtn.hidden=!user.isAnonymous;
+  if(linkGoogleBtn) linkGoogleBtn.hidden=!user.isAnonymous;
   authStatus.textContent=user.isAnonymous
     ? 'Guest account active. Link Google to protect this identity from anonymous-account cleanup.'
     : 'Google account connected.';
@@ -245,8 +281,8 @@ async function googleSignIn(){
     }
   }
 }
-googleSignInBtn.addEventListener('click',async()=>{setAuthBusy(true);try{await googleSignIn();}finally{setAuthBusy(false);}});
-guestSignInBtn.addEventListener('click',async()=>{
+if(googleSignInBtn) googleSignInBtn.addEventListener('click',async()=>{setAuthBusy(true);try{await googleSignIn();}finally{setAuthBusy(false);}});
+if(guestSignInBtn) guestSignInBtn.addEventListener('click',async()=>{
   setAuthBusy(true);
   try{
     const current=firebase.auth().currentUser;
@@ -255,8 +291,8 @@ guestSignInBtn.addEventListener('click',async()=>{
   }catch(err){authStatus.textContent='Guest sign-in failed: '+err.message;}
   finally{setAuthBusy(false);}
 });
-linkGoogleBtn.addEventListener('click',async()=>{setAuthBusy(true);try{await googleSignIn();}finally{setAuthBusy(false);}});
-signOutBtn.addEventListener('click',async()=>{
+if(linkGoogleBtn) linkGoogleBtn.addEventListener('click',async()=>{setAuthBusy(true);try{await googleSignIn();}finally{setAuthBusy(false);}});
+if(signOutBtn) signOutBtn.addEventListener('click',async()=>{
   setAuthBusy(true);
   try{await firebase.auth().signOut();authStatus.textContent='Signed out. You can sign in with Google or play as a guest.';}
   catch(err){authStatus.textContent='Sign-out failed: '+err.message;}
