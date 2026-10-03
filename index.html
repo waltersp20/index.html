@@ -874,7 +874,7 @@ function spawnBoss(){
 }
 setInterval(()=>{
   if(dead||bossCutscene>0)return;
-  if(gameMode==='base'&&Math.random()<0.85)return; // Very low spawn frequency in the open world.
+  if(gameMode==='base'&&Math.random()<0.95)return; // Extremely low spawn frequency in the open world.
   // Hard cap on simultaneously living zombies; level-specific total spawn limits remain below.
   if(e.reduce((count,z)=>count+(!z.dead?1:0),0)>=30)return;
   if(gameMode==='infinite'&&score>=infiniteNextBossScore&&!e.some(z=>z.boss&&!z.dead)){spawnBoss();return;}
@@ -1117,8 +1117,12 @@ function drawWorldBiomes(){
   // A broken trail leads toward the dangerous central endgame zone.
   g.save();g.strokeStyle='rgba(224,210,160,.38)';g.lineWidth=5;g.setLineDash([10,13]);g.beginPath();g.moveTo(sx+r,sy);g.bezierCurveTo(BASE_WORLD_W*.25,BASE_WORLD_H*.24,BASE_WORLD_W*.38,BASE_WORLD_H*.85,BASE_WORLD_W*.50,BASE_WORLD_H*.70);g.stroke();g.setLineDash([]);g.restore();
 }
+function isInsideBaseSafeZone(x,y){
+  return gameMode==='base' && Math.hypot(x-BASE_WORLD_W*.10,y-BASE_WORLD_H*.58)<220;
+}
+
 function drawWorldMinimap(){
-  const mw=Math.min(300,w*.42),mh=mw*.68,mx=w-mw-18,my=18;
+  const mw=Math.min(420,w*.48),mh=mw*.68,mx=w-mw-18,my=18;
   g.save();
   g.fillStyle='rgba(4,9,6,.88)';g.strokeStyle='rgba(210,230,205,.7)';g.lineWidth=1.5;
   g.beginPath();g.roundRect(mx,my,mw,mh,9);g.fill();g.stroke();
@@ -1288,7 +1292,7 @@ function game(){
     if(cd>0)cd--;
     if(md&&cd<=0){
       // The safe camp is a true sanctuary: weapons cannot fire from inside it.
-      const inSafeZone=gameMode==='base'&&Math.hypot(p.x-BASE_WORLD_W*.10,p.y-BASE_WORLD_H*.58)<190;
+      const inSafeZone=isInsideBaseSafeZone(p.x,p.y);
       if(inSafeZone){cd=8;}
       else if(wp==0){shoot();cd=12}
       else if(wp==1){blast();cd=40}
@@ -1316,7 +1320,7 @@ function game(){
     }
   }
 
-  human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),CH[ci],wk,0.95,wp==2?1:0,fl);
+  human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),CH[ci],wk,gameMode==='base'?0.62:0.95,wp==2?1:0,fl);
   {const f=Math.max(0,hp/100);g.fillStyle='rgba(0,0,0,.65)';g.fillRect(p.x-27,p.y-47,54,9);
   g.fillStyle=f>.6?'#2ecc71':f>.3?'#f1c40f':'#e74c3c';g.fillRect(p.x-25,p.y-45,50*f,5)}
 
@@ -1564,7 +1568,7 @@ function game(){
       cc(q.x,q.y,42,'#7b5135');
       g.restore();
     }
-    const inSafeCamp=gameMode==='base'&&Math.hypot(p.x-BASE_WORLD_W*.10,p.y-BASE_WORLD_H*.58)<190;
+    const inSafeCamp=isInsideBaseSafeZone(p.x,p.y);
     if(!dead&&!inSafeCamp&&bossCutscene<=0&&ih<=0&&Math.hypot(q.x-p.x,q.y-p.y)<(q.boss?48:q.ty==4?40:34)){hp-=q.boss?35:q.ty==1?12:q.ty==2?15:q.ty==4?28:q.ty==5?18:q.ty==6?16:20;if(q.ty==2)po=60;triggerHalfHealthBlast();ih=40;S=Math.max(S,6);const d=Math.atan2(q.y-p.y,q.x-p.x);q.x+=Math.cos(d)*30;q.y+=Math.sin(d)*30;if(hp<=0){hp=0;dead=1;if(reviveUsed)save();showRevivePopup()}}
     if(q.boss){
       // Boss is drawn larger using the normal zombie artwork.
@@ -1686,7 +1690,11 @@ function game(){
   if(score>H)H=score;
   if(gameMode==='base'){
     // Draw the minimap in screen space so the scrolling world camera never moves it.
-    g.save();g.translate(cameraX,cameraY);drawWorldMinimap();g.restore();
+    g.save();
+    // Reset the world-camera and screen-shake transforms; draw HUD map in screen space.
+    g.setTransform(Z,0,0,Z,0,0);
+    drawWorldMinimap();
+    g.restore();
   }
   g.restore();
 
