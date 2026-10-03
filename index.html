@@ -36,6 +36,7 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
 .howto{margin-top:16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.howto-item{border:1px solid #28372b;border-radius:10px;padding:11px;background:#0d140f}.howto-item b{display:block;color:#d6edc9;font-size:11px;margin-bottom:4px}.howto-item span{display:block;color:#9eada0;font-size:11px;line-height:1.45}
 .home-rail{display:flex;flex-direction:column;gap:16px;min-width:0}.auth-card{border:1px solid #40513f;border-radius:14px;background:linear-gradient(160deg,#172219,#0c120e);padding:16px}.auth-card h3{margin:0 0 7px;color:#b8e99d;font-size:12px;letter-spacing:1px;text-transform:uppercase}.auth-card p{margin:0 0 12px;color:#aebcaf;font-size:11px;line-height:1.5}.auth-card button{width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid #4a6349;background:#273a28;color:#eef7ea;font-weight:700;cursor:pointer}.auth-card button.google{background:#f5f5f5;color:#222;border-color:#ddd}.auth-card button:disabled{opacity:.55;cursor:wait}.auth-status{font-size:10px!important;color:#b8c9b8!important;margin-top:10px!important;overflow-wrap:anywhere}.ad-card{box-sizing:border-box;width:100%;min-width:0;min-height:280px;flex:0 0 auto;border:1px dashed #40513f;border-radius:16px;background:linear-gradient(160deg,#111812,#0b100c);display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;text-align:center;padding:12px;color:#647465;font-size:11px}.ad-card .adsbygoogle{display:block;box-sizing:border-box;width:100%;min-width:0;min-height:250px;margin:8px auto 0}.ad-card .ad-label{align-self:flex-start;text-transform:uppercase;letter-spacing:1.5px;font-size:9px;color:#536354;margin-bottom:auto}.side-info{border:1px solid #2e3e30;border-radius:14px;background:#111812;padding:16px}.side-info h3{margin:0 0 8px;color:#b8e99d;font-size:12px;letter-spacing:1px;text-transform:uppercase}.side-info p{margin:0;color:#aebcaf;font-size:12px;line-height:1.6}
 #nameBox{display:none!important}
+#adminPanel,.auth-card{display:none!important}
 /* Responsive AdSense strips on the homepage only. The game itself remains unobstructed. */
 .edge-ad{display:none;position:fixed;left:0;right:0;z-index:25;box-sizing:border-box;min-height:90px;padding:5px 16px;background:rgba(5,9,6,.97);border-color:#283629;border-style:solid;align-items:center;justify-content:center;overflow:hidden}
 .edge-ad-bottom{bottom:0;border-width:1px 0 0}
@@ -64,10 +65,10 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
           <div class="mode-grid" role="group" aria-label="Game mode">
             <button class="mode-card selected" data-mode="classic" type="button" aria-pressed="true"><span class="mode-icon">☠</span><strong>CLASSIC LEVELS</strong><span>Four environments, a boss and the original survival challenge.</span></button>
             <button class="mode-card" data-mode="infinite" type="button" aria-pressed="false"><span class="mode-icon">∞</span><strong>INFINITE</strong><span>Endless waves. Difficulty keeps rising and there is no final level.</span></button>
-            <button class="mode-card" data-mode="base" type="button" aria-pressed="false"><span class="mode-icon">⌂</span><strong>BASE WORLD</strong><span>Early prototype: grid-aligned walls persist in this browser. Shared world needs setup.</span></button>
+            <button class="mode-card" data-mode="base" type="button" aria-pressed="false"><span class="mode-icon">⌂</span><strong>BASE WORLD</strong><span>Explore a vast world of distinct biomes, settlements and dangerous outbreak zones.</span></button>
           </div>
-          <label class="coop-row"><input id="coopToggle" type="checkbox"><span>Co-op with friends (up to 4 players) — requires multiplayer setup</span></label>
-          <div id="modeStatus" class="mode-status" aria-live="polite">Classic mode keeps the original four-level game.</div>
+          
+          <div id="modeStatus" class="mode-status" aria-live="polite">Choose a mode and character, then start playing.</div>
           <div class="field-label" style="margin-top:16px">CHOOSE YOUR SURVIVOR</div>
           <div class="char-grid">
             <button class="char-option selected" data-char="0" type="button" aria-pressed="true"><span class="avatar" aria-hidden="true"><svg viewBox="0 0 80 90"><ellipse cx="40" cy="84" rx="24" ry="4" fill="#000" opacity=".35"/><path d="M23 55 18 82 31 82 37 61 43 61 49 82 62 82 57 55Z" fill="#3b4028" stroke="#20291b" stroke-width="2"/><path d="M24 37 Q40 30 56 37 L61 62 50 69 30 69 19 62Z" fill="#4b5a32" stroke="#26321f" stroke-width="2"/><path d="M29 40 40 46 51 40 54 61 46 64 34 64 26 61Z" fill="#3a4526"/><path d="M25 42 16 49 20 62 28 59M55 42 64 49 60 62 52 59" fill="#4b5a32" stroke="#26321f" stroke-width="2"/><rect x="33" y="25" width="14" height="15" rx="5" fill="#e0ac82"/><path d="M25 25 Q25 9 40 9 Q56 9 55 25 L51 30 29 30Z" fill="#3d4a2a" stroke="#20291b" stroke-width="2"/><path d="M23 24 Q40 17 57 24 L55 29 25 29Z" fill="#596b3b"/><path d="M30 32h20" stroke="#b5c08b" stroke-width="2"/><circle cx="35" cy="26" r="1.5" fill="#20251b"/><circle cx="45" cy="26" r="1.5" fill="#20251b"/></svg></span><strong>SOLDIER</strong><span class="char-subtitle">Armoured & ready</span></button>
@@ -82,32 +83,18 @@ h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8
       </div>
       <section class="howto" aria-label="How to play"><div class="howto-item"><b>MOVE</b><span>W A S D or arrow keys</span></div><div class="howto-item"><b>AIM & FIRE</b><span>Use your mouse to aim and click to fire</span></div><div class="howto-item"><b>SUPPLIES</b><span>Collect apples to heal and pears for a burst</span></div><div class="howto-item"><b>BUILD</b><span>Hold B and release to place a wall</span></div></section>
     </div>
-    <aside class="home-rail" aria-label="Account and additional information">
-    <section class="auth-card" aria-label="Account sign in">
-      <h3>Your account</h3>
-      <p>Play as a guest, or sign in with Google to keep the same account across visits and devices.</p>
-      <div id="authSignedOut">
-        <button id="googleSignInBtn" class="google" type="button">Continue with Google</button>
-        <button id="guestSignInBtn" type="button">Play as Guest</button>
-      </div>
-      <div id="authSignedIn" hidden>
-        <p id="authUserLabel" style="margin-bottom:8px">Signed in</p>
-        <button id="linkGoogleBtn" class="google" type="button">Link Google to this guest</button>
-        <button id="signOutBtn" type="button">Sign out</button>
-      </div>
-      <p id="authStatus" class="auth-status" role="status" aria-live="polite">Connecting to Firebase Authentication…</p>
-    </section>
+    <aside class="home-rail" aria-label="Game information">
     <div class="ad-card" aria-label="Advertisement"><span class="ad-label">Advertisement</span><ins class="adsbygoogle"
      style="display:block;width:100%;min-height:250px"
      data-ad-client="ca-pub-5823089544936874"
      data-ad-slot="1653178731"
      data-ad-format="auto"
      data-full-width-responsive="true"></ins>
-<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div><div class="side-info"><h3>Survive the changes</h3><p>Travel from green grasslands into autumn woods, a dark forest and the crimson endgame. Watch your health, use supplies carefully and keep moving.</p></div><div class="side-info"><h3>About this game</h3><p>Zombie Shooter is a free, keyboard-and-mouse browser game. Scores are stored locally and aren't shared between visitors.</p></div></aside>
+<script>(adsbygoogle = window.adsbygoogle || []).push({});</script></div><div class="side-info"><h3>Survive the changes</h3><p>Travel from green grasslands into autumn woods, a dark forest and the crimson endgame. Watch your health, use supplies carefully and keep moving.</p></div></aside>
   </div>
 </main>
 
-<div id="chatPanel" class="utility-panel" aria-label="Chat panel"><button class="panel-close" data-close="chatPanel">Close</button><h2>World & local chat</h2><p>Global chat and joinable local rooms will be shared between players once Firebase is connected.</p><div id="chatConnection" class="mode-status">Offline prototype — no Firebase project configured.</div><label class="field-label" for="roomSelect">LOCAL ROOM</label><select id="roomSelect"><option value="general">General</option><option value="north">Northern camp</option><option value="south">Southern camp</option><option value="trade">Trading post</option></select><div id="chatLog" class="chat-log" aria-live="polite">Chat is waiting for the multiplayer backend.</div><form id="chatForm"><input id="chatMessage" maxlength="240" placeholder="Message (online setup required)" disabled><button type="submit" disabled>Send</button></form><p class="small-note">Chat moderation, rate limits and bans must be enforced by the backend, not just by this page.</p></div>
+<div id="chatPanel" class="utility-panel" aria-label="Chat panel"><button class="panel-close" data-close="chatPanel">Close</button><h2>World & local chat</h2><p>Chat with other survivors.</p><div id="chatConnection" class="mode-status">Chat unavailable.</div><label class="field-label" for="roomSelect">LOCAL ROOM</label><select id="roomSelect"><option value="general">General</option><option value="north">Northern camp</option><option value="south">Southern camp</option><option value="trade">Trading post</option></select><div id="chatLog" class="chat-log" aria-live="polite">No messages yet.</div><form id="chatForm"><input id="chatMessage" maxlength="240" placeholder="Write a message"><button type="submit">Send</button></form></div>
 
 <div id="adminPanel" class="utility-panel" aria-label="Admin moderation panel"><button class="panel-close" data-close="adminPanel">Close</button><h2>Admin moderation</h2><p>This panel is intentionally hidden. Press Ctrl + Shift + A to open it. It will only become operational after Firebase Authentication and server-side admin permissions are configured.</p><div id="adminConnection" class="mode-status">LOCKED — backend not configured. No global changes can be made yet.</div><label class="field-label" for="adminTarget">PLAYER UID (not display name)</label><input id="adminTarget" placeholder="Firebase user UID" disabled><label class="field-label" for="adminReason">REASON</label><textarea id="adminReason" rows="2" placeholder="Reason for moderation action" disabled></textarea><div style="display:flex;gap:8px"><button disabled>Ban player</button><button disabled>Unban player</button><button disabled>Remove global score</button></div><p class="small-note">Do not put an admin password or private server key in this HTML file. Admin rights should be assigned with trusted server-side tools/custom claims.</p></div>
 
@@ -134,21 +121,25 @@ const homeScoreList=document.getElementById('homeScoreList');
 const homeBest=document.getElementById('homeBest');
 const startGameBtn=document.getElementById('startGameBtn');
 let gameMode='classic';
+let cameraX=0,cameraY=0;
+const BASE_WORLD_W=4800, BASE_WORLD_H=3200;
+function worldW(){return gameMode==='base'?BASE_WORLD_W:w;}
+function worldH(){return gameMode==='base'?BASE_WORLD_H:h;}
 let infiniteNextBossScore=75;
 let coopRequested=false;
 const modeStatus=document.getElementById('modeStatus');
-const modeDescriptions={classic:'Classic mode keeps the original four-level game.',infinite:'Endless survival: every zombie type can appear, bosses are rare, and difficulty rises gradually. Gun upgrades are disabled.',base:'Base World prototype: chat is available only in this mode. Grid-aligned walls currently save locally; shared online persistence, mining, resource costs and turrets still need implementing.'};
+const modeDescriptions={classic:'Survive four levels, collect supplies and defeat the boss.',infinite:'Endless waves with gradually increasing difficulty. Gun upgrades are disabled.',base:'Explore a huge world with grasslands, autumn woods, snowy mountains, settlements and a dangerous central forest.'};
 function chooseMode(mode){
   gameMode=mode;
   document.querySelectorAll('.mode-card').forEach(btn=>{const yes=btn.dataset.mode===mode;btn.classList.toggle('selected',yes);btn.setAttribute('aria-pressed',String(yes));});
-  modeStatus.textContent=modeDescriptions[mode]+(coopRequested?' Co-op is selected but unavailable until multiplayer synchronisation is implemented and Firebase is configured.':'');
+  modeStatus.textContent=modeDescriptions[mode];
   startGameBtn.textContent=mode==='classic'?'▶  START CLASSIC SURVIVAL':mode==='infinite'?'▶  START INFINITE SURVIVAL':'▶  ENTER BASE WORLD';
   const chatBtn=document.getElementById('openChatBtn');
   chatBtn.style.display=mode==='base'?'block':'none';
   if(mode!=='base')document.getElementById('chatPanel').classList.remove('open');
 }
 document.querySelectorAll('.mode-card').forEach(btn=>btn.addEventListener('click',()=>chooseMode(btn.dataset.mode)));
-document.getElementById('coopToggle').addEventListener('change',ev=>{coopRequested=ev.target.checked;chooseMode(gameMode);});
+
 document.getElementById('openChatBtn').addEventListener('click',()=>{if(gameMode==='base')document.getElementById('chatPanel').classList.add('open');});
 document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>document.getElementById(btn.dataset.close).classList.remove('open')));
 document.getElementById('chatForm').addEventListener('submit',ev=>ev.preventDefault());
@@ -240,7 +231,7 @@ async function googleSignIn(){
       }else if(err.code==='auth/popup-closed-by-user'){
         authStatus.textContent='Sign-in window closed before completion.';
       }else{
-        authStatus.textContent='Google linking failed ('+(err.code||'unknown')+'): '+err.message+'. Check that Google sign-in is enabled and this domain is authorised in Firebase Authentication settings.';
+        authStatus.textContent='';
       }
     }
   }else{
@@ -279,15 +270,15 @@ if(FIREBASE_CONFIG && FIREBASE_CONFIG.databaseURL){
       showAuthUser(null);
       // Start as a guest by default so existing players can enter Base World chat without a forced login.
       try{await firebase.auth().signInAnonymously();}
-      catch(err){authStatus.textContent='Guest sign-in failed ('+(err.code||'unknown')+'): '+err.message+'. In Firebase Console, enable Authentication → Sign-in method → Anonymous. Also check API-key restrictions and authorised domains.';}
+      catch(err){authStatus.textContent='';}
     });
     chatConnection.textContent='Firebase connected. Sign in to enable chat.';
   }catch(err){
-    authStatus.textContent='Firebase configuration error: '+err.message;
+    authStatus.textContent='';
     chatConnection.textContent='Firebase config error. Check the web app settings.';
   }
 }else{
-  authStatus.textContent='Firebase is not configured.';
+  authStatus.textContent='';
   chatConnection.textContent='Firebase is not configured. Check the web app settings.';
 }
 
@@ -590,18 +581,19 @@ function gen(){
   level2Spawned=0;
   level2PostBossSpawned=0;
   O=[];G=[];let n=0;
-  while(O.length<22&&n++<600){
-    const x=60+Math.random()*(w-120),y=60+Math.random()*(h-120),t=Math.random()<.6?0:1,r=t?18+Math.random()*14:15;
-    if(Math.hypot(x-w/2,y-h/2)>170&&O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+r+50))O.push({x:x,y:y,r:r,t:t,s:Math.random()*6});
+  const ow=worldW(),oh=worldH(),objectCount=gameMode==='base'?240:22;
+  while(O.length<objectCount&&n++<(gameMode==='base'?12000:600)){
+    const x=60+Math.random()*(ow-120),y=60+Math.random()*(oh-120),t=Math.random()<.6?0:1,r=t?18+Math.random()*14:15;
+    if(Math.hypot(x-(gameMode==='base'?BASE_WORLD_W*.5:w/2),y-(gameMode==='base'?BASE_WORLD_H*.5:h/2))>170&&O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+r+50))O.push({x:x,y:y,r:r,t:t,s:Math.random()*6});
   }
   spawnLevelFruit(0);
-  for(let i=0;i<300;i++)G.push({x:Math.random()*w,y:Math.random()*h,a:Math.random()*.8-.4,l:Math.random()<.4});
+  for(let i=0;i<(gameMode==='base'?6500:300);i++)G.push({x:Math.random()*ow,y:Math.random()*oh,a:Math.random()*.8-.4,l:Math.random()<.4});
 }
 function spawnW(){
   WPN=[];
   [1,2,3].forEach(t=>{
     for(let n=0;n<300;n++){
-      const x=80+Math.random()*(w-160),y=80+Math.random()*(h-160);
+      const x=80+Math.random()*(worldW()-160),y=80+Math.random()*(worldH()-160);
       if(Math.hypot(x-w/2,y-h/2)>120&&O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+45)&&WPN.every(q=>Math.hypot(q.x-x,q.y-y)>150)){WPN.push({x:x,y:y,t:t});break}
     }
   });
@@ -660,7 +652,7 @@ function save(){
   }
 }
 function sz(){c.width=innerWidth;c.height=innerHeight;w=c.width/Z;h=c.height/Z}
-function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:w*.16,y:h*.52}:{x:w/2,y:h/2};gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}spawnW()}
+function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:BASE_WORLD_W*.10,y:BASE_WORLD_H*.58}:{x:w/2,y:h/2};cameraX=0;cameraY=0;gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}spawnW()}
 sz();
 p={x:w/2,y:h/2};m={x:w/2+100,y:h/2};gen();
 onresize=sz;
@@ -806,7 +798,7 @@ usernameInput.oninput=()=>{usernameInput.value=usernameInput.value.replace(/[^a-
 
 /* ---------- input ---------- */
 c.oncontextmenu=q=>q.preventDefault();
-c.onmousemove=q=>{const r=c.getBoundingClientRect();m={x:(q.clientX-r.left)/Z,y:(q.clientY-r.top)/Z}};
+c.onmousemove=q=>{const r=c.getBoundingClientRect();m={x:(q.clientX-r.left)/Z+(gameMode==='base'?cameraX:0),y:(q.clientY-r.top)/Z+(gameMode==='base'?cameraY:0)}};
 c.onmousedown=q=>{if(dead||q.button!=0)return;md=1};
 onmouseup=()=>{md=0};
 onblur=()=>{md=0;k={}};
@@ -844,6 +836,7 @@ function spawnBoss(){
 }
 setInterval(()=>{
   if(dead||bossCutscene>0)return;
+  if(gameMode==='base'&&Math.random()<0.62)return; // Much lower spawn frequency in the open world.
   // Hard cap on simultaneously living zombies; level-specific total spawn limits remain below.
   if(e.reduce((count,z)=>count+(!z.dead?1:0),0)>=30)return;
   if(gameMode==='infinite'&&score>=infiniteNextBossScore&&!e.some(z=>z.boss&&!z.dead)){spawnBoss();return;}
@@ -861,8 +854,16 @@ setInterval(()=>{
   }
 
   const side=Math.random()*4|0;let x,y;
-  if(side==0){x=-40;y=Math.random()*h}else if(side==1){x=w+40;y=Math.random()*h}
-  else if(side==2){x=Math.random()*w;y=-40}else{x=Math.random()*w;y=h+40}
+  if(gameMode==='base'){
+    const pad=100;
+    if(side===0){x=Math.max(25,cameraX-pad);y=cameraY+Math.random()*h;}
+    else if(side===1){x=Math.min(BASE_WORLD_W-25,cameraX+w+pad);y=cameraY+Math.random()*h;}
+    else if(side===2){x=cameraX+Math.random()*w;y=Math.max(25,cameraY-pad);}
+    else{x=cameraX+Math.random()*w;y=Math.min(BASE_WORLD_H-25,cameraY+h+pad);}
+  }else{
+    if(side==0){x=-40;y=Math.random()*h}else if(side==1){x=w+40;y=Math.random()*h}
+    else if(side==2){x=Math.random()*w;y=-40}else{x=Math.random()*w;y=h+40}
+  }
 
   const r=Math.random();
   let ty=score>=10&&r<.2?2:score>=4&&r<.5?1:0;
@@ -915,7 +916,7 @@ setInterval(()=>{
     else if(bossSpawned===2)level2PostBossSpawned++;
   }else if(level===3){level3Spawned++;}
   else if(level===4){level4Spawned++;}
-},1000);
+},gameMode==='base'?2600:1000);
 
 /* ---------- drawing characters ---------- */
 function gun(t){
@@ -1058,10 +1059,11 @@ function zom(q,a){
 function drawWorldBiomes(){
   // Organic, overlapping biome shapes instead of hard-edged square regions.
   const blobs=[
-    {x:w*.20,y:h*.49,rx:w*.31,ry:h*.55,c:'#426d35',label:'SAFE CAMP / GRASSLANDS'},
-    {x:w*.47,y:h*.27,rx:w*.28,ry:h*.43,c:'#78623a',label:'AUTUMN WILDLANDS'},
-    {x:w*.66,y:h*.70,rx:w*.30,ry:h*.40,c:'#273d30',label:'DARK FOREST'},
-    {x:w*.86,y:h*.45,rx:w*.27,ry:h*.60,c:'#54232b',label:'CRIMSON FOREST • HIGH RISK'}
+    {x:BASE_WORLD_W*.15,y:BASE_WORLD_H*.57,rx:BASE_WORLD_W*.27,ry:BASE_WORLD_H*.43,c:'#426d35',label:'GREENHAVEN GRASSLANDS'},
+    {x:BASE_WORLD_W*.30,y:BASE_WORLD_H*.22,rx:BASE_WORLD_W*.24,ry:BASE_WORLD_H*.38,c:'#78623a',label:'AUTUMN WILDLANDS'},
+    {x:BASE_WORLD_W*.49,y:BASE_WORLD_H*.76,rx:BASE_WORLD_W*.27,ry:BASE_WORLD_H*.35,c:'#294b3b',label:'DARK FOREST'},
+    {x:BASE_WORLD_W*.76,y:BASE_WORLD_H*.35,rx:BASE_WORLD_W*.24,ry:BASE_WORLD_H*.38,c:'#b9d5df',label:'FROSTPEAK SNOWFIELDS'},
+    {x:BASE_WORLD_W*.84,y:BASE_WORLD_H*.78,rx:BASE_WORLD_W*.22,ry:BASE_WORLD_H*.33,c:'#54232b',label:'CRIMSON OUTBREAK • HIGH RISK'}
   ];
   blobs.forEach((b,i)=>{
     const grad=g.createRadialGradient(b.x,b.y,Math.min(b.rx,b.ry)*.12,b.x,b.y,Math.max(b.rx,b.ry));
@@ -1070,12 +1072,12 @@ function drawWorldBiomes(){
     g.save();g.globalAlpha=.65;g.fillStyle='#f2f4e8';g.font='bold 12px Arial';g.textAlign='center';g.fillText(b.label,b.x,b.y-b.ry*.42);g.restore();
   });
   // The safe camp is a small, clearly marked pocket to one side of the centre.
-  const sx=w*.16,sy=h*.52,r=Math.min(w,h)*.105;
+  const sx=BASE_WORLD_W*.10,sy=BASE_WORLD_H*.58,r=190;
   g.save();g.fillStyle='rgba(160,220,130,.12)';g.strokeStyle='rgba(190,244,157,.8)';g.lineWidth=2;
   g.beginPath();g.arc(sx,sy,r,0,Math.PI*2);g.fill();g.setLineDash([7,5]);g.stroke();g.setLineDash([]);
   g.fillStyle='#d7f5c7';g.font='bold 11px Arial';g.textAlign='center';g.fillText('SAFE SPAWN',sx,sy-r-9);g.restore();
   // A broken trail leads toward the dangerous central endgame zone.
-  g.save();g.strokeStyle='rgba(224,210,160,.38)';g.lineWidth=5;g.setLineDash([10,13]);g.beginPath();g.moveTo(sx+r,sy);g.bezierCurveTo(w*.36,h*.28,w*.48,h*.8,w*.63,h*.65);g.stroke();g.setLineDash([]);g.restore();
+  g.save();g.strokeStyle='rgba(224,210,160,.38)';g.lineWidth=5;g.setLineDash([10,13]);g.beginPath();g.moveTo(sx+r,sy);g.bezierCurveTo(BASE_WORLD_W*.25,BASE_WORLD_H*.24,BASE_WORLD_W*.38,BASE_WORLD_H*.85,BASE_WORLD_W*.50,BASE_WORLD_H*.70);g.stroke();g.setLineDash([]);g.restore();
 }
 function drawWorldMinimap(){
   const mw=Math.min(205,w*.34),mh=mw*.68,mx=w-mw-15,my=15;
@@ -1084,20 +1086,20 @@ function drawWorldMinimap(){
   g.beginPath();g.roundRect(mx,my,mw,mh,9);g.fill();g.stroke();
   g.save();g.beginPath();g.roundRect(mx+5,my+5,mw-10,mh-10,6);g.clip();
   const regions=[
-    {x:.19,y:.5,rx:.28,ry:.48,c:'#527d3e'}, {x:.44,y:.27,rx:.27,ry:.40,c:'#9b7a43'},
-    {x:.65,y:.69,rx:.28,ry:.36,c:'#294c39'}, {x:.86,y:.45,rx:.25,ry:.55,c:'#792d39'}
+    {x:.15,y:.57,rx:.27,ry:.43,c:'#527d3e'}, {x:.30,y:.22,rx:.24,ry:.38,c:'#9b7a43'},
+    {x:.49,y:.76,rx:.27,ry:.35,c:'#294c39'}, {x:.76,y:.35,rx:.24,ry:.38,c:'#d5e7ec'}, {x:.84,y:.78,rx:.22,ry:.33,c:'#792d39'}
   ];
   regions.forEach((r)=>{g.fillStyle=r.c;g.beginPath();g.ellipse(mx+r.x*mw,my+r.y*mh,r.rx*mw,r.ry*mh,-.2,0,Math.PI*2);g.fill()});
   // Safe zone and biome labels.
-  g.fillStyle='rgba(190,244,157,.16)';g.strokeStyle='#c7f4a5';g.lineWidth=1;g.beginPath();g.arc(mx+mw*.16,my+mh*.52,Math.min(mw,mh)*.095,0,Math.PI*2);g.fill();g.stroke();
+  g.fillStyle='rgba(190,244,157,.16)';g.strokeStyle='#c7f4a5';g.lineWidth=1;g.beginPath();g.arc(mx+mw*.10,my+mh*.58,Math.min(mw,mh)*.055,0,Math.PI*2);g.fill();g.stroke();
   g.font='bold 7px Arial';g.textAlign='center';g.fillStyle='#f0f5e9';
-  g.fillText('GRASS',mx+mw*.18,my+mh*.2);g.fillText('AUTUMN',mx+mw*.44,my+mh*.12);g.fillText('DARK',mx+mw*.65,my+mh*.87);g.fillText('CRIMSON',mx+mw*.84,my+mh*.2);
+  g.fillText('GRASSLANDS',mx+mw*.15,my+mh*.40);g.fillText('AUTUMN',mx+mw*.30,my+mh*.10);g.fillText('DARK',mx+mw*.49,my+mh*.91);g.fillText('SNOW',mx+mw*.76,my+mh*.13);g.fillText('CRIMSON',mx+mw*.83,my+mh*.62);
   // Outbreaks: cluster nearby zombies and draw a small boss marker in each outbreak.
   const clusters=new Map();
-  e.filter(z=>!z.dead).forEach(z=>{const gx=Math.max(0,Math.min(5,Math.floor(z.x/w*6))),gy=Math.max(0,Math.min(3,Math.floor(z.y/h*4))),key=gx+','+gy;if(!clusters.has(key))clusters.set(key,{x:(gx+.5)/6,y:(gy+.5)/4,n:0,boss:false});const q=clusters.get(key);q.n++;if(z.boss)q.boss=true;});
+  e.filter(z=>!z.dead).forEach(z=>{const gx=Math.max(0,Math.min(5,Math.floor(z.x/(gameMode==='base'?BASE_WORLD_W:w)*6))),gy=Math.max(0,Math.min(3,Math.floor(z.y/(gameMode==='base'?BASE_WORLD_H:h)*4))),key=gx+','+gy;if(!clusters.has(key))clusters.set(key,{x:(gx+.5)/6,y:(gy+.5)/4,n:0,boss:false});const q=clusters.get(key);q.n++;if(z.boss)q.boss=true;});
   clusters.forEach(q=>{if(q.n<3&&!q.boss)return;const x=mx+q.x*mw,y=my+q.y*mh;g.fillStyle=q.boss?'#ffdf70':'#ff6b61';g.strokeStyle='#25100f';g.lineWidth=1;g.beginPath();g.arc(x,y,Math.min(7,3+q.n*.35),0,Math.PI*2);g.fill();g.stroke();if(q.boss){g.fillStyle='#fff2bd';g.beginPath();g.arc(x,y,2.1,0,Math.PI*2);g.fill();}});
   // Player marker.
-  const px=mx+Math.max(0,Math.min(1,p.x/w))*mw,py=my+Math.max(0,Math.min(1,p.y/h))*mh;
+  const px=mx+Math.max(0,Math.min(1,p.x/(gameMode==='base'?BASE_WORLD_W:w)))*mw,py=my+Math.max(0,Math.min(1,p.y/(gameMode==='base'?BASE_WORLD_H:h)))*mh;
   g.fillStyle='#ffffff';g.strokeStyle='#142014';g.lineWidth=2;g.beginPath();g.arc(px,py,3.3,0,Math.PI*2);g.fill();g.stroke();
   // Direction arrow along the minimap edge points toward the map centre / crimson endgame.
   const dx=mx+mw-12,dy=my+mh*.52;g.fillStyle='#ffe7a0';g.beginPath();g.moveTo(dx+5,dy);g.lineTo(dx-5,dy-4);g.lineTo(dx-4,dy+4);g.closePath();g.fill();
@@ -1113,9 +1115,16 @@ function game(){
   g.save();
   if(S>0){g.translate((Math.random()-.5)*S,(Math.random()-.5)*S);S*=.88;if(S<.5)S=0}
   g.scale(Z,Z);
+  if(gameMode==='base'){
+    cameraX=Math.max(0,Math.min(BASE_WORLD_W-w,p.x-w/2));
+    cameraY=Math.max(0,Math.min(BASE_WORLD_H-h,p.y-h/2));
+    g.fillStyle='#203b2a';g.fillRect(0,0,w,h);
+    g.translate(-cameraX,-cameraY);
+    g.fillStyle='#203b2a';g.fillRect(cameraX,cameraY,w,h);
+  }
   // Blend the ground palette gradually between biomes instead of snapping to new colours.
   environmentBlend=Math.min(1,environmentBlend+0.012);
-  g.fillStyle=envColour('ground');g.fillRect(-40,-40,w+80,h+80);
+  g.fillStyle=envColour('ground');g.fillRect(gameMode==='base'?0:-40,gameMode==='base'?0:-40,gameMode==='base'?BASE_WORLD_W:w+80,gameMode==='base'?BASE_WORLD_H:h+80);
   if(gameMode==='base') drawWorldBiomes();
   else { g.fillStyle=envColour('tile'); for(let i=0;i<w;i+=70)for(let j=0;j<h;j+=70)g.fillRect(i,j,66,66); }
   if(level===3||level===4){
@@ -1253,8 +1262,8 @@ function game(){
     }
     if(L>0)L=0;
   }
-  p.x=Math.max(20,Math.min(w-20,p.x));
-  p.y=Math.max(20,Math.min(h-20,p.y));
+  p.x=Math.max(20,Math.min(gameMode==='base'?BASE_WORLD_W-20:w-20,p.x));
+  p.y=Math.max(20,Math.min(gameMode==='base'?BASE_WORLD_H-20:h-20,p.y));
   col(p,18);
   if(level===4&&!dead&&fireHitCooldown<=0){
     const fire=firePatches.find(f=>Math.hypot(p.x-f.x,p.y-f.y)<f.r+12);
@@ -1633,6 +1642,7 @@ function game(){
   e=e.filter(q=>!q.dead||(q.removeAt&&q.deathT<q.removeAt)||(!q.removeAt&&level===4&&(q.deathT||0)<222));
   b=b.filter(q=>!q.dead&&q.life>0&&q.x>-20&&q.x<w+20&&q.y>-20&&q.y<h+20);
   if(score>H)H=score;
+  if(gameMode==='base')drawWorldMinimap();
   g.restore();
 
   if(transitionFade>0){
@@ -1657,6 +1667,8 @@ function game(){
     g.textAlign='left';
   }
 
+  // Return to screen coordinates for the HUD while the world camera keeps moving.
+  if(gameMode==='base'){g.restore();g.save();g.scale(Z,Z);}
   // HUD
   g.textAlign='left';
   g.fillStyle='rgba(0,0,0,.5)';g.fillRect(8,8,320,po>0?196:182);
