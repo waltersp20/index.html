@@ -373,8 +373,7 @@ try{
 let playerName='Player';
 try{playerName=localStorage.getItem('zs_name')||'Player'}catch(x){}
 H=SC.length?Math.max(...SC.map(x=>x.score)):0;
-// Initialise the homepage only after H and SC have been initialised.
-refreshHome();
+// Homepage refresh is deferred until the full game state has been initialised.
 
 function pt(x,y,vx,vy,l,col,s,sm){if(P.length>=500)P.shift();P.push({x:x,y:y,vx:vx,vy:vy,life:l,max:l,col:col,s:s,sm:sm})}
 function el(x,y,rx,ry,col,r){g.fillStyle=col;g.beginPath();g.ellipse(x,y,rx,ry,r||0,0,7);g.fill()}
@@ -1712,6 +1711,8 @@ function game(){
   requestAnimationFrame(game);
 }
 game();
+// Render homepage only after every game-state variable and handler exists.
+refreshHome();
 })();
 </script>
 </body>
