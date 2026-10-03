@@ -160,7 +160,7 @@ const startGameBtn=document.getElementById('startGameBtn');
 let gameMode='classic';
 let cameraX=0,cameraY=0;
 const BASE_WORLD_W=9000, BASE_WORLD_H=6200;
-const BASE_ZOOM=1; // Match the original game's field of view; the world itself remains much larger.
+const BASE_ZOOM=5; // Base World uses a genuine 5x camera zoom; the player is rendered at normal scale.
 function worldW(){return gameMode==='base'?BASE_WORLD_W:w;}
 function worldH(){return gameMode==='base'?BASE_WORLD_H:h;}
 let infiniteNextBossScore=75;
@@ -843,9 +843,26 @@ usernameInput.oninput=()=>{usernameInput.value=usernameInput.value.replace(/[^a-
 
 /* ---------- input ---------- */
 c.oncontextmenu=q=>q.preventDefault();
-c.onmousemove=q=>{const r=c.getBoundingClientRect();const sx=(q.clientX-r.left)/Math.max(1,r.width)*w;const sy=(q.clientY-r.top)/Math.max(1,r.height)*h;/* Match the complete render transform: global canvas scale Z, then Base World zoom, then camera translation. */const renderScale=Z*(gameMode==='base'?BASE_ZOOM:1);m={x:sx/renderScale+(gameMode==='base'?cameraX:0),y:sy/renderScale+(gameMode==='base'?cameraY:0)}};
-c.onmousedown=q=>{if(dead||q.button!=0)return;md=1};
-onmouseup=()=>{md=0};
+c.style.touchAction='none';
+function updateMouseWorld(q){
+  const r=c.getBoundingClientRect();
+  // The canvas is drawn with g.scale(Z,Z). Undo that CSS/canvas drawing scale exactly once.
+  // Then invert the Base World camera transform: screen = (world - camera) * BASE_ZOOM.
+  const sx=(q.clientX-r.left)/Math.max(1,r.width)*c.width/Z;
+  const sy=(q.clientY-r.top)/Math.max(1,r.height)*c.height/Z;
+  if(gameMode==='base'){
+    m.x=sx/BASE_ZOOM+cameraX;
+    m.y=sy/BASE_ZOOM+cameraY;
+  }else{
+    m.x=sx; m.y=sy;
+  }
+}
+c.onmousemove=updateMouseWorld;
+c.onpointermove=updateMouseWorld;
+c.onmousedown=q=>{if(dead||q.button!==0)return;md=1;updateMouseWorld(q)};
+c.onpointerdown=q=>{if(dead||q.button!==0)return;md=1;updateMouseWorld(q)};
+window.addEventListener('pointerup',()=>{md=0});
+window.addEventListener('mouseup',()=>{md=0});
 onblur=()=>{md=0;k={}};
 onkeydown=q=>{
   const n=q.key.toLowerCase();
