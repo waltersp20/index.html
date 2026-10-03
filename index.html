@@ -11,17 +11,63 @@
 <meta name="description" content="Play Zombie Shooter, a browser-based survival game. Choose your character, survive waves of zombies, collect supplies, and try to beat your high score. Includes keyboard controls and a local high-score board.">
 <style>html,body{margin:0;height:100%;overflow:hidden;background:#0b0b0b}</style>
 <style>
-/* Responsive side gutters reserved for future ad units and readable game information. */
-.site-rail{position:fixed;top:0;bottom:0;width:150px;box-sizing:border-box;padding:18px 12px;background:#101610;color:#d9e4d4;border-color:#263626;border-style:solid;z-index:5;font:12px/1.5 Arial,sans-serif;overflow:hidden}
-.site-rail.left{left:0;border-width:0 1px 0 0}.site-rail.right{right:0;border-width:0 0 0 1px}
-.site-rail h2{font-size:14px;line-height:1.25;color:#7ccf4a;margin:0 0 8px}.site-rail p{margin:0 0 12px;color:#c2cbbf}
-.ad-space{height:250px;width:100%;box-sizing:border-box;border:1px dashed #40503e;border-radius:5px;display:flex;align-items:center;justify-content:center;text-align:center;color:#7b8978;font-size:11px;margin-top:14px;padding:6px}
-@media(max-width:900px){.site-rail{display:none}}
+:root{color-scheme:dark;--lime:#9be564;--lime2:#5caa37;--panel:#151c18;--line:#344437;--muted:#aab8ad}
+html,body{margin:0;min-height:100%;background:#080d0a;color:#eef5ef;font-family:Arial,Helvetica,sans-serif}
+body{overflow:hidden}
+canvas{z-index:0}
+#homePage{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 0%,rgba(60,103,48,.34),transparent 58%),linear-gradient(135deg,rgba(5,10,7,.97),rgba(10,17,12,.94));opacity:1;visibility:visible;pointer-events:auto;transition:opacity .65s ease,visibility .65s ease}
+#homePage.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.home-layout{width:min(1240px,100%);display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:22px;align-items:stretch;margin:auto}
+.home-main{min-width:0}
+.hero{position:relative;overflow:hidden;border:1px solid #40523e;border-radius:20px;padding:26px 30px 24px;background:linear-gradient(115deg,rgba(26,42,29,.98),rgba(13,20,16,.98));box-shadow:0 24px 70px #0008}
+.hero:after{content:"";position:absolute;width:250px;height:250px;right:-65px;top:-100px;border-radius:50%;border:1px solid #8fc96a25;box-shadow:0 0 0 25px #8fc96a0c,0 0 0 55px #8fc96a08;pointer-events:none}
+.brand-row{display:flex;align-items:center;gap:13px;margin-bottom:12px}.brand-mark{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,#b4f477,#3e782e);color:#10200d;font-size:25px;font-weight:900;box-shadow:0 6px 20px #78bd4b30}
+.eyebrow{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--lime);font-weight:800}
+h1{font-size:clamp(32px,4vw,52px);line-height:.98;letter-spacing:-1.8px;margin:8px 0 12px;max-width:700px}h1 span{color:var(--lime)}
+.lede{font-size:15px;line-height:1.65;color:#c6d1c8;max-width:700px;margin:0}
+.hero-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.pill{border:1px solid #415441;border-radius:999px;padding:7px 11px;font-size:11px;color:#dbe7d8;background:#ffffff06}
+.home-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.82fr);gap:16px;margin-top:16px}
+.panel{background:linear-gradient(145deg,#151d18,#101612);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}.panel h2{font-size:13px;letter-spacing:1.4px;text-transform:uppercase;color:#c9e4bf;margin:0 0 13px}
+.field-label{display:block;color:#c4d0c5;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:7px}.name-row{display:flex;gap:8px}.name-row input{min-width:0;flex:1;background:#090e0b;border:1px solid #465847;border-radius:8px;color:white;padding:11px 12px;font-size:14px;outline:none}.name-row input:focus{border-color:var(--lime)}
+.primary-btn{width:100%;margin-top:13px;padding:14px 16px;border:0;border-radius:9px;background:linear-gradient(135deg,#b2f37b,#79c84d);color:#12200d;font-size:14px;font-weight:900;letter-spacing:1.2px;cursor:pointer;box-shadow:0 7px 22px #74bd4428;transition:transform .15s,filter .15s}.primary-btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
+.char-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.char-option{border:1px solid #3b493c;border-radius:10px;background:#0c120e;color:#dfe9df;padding:12px 5px 10px;cursor:pointer;text-align:center;min-height:83px}.char-option .avatar{width:34px;height:34px;margin:0 auto 8px;border-radius:50%;display:grid;place-items:center;background:#35472d;color:#c8f3a6;font-size:19px}.char-option:nth-child(2) .avatar{background:#542e2d;color:#f1b2a2}.char-option:nth-child(3) .avatar{background:#26384a;color:#b6d5f4}.char-option strong{font-size:10px;letter-spacing:.5px}.char-option.selected{border-color:var(--lime);background:#8bcf4d15;box-shadow:inset 0 0 0 1px #9be56435}
+.score-list{display:grid;gap:5px}.score-row{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12px;padding:6px 7px;border-radius:6px;background:#ffffff05;color:#d8e2d9}.score-row:first-child{color:#f0d58a;background:#d5ad3910}.score-row .rank{color:#839783}.score-row .score{font-weight:800;font-variant-numeric:tabular-nums}.empty-score{font-size:12px;color:#829084;line-height:1.5;padding:8px 2px}
+.personal-best{margin-top:12px;padding-top:11px;border-top:1px solid #2c3a2e;display:flex;justify-content:space-between;font-size:12px;color:#b9c7bb}.personal-best strong{color:var(--lime);font-size:16px}
+.howto{margin-top:16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.howto-item{border:1px solid #28372b;border-radius:10px;padding:11px;background:#0d140f}.howto-item b{display:block;color:#d6edc9;font-size:11px;margin-bottom:4px}.howto-item span{display:block;color:#9eada0;font-size:11px;line-height:1.45}
+.home-rail{display:flex;flex-direction:column;gap:16px;min-width:0}.ad-card{min-height:250px;flex:1;border:1px dashed #40513f;border-radius:16px;background:linear-gradient(160deg,#111812,#0b100c);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px;color:#647465;font-size:11px}.ad-card .ad-label{align-self:flex-start;text-transform:uppercase;letter-spacing:1.5px;font-size:9px;color:#536354;margin-bottom:auto}.side-info{border:1px solid #2e3e30;border-radius:14px;background:#111812;padding:16px}.side-info h3{margin:0 0 8px;color:#b8e99d;font-size:12px;letter-spacing:1px;text-transform:uppercase}.side-info p{margin:0;color:#aebcaf;font-size:12px;line-height:1.6}
+#nameBox{display:none!important}
+@media(max-width:980px){body{overflow:auto}#homePage{align-items:flex-start;padding:14px}.home-layout{grid-template-columns:minmax(0,1fr)}.home-rail{display:none}.hero{padding:22px}.home-content{grid-template-columns:minmax(0,1fr) minmax(230px,.8fr)}}
+@media(max-width:620px){.home-content{grid-template-columns:1fr}.howto{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:19px}.panel{padding:15px}#homePage{padding:10px}.home-layout{gap:12px}}
 </style>
 </head>
 <body>
-<aside class="site-rail left" aria-label="About Zombie Shooter"><h2>ZOMBIE SHOOTER</h2><p>Survive waves of zombies, collect weapons and supplies, and see how long you can last.</p><p>Choose a survivor on the start screen. Your score and best run are shown when you return here.</p><div class="ad-space" aria-label="Reserved advertising space">Ad space</div></aside>
-<aside class="site-rail right" aria-label="Game controls"><h2>HOW TO PLAY</h2><p><b>WASD</b> — Move</p><p><b>Mouse</b> — Aim and fire</p><p><b>E</b> — Swap weapon</p><p><b>B</b> — Build a wall</p><p><b>F</b> — Eat apple</p><p><b>G</b> — Eat pear</p><div class="ad-space" aria-label="Reserved advertising space">Ad space</div></aside>
+<main id="homePage" aria-label="Zombie Shooter homepage">
+  <div class="home-layout">
+    <div class="home-main">
+      <header class="hero">
+        <div class="brand-row"><div class="brand-mark" aria-hidden="true">Z</div><div><div class="eyebrow">Browser survival game</div><div style="font-size:12px;color:#a8b9a8;margin-top:4px">A survival challenge by Walter</div></div></div>
+        <h1>THE FOREST IS <span>INFESTED.</span></h1>
+        <p class="lede">Enter a hostile forest, survive increasingly dangerous waves, collect supplies and see how high you can push your score. Every run is different — how long can you last?</p>
+        <div class="hero-pills"><span class="pill">4 evolving environments</span><span class="pill">Survival & high scores</span><span class="pill">Free browser game</span></div>
+      </header>
+      <div class="home-content">
+        <section class="panel" aria-labelledby="play-heading">
+          <h2 id="play-heading">Prepare for your run</h2>
+          <label class="field-label" for="homeUsername">YOUR USERNAME</label>
+          <div class="name-row"><input id="homeUsername" maxlength="16" placeholder="Enter username" autocomplete="nickname"><button id="saveHomeName" type="button" style="padding:0 12px;border:1px solid #465847;border-radius:8px;background:#202d22;color:#d8f0ce;font-weight:700;cursor:pointer">Save</button></div>
+          <div class="field-label" style="margin-top:16px">CHOOSE YOUR SURVIVOR</div>
+          <div class="char-grid"><button class="char-option selected" data-char="0" type="button"><span class="avatar">♟</span><strong>SOLDIER</strong></button><button class="char-option" data-char="1" type="button"><span class="avatar">♟</span><strong>SURVIVOR</strong></button><button class="char-option" data-char="2" type="button"><span class="avatar">♟</span><strong>SWAT</strong></button></div>
+          <button id="startGameBtn" class="primary-btn" type="button">▶ &nbsp; START SURVIVING</button>
+          <div style="margin-top:9px;text-align:center;color:#829183;font-size:10px">Choose a character, then start your run.</div>
+        </section>
+        <section class="panel" aria-labelledby="score-heading"><h2 id="score-heading">Hall of survival</h2><div id="homeScoreList" class="score-list"><div class="empty-score">Your best runs will appear here.</div></div><div class="personal-best"><span>YOUR PERSONAL BEST</span><strong id="homeBest">0</strong></div><p style="font-size:10px;color:#77877a;line-height:1.45;margin:10px 0 0">Scores are saved in this browser on this device.</p></section>
+      </div>
+      <section class="howto" aria-label="How to play"><div class="howto-item"><b>MOVE</b><span>W A S D or arrow keys</span></div><div class="howto-item"><b>AIM & FIRE</b><span>Use your mouse to aim and click to fire</span></div><div class="howto-item"><b>SUPPLIES</b><span>Collect apples to heal and pears for a burst</span></div><div class="howto-item"><b>BUILD</b><span>Hold B and release to place a wall</span></div></section>
+    </div>
+    <aside class="home-rail" aria-label="Additional information"><div class="ad-card"><span class="ad-label">Advertisement</span><span>Ad space</span><span style="margin-top:8px;max-width:170px;line-height:1.5">A place for a future display ad</span></div><div class="side-info"><h3>Survive the changes</h3><p>Travel from green grasslands into autumn woods, a dark forest and the crimson endgame. Watch your health, use supplies carefully and keep moving.</p></div><div class="side-info"><h3>About this game</h3><p>Zombie Shooter is a free, keyboard-and-mouse browser game. Scores are stored locally and aren't shared between visitors.</p></div></aside>
+  </div>
+</main>
+
 <script>
 (()=>{
 const c=document.createElement('canvas');
@@ -40,6 +86,39 @@ reviveBox.innerHTML='<div id=\"reviveTitle\" style=\"font-size:24px;font-weight:
 document.body.appendChild(reviveBox);
 const usernameInput=document.getElementById('usernameInput');
 const saveUsernameBtn=document.getElementById('saveUsername');
+const homePage=document.getElementById('homePage');
+const homeUsername=document.getElementById('homeUsername');
+const homeScoreList=document.getElementById('homeScoreList');
+const homeBest=document.getElementById('homeBest');
+const startGameBtn=document.getElementById('startGameBtn');
+const saveHomeNameBtn=document.getElementById('saveHomeName');
+function refreshHome(){
+  homeBest.textContent=String(H||0);
+  homeScoreList.innerHTML='';
+  if(!SC.length){homeScoreList.innerHTML='<div class="empty-score">No scores yet. Be the first to make the leaderboard.</div>';return;}
+  SC.slice(0,10).forEach((row,i)=>{
+    const item=document.createElement('div');item.className='score-row';
+    const rank=document.createElement('span');rank.className='rank';rank.textContent=String(i+1).padStart(2,'0');
+    const name=document.createElement('span');name.textContent=row.name;
+    const points=document.createElement('span');points.className='score';points.textContent=String(row.score);
+    item.append(rank,name,points);homeScoreList.appendChild(item);
+  });
+}
+function setHomeName(){
+  let n=homeUsername.value.trim().replace(/[^a-zA-Z0-9 _-]/g,'').slice(0,16);
+  playerName=n||'Player';
+  try{localStorage.setItem('zs_name',playerName)}catch(x){}
+  usernameInput.value=playerName;homeUsername.value=playerName;
+  refreshHome();
+}
+saveHomeNameBtn.onclick=setHomeName;
+homeUsername.addEventListener('keydown',q=>{if(q.key==='Enter'){q.preventDefault();setHomeName();}});
+document.querySelectorAll('.char-option').forEach(btn=>btn.addEventListener('click',()=>{
+  ci=Number(btn.dataset.char);
+  document.querySelectorAll('.char-option').forEach(b=>b.classList.toggle('selected',b===btn));
+}));
+startGameBtn.onclick=()=>{setHomeName();rs();};
+refreshHome();
 const watchAdBtn=document.getElementById('watchAdBtn');
 const skipAdBtn=document.getElementById('skipAdBtn');
 const reviveTitle=document.getElementById('reviveTitle');
@@ -521,7 +600,7 @@ onkeydown=q=>{
   if(n.indexOf('arrow')==0||n==' ')q.preventDefault();
   k[n]=1;
   if(n=='b'&&!q.repeat&&!dead){buildHeld=1;}
-  if(dead){if(n>='1'&&n<='3'){ci=n-1;rs()}else if(n=='enter'||n==' ')rs();return}
+  if(dead){if(document.activeElement===homeUsername)return;if(n>='1'&&n<='3'){ci=n-1;document.querySelectorAll('.char-option').forEach(b=>b.classList.toggle('selected',Number(b.dataset.char)===ci));}else if(n=='enter'||n==' ')rs();return}
   if(n=='e'&&!q.repeat&&L<=0){for(let i=1;i<=6;i++){const t=(wp+i)%6;if(own[t]){wp=t;break}}}
   if(n=='f'&&!q.repeat)eatApple();
   if(n=='g'&&!q.repeat)eatPear();
@@ -531,11 +610,7 @@ onkeyup=q=>{
   k[n]=0;
   if(n=='b'&&buildHeld){buildHeld=0;if(buildPreview&&canBuild(buildPreview)){BLD.push(buildPreview);wallCharges--;buildPreview=null}else buildPreview=null;}
 };
-c.onclick=q=>{
-  if(!dead)return;
-  const r=c.getBoundingClientRect(),mx=q.clientX-r.left,my=q.clientY-r.top,cy=c.height/2,bx=c.width/2-325;
-  for(let i=0;i<3;i++){const x=bx+i*150;if(mx>x&&mx<x+130&&my>cy-40&&my<cy+90){ci=i;rs()}}
-};
+c.onclick=q=>{if(!dead&&q.button===0){} };
 
 /* ---------- zombie spawning (3 types) ---------- */
 function spawnBoss(){
@@ -1333,46 +1408,17 @@ function game(){
     g.textAlign='left';
   }
 
-  // start screen / death screen
-  nameBox.style.display=dead?'flex':'none';
-  if(dead==2)hideRevivePopup();
-  if(dead){
-    const st=dead==2,cy=c.height/2,cx=c.width/2-110,bx=cx-215;
-    g.fillStyle='rgba(0,0,0,.78)';g.fillRect(0,0,c.width,c.height);
-    g.textAlign='center';
-    g.fillStyle=st?'#7ccf4a':'#c0392b';g.font='bold 44px Arial';g.fillText(st?'ZOMBIE SHOOTER':'YOU DIED',cx,cy-130);
-    g.fillStyle='white';g.font='20px Arial';
-    g.fillText(st?'You start with a pistol. Find guns, apples and build walls around trees!':'SCORE: '+score+'   BEST: '+H+(score>0&&score==H?'  (NEW BEST!)':''),cx,cy-92);
-    g.fillStyle='#aaa';g.font='14px Arial';g.fillText('CHOOSE YOUR SURVIVOR',cx,cy-62);
-    for(let i=0;i<3;i++){
-      const x=bx+i*150,y=cy-40;
-      g.fillStyle=i==ci?'rgba(255,212,0,.15)':'rgba(255,255,255,.07)';g.fillRect(x,y,130,130);
-      g.strokeStyle=i==ci?'#ffd400':'#555';g.lineWidth=2;g.strokeRect(x,y,130,130);
-      human(x+50,y+55,0,CH[i],fr*.2,1.5,0,0);
-      g.textAlign='center';g.fillStyle='white';g.font='bold 14px Arial';g.fillText(CH[i].n,x+65,y+120);
-      g.textAlign='left';g.fillStyle='#888';g.font='12px Arial';g.fillText('['+(i+1)+']',x+6,y+16);
-    }
-    g.textAlign='center';g.fillStyle='white';g.font='16px Arial';
-    g.fillText(st?'ENTER YOUR USERNAME ABOVE, THEN CLICK A SURVIVOR':'CLICK A SURVIVOR OR PRESS 1 / 2 / 3 TO RESTART',cx,cy+120);
-    g.fillStyle='#aaa';g.font='13px Arial';g.fillText('ENTER = PLAY AS '+CH[ci].n,cx,cy+144);
-    g.fillStyle='#7ccf4a';g.font='bold 13px Arial';g.fillText('USERNAME: '+playerName+'  (reload page to change)',cx,cy+166);
-    // scoreboard
-    const x0=cx+240,y0=cy-140;
-    const hl=!st&&SC.findIndex(q=>q.name===playerName&&q.score===score);
-    g.fillStyle='rgba(255,255,255,.07)';g.fillRect(x0,y0,260,290);
-    g.strokeStyle='#555';g.lineWidth=2;g.strokeRect(x0,y0,260,290);
-    g.textAlign='center';g.fillStyle='#ffd400';g.font='bold 16px Arial';g.fillText('TOP 10 SCORES',x0+130,y0+24);
-    g.font='14px Arial';
-    for(let i=0;i<10;i++){
-      const row=SC[i];
-      g.fillStyle=i==hl?'#ffd400':'white';
-      g.textAlign='left';g.fillText((i+1)+'.',x0+12,y0+52+i*22);
-      g.fillText(row?row.name:'-',x0+38,y0+52+i*22);
-      g.textAlign='right';g.fillText(row?row.score:'-',x0+242,y0+52+i*22);
-    }
-    g.textAlign='center';g.fillStyle='#7ccf4a';g.font='bold 15px Arial';g.fillText('YOUR BEST: '+H,x0+130,y0+278);
-    g.textAlign='left';
+  // The accessible HTML homepage is shown for both first launch and after death.
+  nameBox.style.display='none';
+  const showHome=dead!==0;
+  const wasHomeVisible=!homePage.classList.contains('hidden');
+  homePage.classList.toggle('hidden',!showHome);
+  if(showHome&&!wasHomeVisible){
+    homeUsername.value=playerName;
+    refreshHome();
   }
+  if(showHome&&dead==2)hideRevivePopup();
+
   requestAnimationFrame(game);
 }
 game();
