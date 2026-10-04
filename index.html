@@ -397,8 +397,8 @@ watchAdBtn.onclick=()=>{
 };
 skipAdBtn.onclick=()=>{hideRevivePopup();save()};
 const Z=.8;
-const WN=['PISTOL','SHOTGUN','ROCKET LAUNCHER','SMG','HOMING GUN','VOID ORB'];
-let w=0,h=0,p={x:0,y:0},e=[],b=[],k={},score=0,H=0,dead=2,R=[],X=[],VORTEX=[],P=[],F=[],D=[],S=0,rc=0,L=0,T=0,fl=0,wk=0,fr=0,ci=0,md=0,m={x:0,y:0},wp=0,cd=0,BLD=[],WPN=[],own=[1,0,0,0,0,0],SC=[],po=0,O=[],G=[],hp=100,ih=0,apples=[],appleCount=0,pears=[],pearCount=0,AEX=[],buildHeld=0,buildPreview=null,gunMult=[1,1,1,1,1,1],upgrades=[],nextUpgrade=20,level=1,levelBanner=0,transitionFade=0,environmentBlend=1,environmentFromLevel=1,totalSpawned=0,level2Kills=0,bossSpawned=0,bossCutscene=0,level2Spawned=0,level2PostBossSpawned=0,level2PostBossKills=0,level3Spawned=0,level3Kills=0,level4Spawned=0,level4Kills=0,firePatches=[],fireHitCooldown=0,halfHealthBlastUsed=false,reviveUsed=false,reviveTimer=0,scoreSaved=false,wallCharges=5,stone=0,pickaxe=true,miningCooldown=0,miningAnim=0,buildMaterial='wood';
+const WN=['PISTOL','SHOTGUN','ROCKET LAUNCHER','SMG','HOMING GUN','VOID ORB','PICKAXE'];
+let w=0,h=0,p={x:0,y:0},e=[],b=[],k={},score=0,H=0,dead=2,R=[],X=[],VORTEX=[],P=[],F=[],D=[],S=0,rc=0,L=0,T=0,fl=0,wk=0,fr=0,ci=0,md=0,m={x:0,y:0},wp=0,cd=0,BLD=[],WPN=[],own=[1,0,0,0,0,0,1],SC=[],po=0,O=[],G=[],hp=100,ih=0,apples=[],appleCount=0,pears=[],pearCount=0,AEX=[],buildHeld=0,buildPreview=null,gunMult=[1,1,1,1,1,1],upgrades=[],nextUpgrade=20,level=1,levelBanner=0,transitionFade=0,environmentBlend=1,environmentFromLevel=1,totalSpawned=0,level2Kills=0,bossSpawned=0,bossCutscene=0,level2Spawned=0,level2PostBossSpawned=0,level2PostBossKills=0,level3Spawned=0,level3Kills=0,level4Spawned=0,level4Kills=0,firePatches=[],fireHitCooldown=0,halfHealthBlastUsed=false,reviveUsed=false,reviveTimer=0,scoreSaved=false,wallCharges=5,stone=0,pickaxe=true,miningCooldown=0,miningAnim=0,buildMaterial='wood';
 const CH=[
 {n:'SOLDIER',shirt:'#4b5a32',vest:'#3a4526',pants:'#3b4028',helm:'#3d4a2a',skin:'#e0ac82',boot:'#1a1a1a'},
 {n:'SURVIVOR',shirt:'#8e2b2b',pants:'#2f4a6b',hair:'#5a3a1e',skin:'#f0c39a',pack:'#5d4a2f',boot:'#3b2a1a'},
@@ -618,6 +618,7 @@ function activateLevel4(){
     firePatches.push({x,y,r:20+Math.random()*13,phase:Math.random()*6.28});
   }
   for(let i=0;i<500;i++)G.push({x:Math.random()*w,y:Math.random()*h,a:Math.random()*.8-.4,l:Math.random()<.7});
+  spawnW();
 }
 
 function col(q,r){O.filter(o=>!o.dead).forEach(o=>{const dx=q.x-o.x,dy=q.y-o.y,d=Math.hypot(dx,dy),mm=o.r+r;if(d<mm&&d>0){q.x=o.x+dx/d*mm;q.y=o.y+dy/d*mm}})}
@@ -638,27 +639,57 @@ function gen(){
 }
 function spawnW(){
   WPN=[];
+
+  // Classic/Infinite and Massiva/Base World use completely separate weapon pickups.
+  // Classic keeps the original ground-gun system: the three starter pickups are
+  // guaranteed to be placed around the player every time a classic run starts.
+  if(gameMode!=='base'){
+    const classicTypes=[1,2,3]; // shotgun, rocket, SMG
+    classicTypes.forEach((t,index)=>{
+      let placed=false;
+      const preferredAngles=[-Math.PI/2,Math.PI/2,Math.PI];
+      for(let n=0;n<300&&!placed;n++){
+        const a=preferredAngles[index]+(Math.random()-.5)*.45;
+        const dist=105+Math.random()*55;
+        const x=Math.max(55,Math.min(worldW()-55,p.x+Math.cos(a)*dist));
+        const y=Math.max(55,Math.min(worldH()-55,p.y+Math.sin(a)*dist));
+        if(
+          Math.hypot(x-p.x,y-p.y)>85 &&
+          O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+35) &&
+          WPN.every(q=>Math.hypot(q.x-x,q.y-y)>100)
+        ){
+          WPN.push({x,y,t,got:0,opened:0,ground:1});
+          placed=true;
+        }
+      }
+      // Absolute fallback: guarantee the pickup exists even on an unusually crowded map.
+      if(!placed){
+        const a=preferredAngles[index];
+        WPN.push({
+          x:Math.max(50,Math.min(worldW()-50,p.x+Math.cos(a)*120)),
+          y:Math.max(50,Math.min(worldH()-50,p.y+Math.sin(a)*120)),
+          t,got:0,opened:0,ground:1
+        });
+      }
+    });
+    return;
+  }
+
+  // Massiva/Base World keeps its separate crate system. Weapons are placed
+  // inside the pre-existing enclosed structures rather than on the open ground.
   [1,2,3].forEach((t,index)=>{
-    if(gameMode==='base'){
-      // Each weapon crate is placed inside a fixed landmark structure, not in open wilderness.
-      const available=BASE_STRUCTURES.filter(st=>st.kind!=='ruins'||t!==1);
-      const structure=available[(index+Math.floor(Math.random()*available.length))%available.length];
-      const x=structure.x+(Math.random()-.5)*structure.w*.46;
-      const y=structure.y+(Math.random()-.5)*structure.h*.38;
-      WPN.push({x,y,t,structureId:structure.id,got:0,opened:0});
-      return;
-    }
-    for(let n=0;n<300;n++){
-      const x=80+Math.random()*(worldW()-160),y=80+Math.random()*(worldH()-160);
-      if(Math.hypot(x-w/2,y-h/2)>120&&O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+45)&&WPN.every(q=>Math.hypot(q.x-x,q.y-y)>150)){WPN.push({x:x,y:y,t:t});break}
-    }
+    const available=BASE_STRUCTURES.filter(st=>st.kind!=='ruins'||t!==1);
+    const structure=available[(index+Math.floor(Math.random()*available.length))%available.length];
+    const x=structure.x+(Math.random()-.5)*structure.w*.46;
+    const y=structure.y+(Math.random()-.5)*structure.h*.38;
+    WPN.push({x,y,t,structureId:structure.id,got:0,opened:0,ground:0});
   });
 }
 
 function spawnUpgrade(){
   const owned=[];
   for(let i=0;i<6;i++){
-    if(own[i]&&gunMult[i]<2)owned.push(i);
+    if(own[i])owned.push(i);
   }
   if(!owned.length)return false;
 
@@ -708,7 +739,7 @@ function save(){
   }
 }
 function sz(){c.width=innerWidth;c.height=innerHeight;w=c.width/Z;h=c.height/Z}
-function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;stone=0;buildMaterial='wood';miningCooldown=0;miningAnim=0;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:BASE_WORLD_W*.12,y:BASE_WORLD_H*.48}:{x:w/2,y:h/2};cameraX=0;cameraY=0;gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}resetBaseStructures();spawnW()}
+function rs(){baseSpawnClock=0;baseBiomeLast.autumn=-10000;baseBiomeLast.blackwood=-10000;baseBiomeLast.snow=-10000;baseBiomeLast.crimson=-10000;infiniteNextBossScore=75;wp=0;cd=0;own=[1,0,0,0,0,0,1];gunMult=[1,1,1,1,1,1];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;stone=0;buildMaterial='wood';miningCooldown=0;miningAnim=0;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:BASE_WORLD_W*.12,y:BASE_WORLD_H*.48}:{x:w/2,y:h/2};cameraX=0;cameraY=0;gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}resetBaseStructures();spawnW()}
 sz();
 p={x:w/2,y:h/2};m={x:w/2+100,y:h/2};gen();
 onresize=sz;
@@ -889,15 +920,17 @@ onkeydown=q=>{
   if(n=='v'&&!q.repeat&&!dead&&gameMode==='base'){buildMaterial=buildMaterial==='wood'?'stone':'wood';}
   if(n=='e'&&!q.repeat&&L<=0){
     if(gameMode==='base'&&toggleNearbyDoor()) return;
-    const rock=gameMode==='base'?O.filter(o=>o.t===1).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
-    if(rock&&Math.hypot(rock.x-p.x,rock.y-p.y)<68){
+    const rock=gameMode==='base'?O.filter(o=>o.t===1&&!o.dead).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
+    if(wp===6 && rock && Math.hypot(rock.x-p.x,rock.y-p.y)<68){
       if(miningCooldown<=0){rock.mineHits=(rock.mineHits||0)+1;stone+=2+Math.floor(Math.random()*3);miningCooldown=12;miningAnim=10;for(let i=0;i<7;i++)pt(rock.x,rock.y,(Math.random()-.5)*4,(Math.random()-.5)*4,18,'#aeb4b0',2,0);if(rock.mineHits>=5)rock.dead=1;}
     }else{
-    const crate=gameMode==='base'?WPN.filter(v=>!v.got&&!v.opened).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
-    if(crate&&Math.hypot(crate.x-p.x,crate.y-p.y)<78){
-      crate.opened=1;crate.got=1;own[crate.t]=1;wp=crate.t;fl=0;
-      for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(crate.x,crate.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#ffd36b',2+Math.random()*2,0)}
-    }else{for(let i=1;i<=6;i++){const t=(wp+i)%6;if(own[t]){wp=t;break}}}
+    const pickup=WPN.filter(v=>!v.got&&!v.opened).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]||null;
+    if(pickup&&Math.hypot(pickup.x-p.x,pickup.y-p.y)<78){
+      pickup.opened=1;pickup.got=1;own[pickup.t]=1;wp=pickup.t;fl=0;
+      if(gameMode==='base'){
+        for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(pickup.x,pickup.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#ffd36b',2+Math.random()*2,0)}
+      }
+    }else{for(let i=1;i<=7;i++){const t=(wp+i)%7;if(own[t]){wp=t;break}}}
     }
   }
   if(n=='f'&&!q.repeat)eatApple();
@@ -925,9 +958,52 @@ function spawnBoss(){
   }
   e.push({x:x,y:y,ty:3,hp:180,mh:180,ar:90,wk:0,sv:.35,sh:'#4a3828',sk:'#b79b72',boss:1});
 }
+let baseSpawnClock=0;
+const baseBiomeLast={autumn:-10000,blackwood:-10000,snow:-10000,crimson:-10000};
+function baseBiomeShape(key){
+  const map={
+    autumn:{x:.34,y:.20,rx:.34,ry:.35,seed:7},
+    blackwood:{x:.51,y:.52,rx:.34,ry:.40,seed:13},
+    snow:{x:.78,y:.27,rx:.30,ry:.38,seed:21},
+    crimson:{x:.80,y:.78,rx:.31,ry:.34,seed:33}
+  }; return map[key];
+}
+function pointInBaseBiome(key){
+  const r=baseBiomeShape(key);for(let n=0;n<300;n++){
+    const a=Math.random()*Math.PI*2,rad=Math.sqrt(Math.random())*.88;
+    const wob=1+.105*Math.sin(a*3+r.seed)+.075*Math.sin(a*5+r.seed*1.7)+.045*Math.sin(a*9+r.seed*.7);
+    const x=(r.x+Math.cos(a)*r.rx*rad*wob)*BASE_WORLD_W;
+    const y=(r.y+Math.sin(a)*r.ry*rad*wob)*BASE_WORLD_H;
+    if(x>40&&x<BASE_WORLD_W-40&&y>40&&y<BASE_WORLD_H-40&&Math.hypot(x-p.x,y-p.y)>260)return {x,y};
+  } return {x:BASE_WORLD_W*.5,y:BASE_WORLD_H*.5};
+}
+function spawnBaseAmbient(key){
+  if(e.filter(z=>!z.dead).length>=30)return;
+  const pos=pointInBaseBiome(key),r=Math.random();
+  let ty=0;
+  if(key==='crimson')ty=r<.42?5:r<.72?4:0;
+  else if(key==='snow')ty=r<.28?1:r<.48?4:0;
+  else if(key==='blackwood')ty=r<.30?2:r<.45?5:0;
+  else ty=r<.20?1:0;
+  let sh=SH[Math.random()*SH.length|0],sk=SK[Math.random()*SK.length|0],hp=1,sv=.85+Math.random()*.25;
+  if(ty===1){sh='#5a5a6a';sk='#c9d0b8';hp=1;sv=1.55;}
+  if(ty===2){sh='#197a2b';sk='#8eea4f';hp=2;sv=.8;}
+  if(ty===4){sh='#7b4b2a';sk='#c58b58';hp=6;sv=.58;}
+  if(ty===5){sh='#50375f';sk='#80628f';hp=4;sv=1.4;}
+  e.push({x:pos.x,y:pos.y,ty,hp,mh:hp,ar:70,wk:Math.random()*6,sv,sh,sk,emerge:54,emergeMax:54});
+  totalSpawned++;
+}
 setInterval(()=>{
   if(dead||bossCutscene>0)return;
-  if(gameMode==='base'&&Math.random()<0.97)return; // Very rare ambient spawns in the open world.
+  if(gameMode==='base'){
+    baseSpawnClock+=1;
+    const now=baseSpawnClock;
+    if(now-baseBiomeLast.autumn>=10){baseBiomeLast.autumn=now;spawnBaseAmbient('autumn');}
+    if(now-baseBiomeLast.blackwood>=10){baseBiomeLast.blackwood=now;spawnBaseAmbient('blackwood');}
+    if(now-baseBiomeLast.snow>=5){baseBiomeLast.snow=now;spawnBaseAmbient('snow');}
+    if(now-baseBiomeLast.crimson>=3){baseBiomeLast.crimson=now;spawnBaseAmbient('crimson');}
+    return;
+  }
   // Hard cap on simultaneously living zombies; level-specific total spawn limits remain below.
   if(e.reduce((count,z)=>count+(!z.dead?1:0),0)>=30)return;
   if(gameMode==='infinite'&&score>=infiniteNextBossScore&&!e.some(z=>z.boss&&!z.dead)){spawnBoss();return;}
@@ -1000,7 +1076,7 @@ setInterval(()=>{
   if(level===3&&ty!==5){sh='#292d29';sk='#555d50';hp=Math.ceil(hp*1.25);sv*=1.08;}
   if(level===4){sh='#351719';sk='#8d6260';hp=Math.ceil(hp*1.35);sv*=1.08;}
 
-  e.push({x:x,y:y,ty:ty,hp:hp,mh:hp,ar:70+Math.min(60,score),wk:Math.random()*6,sv:sv,sh:sh,sk:sk});
+  e.push({x:x,y:y,ty:ty,hp:hp,mh:hp,ar:70+Math.min(60,score),wk:Math.random()*6,sv:sv,sh:sh,sk:sk,emerge:54,emergeMax:54});
   totalSpawned++;
   if(level==2){
     if(bossSpawned===0)level2Spawned++;
@@ -1039,7 +1115,14 @@ function human(x,y,a,ch,wk,s,L,fl){
   if(ch.vest){el(0,0,7,13.5,ch.vest);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(2,-9,4,5);g.fillRect(2,4,4,5)}
   g.lineCap='round';g.lineWidth=6;g.strokeStyle=ch.shirt;
   g.beginPath();g.moveTo(1,-15);g.lineTo(22,-3);g.moveTo(1,15);g.lineTo(17,4);g.stroke();
-  if(L>0){
+  if(L===6){
+    const swing=miningAnim>0?Math.sin((1-miningAnim/10)*Math.PI)*.9:0;
+    g.save();g.translate(15,1);g.rotate(-.55+swing);
+    g.strokeStyle='#5a3b25';g.lineWidth=5;g.beginPath();g.moveTo(0,16);g.lineTo(0,-10);g.stroke();
+    g.strokeStyle='#777b80';g.lineWidth=4;g.beginPath();g.moveTo(-10,-10);g.quadraticCurveTo(0,-15,10,-10);g.stroke();
+    g.strokeStyle='#b5b9bc';g.lineWidth=2;g.beginPath();g.moveTo(-9,-10);g.quadraticCurveTo(0,-13,9,-10);g.stroke();
+    g.fillStyle='#3d2a1c';g.fillRect(-3,7,6,4);g.restore();
+  }else if(L===2){
     g.fillStyle='#4b5320';g.fillRect(-8,-5,42,10);
     g.fillStyle='#2a2a2a';g.fillRect(-11,-6.5,5,13);
     g.fillStyle='#c0392b';g.beginPath();g.moveTo(34,-5);g.lineTo(44,0);g.lineTo(34,5);g.fill();
@@ -1218,6 +1301,32 @@ function makeBaseStructureDoors(){
 }
 let STATIC_WALLS=[];
 let DOORS=[];
+function drawWall(q){
+  const ux=Math.cos(q.a),uy=Math.sin(q.a),vx=-uy,vy=ux;
+  const x1=q.x-ux*q.len/2, y1=q.y-uy*q.len/2, x2=q.x+ux*q.len/2, y2=q.y+uy*q.len/2;
+  g.save();
+  g.translate(0,0);
+  g.beginPath();
+  g.moveTo(x1-vx*q.th/2,y1-vy*q.th/2);g.lineTo(x2-vx*q.th/2,y2-vy*q.th/2);g.lineTo(x2+vx*q.th/2,y2+vy*q.th/2);g.lineTo(x1+vx*q.th/2,y1+vy*q.th/2);g.closePath();
+  g.fillStyle=q.mat==='stone'?'#74777a':'#704521';g.fill();
+  g.strokeStyle=q.mat==='stone'?'#383b3e':'#2d190d';g.lineWidth=3;g.stroke();
+  if(q.mat==='stone'){
+    g.strokeStyle='rgba(205,210,210,.28)';g.lineWidth=1.5;
+    for(let t=-q.len/2+12;t<q.len/2;t+=28){const ax=q.x+ux*t-vx*q.th*.42,ay=q.y+uy*t-vy*q.th*.42,bx=q.x+ux*t+vx*q.th*.42,by=q.y+uy*t+vy*q.th*.42;g.beginPath();g.moveTo(ax,ay);g.lineTo(bx,by);g.stroke();}
+  }else{
+    g.strokeStyle='rgba(190,125,55,.38)';g.lineWidth=2;
+    for(let t=-q.len/2+10;t<q.len/2;t+=24){g.beginPath();g.moveTo(q.x+ux*t-vx*q.th*.43,q.y+uy*t-vy*q.th*.43);g.lineTo(q.x+ux*t+vx*q.th*.43,q.y+uy*t+vy*q.th*.43);g.stroke();}
+  }
+  if(q.mhp){
+    const f=Math.max(0,Math.min(1,q.hp/q.mhp));
+    if(f<.999){g.fillStyle='rgba(0,0,0,.7)';g.fillRect(q.x-30,q.y-q.th/2-9,60,5);g.fillStyle=q.mat==='stone'?'#b8c0c5':'#d28a42';g.fillRect(q.x-30,q.y-q.th/2-9,60*f,5);}
+  }
+  g.restore();
+}
+function resetBaseStructures(){
+  STATIC_WALLS=makeBaseStructureWalls();
+  DOORS=makeBaseStructureDoors();
+}
 function drawDoor(d){
   const ux=Math.cos(d.a),uy=Math.sin(d.a),vx=-uy,vy=ux;
   g.save();
@@ -1246,7 +1355,7 @@ function drawBaseStructures(){
     const x=b.x-b.w/2,y=b.y-b.h/2;
     g.save();
     g.fillStyle=b.kind==='lab'?'#3b272b':b.kind==='ruins'?'#30352f':b.kind==='outpost'?'#3d4139':'#4b4437';
-    g.fillRect(x+5,y+5,b.w-10,b.h-10);
+    g.fillRect(x+10,y+10,b.w-20,b.h-20);
     g.strokeStyle='rgba(18,17,14,.55)';g.lineWidth=4;g.strokeRect(x+5,y+5,b.w-10,b.h-10);
     // Room floors and furniture make the interior readable without changing the collision walls.
     g.strokeStyle='rgba(210,195,165,.14)';g.lineWidth=3;
@@ -1349,8 +1458,10 @@ function game(){
   g.scale(Z,Z);
   if(gameMode==='base'){
     const viewW=w/(Z*BASE_ZOOM),viewH=h/(Z*BASE_ZOOM);
-    cameraX=Math.max(0,Math.min(BASE_WORLD_W-viewW,p.x-viewW/2));
-    cameraY=Math.max(0,Math.min(BASE_WORLD_H-viewH,p.y-viewH/2));
+    const targetCameraX=p.x-viewW/2;
+    const targetCameraY=p.y-viewH/2;
+    cameraX=Math.max(0,Math.min(BASE_WORLD_W-viewW,targetCameraX));
+    cameraY=Math.max(0,Math.min(BASE_WORLD_H-viewH,targetCameraY));
     updateMouseWorld();
     g.scale(BASE_ZOOM,BASE_ZOOM);
     g.fillStyle='#203b2a';g.fillRect(0,0,viewW,viewH);
@@ -1434,33 +1545,49 @@ function game(){
     g.restore();
   });
 
-  // Ground weapons in Base World are sealed supply crates; walk up and press E to open.
+  // Weapon pickups are intentionally different between Classic and Massiva/Base World.
+  // Classic: actual guns lie on the ground and are picked up with E.
+  // Massiva: weapons remain sealed supply crates inside structures.
   WPN=WPN.filter(q=>q.t!==4);
-  let nearbyCrate=null,nearbyCrateDist=Infinity;
+  let nearbyPickup=null,nearbyPickupDist=Infinity;
   WPN.forEach(q=>{
     if(q.got)return;
     const bob=Math.sin(fr*.055+q.x*.01)*1.5;
-    el(q.x+3,q.y+17,35,10,'rgba(0,0,0,.35)');
-    g.save();g.translate(q.x,q.y+bob);
-    // Heavy wooden crate with metal corners, lid seam and a glowing weapon emblem.
-    g.fillStyle='#3c2818';g.fillRect(-19,-15,38,30);
-    g.fillStyle='#75502b';g.fillRect(-16,-12,32,24);
-    g.fillStyle='#9a713e';g.fillRect(-16,-12,32,5);g.fillRect(-16,7,32,5);
-    g.fillStyle='#4b321d';g.fillRect(-5,-12,10,24);
-    g.strokeStyle='#c2a16a';g.lineWidth=2;g.strokeRect(-19,-15,38,30);
-    g.fillStyle='#d9b66b';g.fillRect(-3,-4,6,8);
-    g.fillStyle='#fff0b5';g.beginPath();g.arc(0,0,2.2,0,Math.PI*2);g.fill();
-    g.restore();
-    g.fillStyle='#ffd36b';g.font='bold 12px Arial';g.textAlign='center';
-    g.fillText('SUPPLY CRATE',q.x,q.y-27);
     const dist=Math.hypot(p.x-q.x,p.y-q.y);
-    if(!dead&&dist<nearbyCrateDist){nearbyCrate=q;nearbyCrateDist=dist;}
+    el(q.x+3,q.y+17,35,10,'rgba(0,0,0,.35)');
+    if(gameMode==='base'){
+      g.save();g.translate(q.x,q.y+bob);
+      g.fillStyle='#3c2818';g.fillRect(-19,-15,38,30);
+      g.fillStyle='#75502b';g.fillRect(-16,-12,32,24);
+      g.fillStyle='#9a713e';g.fillRect(-16,-12,32,5);g.fillRect(-16,7,32,5);
+      g.fillStyle='#4b321d';g.fillRect(-5,-12,10,24);
+      g.strokeStyle='#c2a16a';g.lineWidth=2;g.strokeRect(-19,-15,38,30);
+      g.fillStyle='#d9b66b';g.fillRect(-3,-4,6,8);
+      g.fillStyle='#fff0b5';g.beginPath();g.arc(0,0,2.2,0,Math.PI*2);g.fill();
+      g.restore();
+      g.fillStyle='#ffd36b';g.font='bold 12px Arial';g.textAlign='center';
+      g.fillText('SUPPLY CRATE',q.x,q.y-27);
+    }else{
+      // Classic ground gun: draw the actual weapon silhouette, not a crate.
+      g.save();g.translate(q.x,q.y+bob);g.rotate(Math.sin(q.x*.01)*.05);
+      g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=7;g.lineCap='round';
+      g.beginPath();g.moveTo(-15,5);g.lineTo(17,-5);g.stroke();
+      g.strokeStyle=q.t===1?'#b7b7b7':q.t===2?'#3d4148':'#9d9d9d';g.lineWidth=5;
+      g.beginPath();g.moveTo(-12,4);g.lineTo(16,-4);g.stroke();
+      g.strokeStyle='#202326';g.lineWidth=3;g.beginPath();g.moveTo(-4,5);g.lineTo(-8,14);g.stroke();
+      if(q.t===1){g.strokeStyle='#777b80';g.lineWidth=3;g.beginPath();g.moveTo(3,-5);g.lineTo(19,-9);g.stroke();}
+      if(q.t===2){g.fillStyle='#2b2e32';g.fillRect(-12,0,8,7);g.fillRect(-2,-5,10,5);}
+      if(q.t===3){g.fillStyle='#25282b';g.fillRect(-8,0,9,7);g.fillStyle='#555a60';g.fillRect(5,-7,14,4);}
+      g.restore();
+      g.fillStyle='#fff';g.font='bold 11px Arial';g.textAlign='center';g.fillText(WN[q.t],q.x,q.y-23);
+    }
+    if(!dead&&dist<nearbyPickupDist){nearbyPickup=q;nearbyPickupDist=dist;}
   });
-  if(nearbyCrate&&nearbyCrateDist<78){
-    g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-112,c.height-86,224,30);
-    g.strokeStyle='#c6a76c';g.strokeRect(c.width/2-112,c.height-86,224,30);
+  if(nearbyPickup&&nearbyPickupDist<78){
+    g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-130,c.height-86,260,30);
+    g.strokeStyle=gameMode==='base'?'#c6a76c':'#9fd6ff';g.strokeRect(c.width/2-130,c.height-86,260,30);
     g.fillStyle='#fff0c4';g.font='bold 14px Arial';g.textAlign='center';
-    g.fillText('PRESS E TO OPEN CRATE',c.width/2,c.height-66);g.restore();
+    g.fillText(gameMode==='base'?'PRESS E TO OPEN CRATE':'PRESS E TO PICK UP '+WN[nearbyPickup.t],c.width/2,c.height-66);g.restore();
   }
   WPN=WPN.filter(q=>!q.got);
 
@@ -1502,7 +1629,8 @@ function game(){
     if(cd>0)cd--;
     if(md&&cd<=0){
       // Weapon firing is permitted everywhere, including the safe camp.
-      if(wp==0){shoot();cd=12}
+      if(wp==6){}
+      else if(wp==0){shoot();cd=12}
       else if(wp==1){blast();cd=40}
       else if(wp==3){smg();cd=4}
       else if(wp==4){homing();cd=10}
@@ -1528,14 +1656,14 @@ function game(){
     }
   }
 
-  human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),CH[ci],wk,0.95,wp==2?1:0,fl);
-  if(gameMode==='base'&&miningAnim>0){const aa=Math.atan2(m.y-p.y,m.x-p.x),swing=(1-miningAnim/10)*1.4;g.save();g.translate(p.x+Math.cos(aa)*20,p.y+Math.sin(aa)*20);g.rotate(aa+swing);g.strokeStyle='#5a4635';g.lineWidth=4;g.beginPath();g.moveTo(-5,18);g.lineTo(-5,-8);g.stroke();g.strokeStyle='#aeb4b0';g.lineWidth=5;g.beginPath();g.moveTo(-13,-9);g.lineTo(3,-9);g.stroke();g.restore();}
+  human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),CH[ci],wk,0.95,wp,fl);
+
   {const f=Math.max(0,hp/100);g.fillStyle='rgba(0,0,0,.65)';g.fillRect(p.x-27,p.y-47,54,9);
   g.fillStyle=f>.6?'#2ecc71':f>.3?'#f1c40f':'#e74c3c';g.fillRect(p.x-25,p.y-45,50*f,5)}
 
   // gun upgrade parts
   if(gameMode!=='infinite')upgrades.forEach(q=>{
-    if(q.got)return;
+    if(q.got||q.collected)return;
     const pulse=.7+Math.sin(fr*.12)*.15;
     g.save();
     g.translate(q.x,q.y+Math.sin(fr*.08+q.x)*3);
@@ -1558,12 +1686,13 @@ function game(){
     g.textAlign='center';
     g.fillText(WN[q.t]+' UPGRADE',q.x,q.y-22);
     if(!dead&&Math.hypot(p.x-q.x,p.y-q.y)<38){
-      gunMult[q.t]=2;
+      gunMult[q.t]++;
+      q.collected=true;
       q.got=1;
       for(let i=0;i<16;i++)pt(q.x,q.y,(Math.random()-.5)*4,(Math.random()-.5)*4,20,'#00d9ff',3,0);
     }
   });
-  upgrades=gameMode==='infinite'?[]:upgrades.filter(q=>!q.got);
+  upgrades=gameMode==='infinite'?[]:upgrades.filter(q=>!q.got&&!q.collected);
 
   // permanent structure walls and player-built walls
   STATIC_WALLS=STATIC_WALLS.filter(q=>!q.dead);
@@ -1740,6 +1869,22 @@ function game(){
         q.dead=0;q.scored=false;q.ty=6;q.hp=2+Math.floor(score/50);q.mh=q.hp;q.sh='#a8a391';q.sk='#ded8c3';q.sv=1.05+Math.random()*.18;q.wk=0;q.ar=55;q.deathT=0;
       }
       g.globalAlpha=1;
+      return;
+    }
+    if(q.emerge>0){
+      const progress=1-q.emerge/q.emergeMax;
+      const lift=progress<.5?progress/.5*.45:(.45+(progress-.5)/.5*.55);
+      g.save();
+      g.globalAlpha=.92;
+      g.fillStyle='rgba(70,48,30,.55)';g.beginPath();g.ellipse(q.x,q.y+8,24+10*progress,10+4*progress,0,0,Math.PI*2);g.fill();
+      g.fillStyle='rgba(50,35,24,.45)';g.beginPath();g.ellipse(q.x,q.y+10,13+12*progress,6,0,0,Math.PI*2);g.fill();
+      if(q.emerge%4===0){for(let i=0;i<3;i++)pt(q.x+(Math.random()-.5)*22,q.y+8+(Math.random()-.5)*8,(Math.random()-.5)*2,-Math.random()*2,12,'#7b5b3d',2+Math.random()*2,0);}
+      g.restore();
+      q.wk+=.5;
+      const oldY=q.y;q.y-=Math.max(0,(1-progress)*2.2);
+      drawZombie(q,a);
+      q.y=oldY;
+      q.emerge--;
       return;
     }
     if(!dead&&bossCutscene<=0){
@@ -1944,7 +2089,7 @@ function game(){
   g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+WN[wp]+(own.filter(x=>x).length>1?'  [E]':'')+'  DMG x'+gunMult[wp],15,119);
   g.font='18px Arial';
   g.fillStyle=!own[2]?'#888':rc>0?'#e74c3c':'#2ecc71';
-  g.fillText(!own[2]?'ROCKET: NOT FOUND':rc>0?'ROCKET: RELOADING':'ROCKET: READY',15,145);
+  g.fillText(wp===6?'PICKAXE: EQUIPPED':(!own[2]?'ROCKET: NOT FOUND':rc>0?'ROCKET: RELOADING':'ROCKET: READY'),15,145);
   if(po>0){g.fillStyle='#7ccf4a';g.fillText('POISONED (slowed) '+(po/60).toFixed(1)+'s',15,155)}
   g.fillStyle='white';g.font='18px Arial';
   g.fillText('WASD = MOVE | E = OPEN DOOR / CRATE / MINE STONE / SWAP | CLICK = FIRE | HOLD B + RELEASE = BUILD | V = WOOD/STONE | F = EAT APPLE | G = EAT PEAR',15,c.height-15);
