@@ -942,7 +942,21 @@ onkeydown=q=>{
   if(n=='b'&&!q.repeat&&!dead){buildHeld=1;}
   if(dead){if(document.activeElement===homeUsername)return;if(n>='1'&&n<='3'){ci=n-1;document.querySelectorAll('.char-option').forEach(b=>{const selected=Number(b.dataset.char)===ci;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});}else if(n=='enter'||n==' ')rs();return}
   if(n=='v'&&!q.repeat&&!dead&&gameMode==='base'){buildMaterial=buildMaterial==='wood'?'stone':'wood';}
-  if(n=='g'&&!q.repeat&&!dead&&gameMode==='base'){const v=vehicleId?BASE_VEHICLES.find(q=>q.id===vehicleId):nearbyVehicle();if(v){v.gunner=!v.gunner;if(v.gunner&&!v.driver&&!vehicleMode){vehicleMode='gunner';vehicleId=v.id;}if(!v.gunner&&vehicleMode==='gunner')vehicleMode=null;}}
+  if(n=='g'&&!q.repeat&&!dead&&gameMode==='base'){
+    const v=vehicleId?BASE_VEHICLES.find(q=>q.id===vehicleId):nearbyVehicle();
+    if(v){
+      v.gunner=!v.gunner;
+      if(v.gunner){
+        // A player already driving can operate the mounted gun; this also avoids
+        // accidentally eating a pear when G is being used for the vehicle seat.
+        if(!vehicleMode){vehicleMode='gunner';vehicleId=v.id;}
+      }else if(vehicleMode==='gunner'){
+        vehicleMode=null;vehicleId=null;
+      }
+    }else{
+      eatPear();
+    }
+  }
   if(n=='e'&&!q.repeat&&L<=0){
     if(gameMode==='base'){const v=nearbyVehicle();if(v&&!vehicleMode){v.driver=true;vehicleMode='driver';vehicleId=v.id;p.x=v.x;p.y=v.y;return;}if(v&&vehicleId===v.id&&vehicleMode){v.driver=false;v.gunner=false;vehicleMode=null;vehicleId=null;p.x=v.x+65;p.y=v.y;return;}}
     const rock=gameMode==='base'?O.filter(o=>o.t===1).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
@@ -970,7 +984,6 @@ onkeydown=q=>{
     }
   }
   if(n=='f'&&!q.repeat)eatApple();
-  if(n=='g'&&!q.repeat)eatPear();
 };
 onkeyup=q=>{
   const n=q.key.toLowerCase();
@@ -1437,7 +1450,17 @@ function resetBaseVehicles(){BASE_VEHICLES=[];if(gameMode!=='base')return;BASE_V
 function nearbyVehicle(){return BASE_VEHICLES.filter(v=>Math.hypot(v.x-p.x,v.y-p.y)<90).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]||null;}
 function drawMilitaryVehicle(v){g.save();g.translate(v.x,v.y);g.rotate(v.angle||0);el(0,22,44,13,'rgba(0,0,0,.35)');g.fillStyle='#27352a';g.strokeStyle='#101710';g.lineWidth=3;g.fillRect(-42,-18,84,36);g.strokeRect(-42,-18,84,36);g.fillStyle='#3f513b';g.fillRect(-25,-25,42,18);g.fillRect(-30,7,50,11);g.fillStyle='#162018';g.fillRect(-30,-33,18,9);g.fillRect(12,-33,18,9);g.fillRect(-30,24,18,9);g.fillRect(12,24,18,9);g.fillStyle='#111';g.fillRect(0,-5,47,10);g.fillStyle='#5d6d59';g.fillRect(18,-3,38,6);g.fillStyle='#111';g.fillRect(37,-7,25,14);g.fillStyle='#b8c1b0';g.fillRect(57,-3,14,6);g.restore();}
 function updateVehicle(){if(gameMode!=='base'||vehicleMode!=='driver')return;const v=BASE_VEHICLES.find(q=>q.id===vehicleId);if(!v)return;const speed=k.shift?10:7;if(k.w||k.arrowup){v.x+=Math.cos(v.angle)*speed;v.y+=Math.sin(v.angle)*speed;}if(k.s||k.arrowdown){v.x-=Math.cos(v.angle)*speed*.65;v.y-=Math.sin(v.angle)*speed*.65;}if(k.a||k.arrowleft)v.angle-=.045;if(k.d||k.arrowright)v.angle+=.045;v.x=Math.max(40,Math.min(BASE_WORLD_W-40,v.x));v.y=Math.max(40,Math.min(BASE_WORLD_H-40,v.y));p.x=v.x;p.y=v.y;}
-function fireVehicleGun(v){if(gameMode!=='base'||!v||!v.gunner||ammo<2)return false;ammo-=2;const a=Math.atan2(m.y-v.y,m.x-v.x);b.push({x:v.x+Math.cos(a)*55,y:v.y+Math.sin(a)*55,vx:Math.cos(a)*18,vy:Math.sin(a)*18,life:999,t:1,dmg:3*gunMult[0]});muzzle(a,7);return true;}
+function fireVehicleGun(v){
+  if(gameMode!=='base'||!v||!v.gunner||ammo<2)return false;
+  ammo-=2;
+  const a=Math.atan2(m.y-v.y,m.x-v.x);
+  b.push({x:v.x+Math.cos(a)*55,y:v.y+Math.sin(a)*55,vx:Math.cos(a)*18,vy:Math.sin(a)*18,life:999,t:1,dmg:3*gunMult[0],vehicleShot:1});
+  const oldX=p.x,oldY=p.y;
+  p.x=v.x;p.y=v.y;
+  muzzle(a,7);
+  p.x=oldX;p.y=oldY;
+  return true;
+}
 function drawWorldMinimap(){
   const mw=Math.min(500,w*.56),mh=mw*(BASE_WORLD_H/BASE_WORLD_W),mx=w-mw-18,my=18;
   g.save();g.fillStyle='rgba(4,7,12,.94)';g.strokeStyle='rgba(225,230,245,.85)';g.lineWidth=2;
@@ -1476,15 +1499,19 @@ function game(){
   if(gameMode==='base')updateBaseCamera();
   g.save();
   if(S>0){g.translate((Math.random()-.5)*S,(Math.random()-.5)*S);S*=.88;if(S<.5)S=0}
-  g.scale(Z,Z);
   if(gameMode==='base'){
-    updateBaseCamera();
-    const viewW=c.width/(Z*BASE_ZOOM),viewH=c.height/(Z*BASE_ZOOM);
-    updateMouseWorld();
-    g.scale(BASE_ZOOM,BASE_ZOOM);
-    g.fillStyle='#203b2a';g.fillRect(0,0,viewW,viewH);
+    // Base World uses one explicit world-to-screen transform. This guarantees that
+    // the player is exactly at the centre of the viewport (except at the outer map edge).
+    const baseScale=Z*BASE_ZOOM;
+    const viewW=c.width/baseScale,viewH=c.height/baseScale;
+    cameraX=Math.max(0,Math.min(BASE_WORLD_W-viewW,p.x-viewW/2));
+    cameraY=Math.max(0,Math.min(BASE_WORLD_H-viewH,p.y-viewH/2));
+    g.scale(baseScale,baseScale);
     g.translate(-cameraX,-cameraY);
-    g.fillStyle='#203b2a';g.fillRect(cameraX,cameraY,w,h);
+    updateMouseWorld();
+    g.fillStyle='#203b2a';g.fillRect(cameraX,cameraY,viewW,viewH);
+  }else{
+    g.scale(Z,Z);
   }
   // Blend the ground palette gradually between biomes instead of snapping to new colours.
   environmentBlend=Math.min(1,environmentBlend+0.012);
@@ -2100,8 +2127,14 @@ function game(){
     g.textAlign='left';
   }
 
-  // Return to screen coordinates for the HUD while the world camera keeps moving.
-  if(gameMode==='base'){g.restore();g.save();}
+  // Return to true screen coordinates for the Base World HUD.
+  // Do not leave the world-camera translation active, otherwise the HUD/keybinds
+  // can be drawn thousands of world units away from the visible screen.
+  if(gameMode==='base'){
+    g.restore();
+    g.save();
+    g.setTransform(1,0,0,1,0,0);
+  }
   // HUD
   g.textAlign='left';
   g.fillStyle='rgba(0,0,0,.5)';g.fillRect(8,8,320,po>0?196:182);
@@ -2133,6 +2166,8 @@ function game(){
     g.fillText(level===4?'THE CRIMSON FOREST':level===3?'THE DARK FOREST':'THE WILDLANDS',c.width/2,64);
     g.textAlign='left';
   }
+
+  if(gameMode==='base')g.restore();
 
   // The accessible HTML homepage is shown for both first launch and after death.
   const showHome=dead!==0;
