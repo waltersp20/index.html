@@ -163,7 +163,8 @@ const homeBest=document.getElementById('homeBest');
 const startGameBtn=document.getElementById('startGameBtn');
 let gameMode='classic';
 let cameraX=0,cameraY=0;
-const BASE_WORLD_W=18000, BASE_WORLD_H=12000;
+let BASE_VEHICLES=[],baseSupplyClock=0,vehicleMode=null,vehicleId=null;
+const BASE_WORLD_W=24000, BASE_WORLD_H=16000;
 const BASE_ZOOM=1.7; // Wider Base World camera: more surrounding terrain is visible without changing the HUD/browser window.
 function worldW(){return gameMode==='base'?BASE_WORLD_W:w;}
 function worldH(){return gameMode==='base'?BASE_WORLD_H:h;}
@@ -657,7 +658,7 @@ function spawnBaseFortressContent(){
   // Three bosses guard the Void Orb inside the Dark Fortress.
   if(!e.some(z=>z.boss)){
     const spots=[[-170,80],[0,-80],[170,80]];
-    spots.forEach(([ox,oy])=>e.push({x:fortress.x+ox,y:fortress.y+oy,ty:3,hp:240,mh:240,ar:90,wk:0,sv:.28,sh:'#3d2930',sk:'#c39a78',boss:1}));
+    spots.forEach(([ox,oy])=>e.push({x:fortress.x+ox,y:fortress.y+oy,ty:3,hp:240,mh:240,ar:90,wk:0,sv:.70,sh:'#3d2930',sk:'#c39a78',boss:1,fortressBoss:1}));
   }
 }
 function spawnW(){
@@ -733,7 +734,7 @@ function save(){
   }
 }
 function sz(){c.width=innerWidth;c.height=innerHeight;w=c.width/Z;h=c.height/Z}
-function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];ammo=25;AMMO=[];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;stone=0;buildMaterial='wood';miningCooldown=0;miningAnim=0;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:BASE_WORLD_W*.12,y:BASE_WORLD_H*.48}:{x:w/2,y:h/2};cameraX=0;cameraY=0;gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}resetBaseStructures();spawnW()}
+function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];ammo=25;AMMO=[];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;stone=0;buildMaterial='wood';miningCooldown=0;miningAnim=0;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:BASE_WORLD_W*.12,y:BASE_WORLD_H*.48}:{x:w/2,y:h/2};cameraX=0;cameraY=0;gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}resetBaseStructures();spawnW();resetBaseVehicles();baseSupplyClock=0}
 sz();
 p={x:w/2,y:h/2};m={x:w/2+100,y:h/2};gen();
 onresize=sz;
@@ -835,16 +836,16 @@ function spawnAmmoDrop(z){
   const amount=base+Math.floor(Math.random()*Math.max(2,Math.ceil(base*.45)));
   AMMO.push({x:z.x+(Math.random()-.5)*12,y:z.y+(Math.random()-.5)*12,amount,got:0,life:0});
 }
-function spawnBaseAmmoCrates(){
+function spawnBaseAmmoCrates(reset=true){
   if(gameMode!=='base')return;
-  AMMO=[];
-  const picks=[
-    ['old-town',24],['outpost',30],['village',28],['lakeside',26],['quarry',34],['factory',36]
-  ];
-  picks.forEach(([id,amount],i)=>{
-    const st=BASE_STRUCTURES.find(q=>q.id===id)||BASE_STRUCTURES[i%BASE_STRUCTURES.length];
-    AMMO.push({x:st.x+(Math.random()-.5)*st.w*.34,y:st.y+(Math.random()-.5)*st.h*.28,amount,crate:1,got:0,life:0});
-  });
+  if(reset)AMMO=[];
+  const picks=[['old-town',28],['outpost',32],['village',30],['lakeside',28],['quarry',36],['watchtower',26],['harbor',30],['factory',38],['farm',24],['dark-fortress',48],['rivergate',30],['sunken-city',34],['deadlands-station',42],['east-camp',28],['red-mesa',32]];
+  picks.forEach(([id,amount],i)=>{const st=BASE_STRUCTURES.find(q=>q.id===id)||BASE_STRUCTURES[i%BASE_STRUCTURES.length];AMMO.push({x:st.x+(Math.random()-.5)*st.w*.34,y:st.y+(Math.random()-.5)*st.h*.28,amount,crate:1,got:0,life:0});});
+}
+function spawnTreeSupplyCrates(){
+  if(gameMode!=='base')return;
+  const trees=O.filter(o=>o.t===0&&!o.dead); const used=[]; const count=Math.min(8,Math.max(4,Math.floor(trees.length/90)));
+  for(let i=0;i<count;i++){let tree=null;for(let n=0;n<80;n++){const c=trees[Math.random()*trees.length|0];if(c&&!used.some(t=>Math.hypot(t.x-c.x,t.y-c.y)<180)){tree=c;break;}}if(!tree)continue;used.push(tree);AMMO.push({x:tree.x+(Math.random()-.5)*24,y:tree.y+tree.r*.65,amount:18+Math.floor(Math.random()*21),crate:1,got:0,life:0,treeDrop:1});}
 }
 /* ---------- shooting ---------- */
 function muzzle(a,n){
@@ -917,6 +918,7 @@ function updateMouseWorld(q){
 c.addEventListener('pointermove',updateMouseWorld);
 c.addEventListener('pointerdown',q=>{
   if(dead || q.button!==0) return;
+  if(gameMode==='base'&&vehicleMode==='driver'){const v=BASE_VEHICLES.find(v=>v.id===vehicleId);if(v&&v.gunner){q.preventDefault();updateMouseWorld(q);fireVehicleGun(v);return;}}
   q.preventDefault();
   updateMouseWorld(q);
   md=1;
@@ -940,7 +942,9 @@ onkeydown=q=>{
   if(n=='b'&&!q.repeat&&!dead){buildHeld=1;}
   if(dead){if(document.activeElement===homeUsername)return;if(n>='1'&&n<='3'){ci=n-1;document.querySelectorAll('.char-option').forEach(b=>{const selected=Number(b.dataset.char)===ci;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});}else if(n=='enter'||n==' ')rs();return}
   if(n=='v'&&!q.repeat&&!dead&&gameMode==='base'){buildMaterial=buildMaterial==='wood'?'stone':'wood';}
+  if(n=='g'&&!q.repeat&&!dead&&gameMode==='base'){const v=vehicleId?BASE_VEHICLES.find(q=>q.id===vehicleId):nearbyVehicle();if(v){v.gunner=!v.gunner;if(v.gunner&&!v.driver&&!vehicleMode){vehicleMode='gunner';vehicleId=v.id;}if(!v.gunner&&vehicleMode==='gunner')vehicleMode=null;}}
   if(n=='e'&&!q.repeat&&L<=0){
+    if(gameMode==='base'){const v=nearbyVehicle();if(v&&!vehicleMode){v.driver=true;vehicleMode='driver';vehicleId=v.id;p.x=v.x;p.y=v.y;return;}if(v&&vehicleId===v.id&&vehicleMode){v.driver=false;v.gunner=false;vehicleMode=null;vehicleId=null;p.x=v.x+65;p.y=v.y;return;}}
     const rock=gameMode==='base'?O.filter(o=>o.t===1).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
     if(rock&&Math.hypot(rock.x-p.x,rock.y-p.y)<68){
       if(miningCooldown<=0){
@@ -957,6 +961,7 @@ onkeydown=q=>{
         const crate=gameMode==='base'?WPN.filter(v=>!v.got&&!v.opened).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
         if(crate&&Math.hypot(crate.x-p.x,crate.y-p.y)<78){
           crate.opened=1;crate.got=1;own[crate.t]=1;wp=crate.t;fl=0;
+          if(gameMode==='base')ammo+=10+Math.floor(Math.random()*16);
           for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(crate.x,crate.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#ffd36b',2+Math.random()*2,0)}
         }else{
           for(let i=1;i<=6;i++){const t=(wp+i)%6;if(own[t]){wp=t;break}}
@@ -1072,6 +1077,7 @@ setInterval(()=>{
   }else if(level===3){level3Spawned++;}
   else if(level===4){level4Spawned++;}
 },gameMode==='base'?Math.round(2600/1.2):1000);
+setInterval(()=>{if(gameMode!=='base'||dead||bossCutscene>0)return;const dx=(p.x-BASE_WORLD_W*.90)/(BASE_WORLD_W*.18),dy=(p.y-BASE_WORLD_H*.70)/(BASE_WORLD_H*.23);if(dx*dx+dy*dy>1)return;const alive=e.reduce((c,z)=>c+(!z.dead?1:0),0);if(alive>=80)return;for(let i=0;i<2;i++){const a=Math.random()*6.283,r=180+Math.random()*180,x=Math.max(30,Math.min(BASE_WORLD_W-30,p.x+Math.cos(a)*r)),y=Math.max(30,Math.min(BASE_WORLD_H-30,p.y+Math.sin(a)*r)),hp=1+Math.floor(score/18);e.push({x,y,ty:0,hp,mh:hp,ar:70+Math.min(60,score),wk:Math.random()*6,sv:.82+Math.random()*.18,sh:'#3b3030',sk:'#a79b8e',deadlands:1});totalSpawned++;}},1000);
 
 /* ---------- drawing characters ---------- */
 function gun(t){
@@ -1227,7 +1233,23 @@ const BASE_STRUCTURES=[
   {id:'watchtower',x:BASE_WORLD_W*.54,y:BASE_WORLD_H*.12,w:500,h:380,label:'NORTH WATCH',kind:'outpost',rooms:2},
   {id:'harbor',x:BASE_WORLD_W*.91,y:BASE_WORLD_H*.43,w:700,h:500,label:'FROZEN HARBOR',kind:'village',rooms:3},
   {id:'factory',x:BASE_WORLD_W*.70,y:BASE_WORLD_H*.57,w:760,h:520,label:'ASHEN FACTORY',kind:'ruins',rooms:4},
-  {id:'farm',x:BASE_WORLD_W*.14,y:BASE_WORLD_H*.40,w:560,h:400,label:'GREENHAVEN FARM',kind:'town',rooms:3}
+  {id:'farm',x:BASE_WORLD_W*.13,y:BASE_WORLD_H*.40,w:520,h:360,label:'GREENHAVEN FARM',kind:'town',rooms:3,primary:1},
+  {id:'old-town-house',x:BASE_WORLD_W*.145,y:BASE_WORLD_H*.215,w:300,h:220,label:'',kind:'town',rooms:2},
+  {id:'old-town-store',x:BASE_WORLD_W*.25,y:BASE_WORLD_H*.21,w:300,h:220,label:'',kind:'town',rooms:2},
+  {id:'outpost-barracks',x:BASE_WORLD_W*.35,y:BASE_WORLD_H*.35,w:300,h:220,label:'',kind:'outpost',rooms:2},
+  {id:'outpost-garage',x:BASE_WORLD_W*.39,y:BASE_WORLD_H*.43,w:300,h:220,label:'',kind:'outpost',rooms:2},
+  {id:'village-house',x:BASE_WORLD_W*.60,y:BASE_WORLD_H*.18,w:300,h:220,label:'',kind:'village',rooms:2},
+  {id:'village-store',x:BASE_WORLD_W*.67,y:BASE_WORLD_H*.19,w:300,h:220,label:'',kind:'village',rooms:2},
+  {id:'rivergate',x:BASE_WORLD_W*.42,y:BASE_WORLD_H*.20,w:520,h:360,label:'RIVERGATE',kind:'town',rooms:3,primary:1},
+  {id:'rivergate-house',x:BASE_WORLD_W*.46,y:BASE_WORLD_H*.23,w:300,h:220,label:'',kind:'town',rooms:2},
+  {id:'sunken-city',x:BASE_WORLD_W*.57,y:BASE_WORLD_H*.67,w:560,h:400,label:'SUNKEN CITY',kind:'ruins',rooms:4,primary:1},
+  {id:'sunken-city-house',x:BASE_WORLD_W*.53,y:BASE_WORLD_H*.70,w:300,h:220,label:'',kind:'ruins',rooms:2},
+  {id:'deadlands-station',x:BASE_WORLD_W*.89,y:BASE_WORLD_H*.67,w:520,h:360,label:'DEADLANDS STATION',kind:'outpost',rooms:3,primary:1},
+  {id:'deadlands-station-bunker',x:BASE_WORLD_W*.86,y:BASE_WORLD_H*.71,w:300,h:220,label:'',kind:'outpost',rooms:2},
+  {id:'east-camp',x:BASE_WORLD_W*.94,y:BASE_WORLD_H*.57,w:450,h:320,label:'EAST CAMP',kind:'outpost',rooms:3,primary:1},
+  {id:'east-camp-hut',x:BASE_WORLD_W*.91,y:BASE_WORLD_H*.60,w:280,h:210,label:'',kind:'outpost',rooms:2},
+  {id:'red-mesa',x:BASE_WORLD_W*.70,y:BASE_WORLD_H*.90,w:500,h:350,label:'RED MESA',kind:'town',rooms:3,primary:1},
+  {id:'red-mesa-house',x:BASE_WORLD_W*.74,y:BASE_WORLD_H*.88,w:300,h:220,label:'',kind:'town',rooms:2}
 ];
 function pushWall(out,b,x,y,a,len,mat='wood'){
   const hp=mat==='stone'?720:360;
@@ -1341,7 +1363,7 @@ function drawBaseStructures(){
     g.strokeStyle='rgba(210,195,165,.14)';g.lineWidth=3;
     for(let rr=1;rr<(b.rooms||3);rr++){const xx=x+b.w*rr/(b.rooms||3);g.beginPath();g.moveTo(xx,y+18);g.lineTo(xx,y+b.h-18);g.stroke();}
     g.fillStyle='rgba(20,18,15,.42)';g.fillRect(b.x-b.w*.18,b.y-b.h*.06,b.w*.36,28);g.fillRect(b.x-b.w*.06,b.y-b.h*.25,28,b.h*.5);
-    g.fillStyle='#f2e4c4';g.font='bold 20px Arial';g.textAlign='center';g.strokeStyle='rgba(0,0,0,.85)';g.lineWidth=5;g.strokeText(b.label,b.x,y-32);g.fillText(b.label,b.x,y-32);
+    if(b.label){g.fillStyle='#f2e4c4';g.font='bold 20px Arial';g.textAlign='center';g.strokeStyle='rgba(0,0,0,.85)';g.lineWidth=5;g.strokeText(b.label,b.x,y-32);g.fillText(b.label,b.x,y-32);}
     g.restore();
   }
   drawBaseStructureWalls();
@@ -1354,7 +1376,8 @@ function drawWorldBiomes(){
     {x:BASE_WORLD_W*.34,y:BASE_WORLD_H*.20,rx:BASE_WORLD_W*.34,ry:BASE_WORLD_H*.35,c:'#78623a',label:'AUTUMN WILDLANDS',seed:7},
     {x:BASE_WORLD_W*.51,y:BASE_WORLD_H*.52,rx:BASE_WORLD_W*.34,ry:BASE_WORLD_H*.40,c:'#203e30',label:'THE BLACKWOOD • DANGER ZONE',seed:13},
     {x:BASE_WORLD_W*.78,y:BASE_WORLD_H*.27,rx:BASE_WORLD_W*.30,ry:BASE_WORLD_H*.38,c:'#b9d5df',label:'FROSTPEAK SNOWFIELDS',seed:21},
-    {x:BASE_WORLD_W*.80,y:BASE_WORLD_H*.78,rx:BASE_WORLD_W*.31,ry:BASE_WORLD_H*.34,c:'#54232b',label:'CRIMSON OUTBREAK • HIGH RISK',seed:33}
+    {x:BASE_WORLD_W*.80,y:BASE_WORLD_H*.78,rx:BASE_WORLD_W*.31,ry:BASE_WORLD_H*.34,c:'#54232b',label:'CRIMSON OUTBREAK • HIGH RISK',seed:33},
+    {x:BASE_WORLD_W*.90,y:BASE_WORLD_H*.70,rx:BASE_WORLD_W*.18,ry:BASE_WORLD_H*.23,c:'#3a3030',label:'THE DEADLANDS • EXTREME',seed:47}
   ];
   blobs.forEach((b,i)=>{
     const pts=96;g.save();g.beginPath();
@@ -1378,18 +1401,23 @@ function drawWorldBiomes(){
     {x:BASE_WORLD_W*.38,y:BASE_WORLD_H*.42,n:'MILITARY OUTPOST'},
     {x:BASE_WORLD_W*.67,y:BASE_WORLD_H*.15,n:'FROZEN VILLAGE'},
     {x:BASE_WORLD_W*.51,y:BASE_WORLD_H*.52,n:'BLACKWOOD RUINS'},
-    {x:BASE_WORLD_W*.80,y:BASE_WORLD_H*.80,n:'CRIMSON LAB'},
+    {x:BASE_WORLD_W*.80,y:BASE_WORLD_H*.80,n:'DARK FORTRESS'},
     {x:BASE_WORLD_W*.08,y:BASE_WORLD_H*.78,n:'LAKESIDE DEPOT'},
     {x:BASE_WORLD_W*.27,y:BASE_WORLD_H*.82,n:'IRONSTONE QUARRY'},
     {x:BASE_WORLD_W*.54,y:BASE_WORLD_H*.12,n:'NORTH WATCH'},
     {x:BASE_WORLD_W*.91,y:BASE_WORLD_H*.43,n:'FROZEN HARBOR'},
-    {x:BASE_WORLD_W*.70,y:BASE_WORLD_H*.57,n:'ASHEN FACTORY'},
-    {x:BASE_WORLD_W*.14,y:BASE_WORLD_H*.40,n:'GREENHAVEN FARM'}
+    {x:BASE_WORLD_W*.70,y:BASE_WORLD_H*.55,n:'ASHEN FACTORY'},
+    {x:BASE_WORLD_W*.13,y:BASE_WORLD_H*.40,n:'GREENHAVEN FARM'},
+    {x:BASE_WORLD_W*.42,y:BASE_WORLD_H*.20,n:'RIVERGATE'},
+    {x:BASE_WORLD_W*.57,y:BASE_WORLD_H*.67,n:'SUNKEN CITY'},
+    {x:BASE_WORLD_W*.89,y:BASE_WORLD_H*.67,n:'DEADLANDS STATION'},
+    {x:BASE_WORLD_W*.94,y:BASE_WORLD_H*.57,n:'EAST CAMP'},
+    {x:BASE_WORLD_W*.70,y:BASE_WORLD_H*.90,n:'RED MESA'}
   ];
   // Broken road network between settlements.
-  g.save();g.lineCap='round';g.strokeStyle='rgba(220,205,158,.22)';g.lineWidth=30;g.beginPath();
-  [[0,1],[1,2],[2,3],[3,4],[4,5],[0,11],[11,6],[6,7],[7,10],[10,5],[2,8],[8,3],[3,9],[9,5]].forEach(([a,b])=>{const A=poi[a],B=poi[b];g.moveTo(A.x,A.y);g.quadraticCurveTo((A.x+B.x)/2+(B.y-A.y)*.08,(A.y+B.y)/2+(A.x-B.x)*.08,B.x,B.y);});
-  g.stroke();g.strokeStyle='rgba(30,25,20,.28)';g.lineWidth=6;g.stroke();g.restore();
+  g.save();g.lineCap='round';g.strokeStyle='rgba(35,29,23,.34)';g.lineWidth=170;g.beginPath();
+  [[0,1],[1,2],[2,3],[3,4],[4,5],[0,11],[11,6],[6,7],[7,10],[10,5],[2,8],[8,3],[3,9],[9,5],[3,12],[12,1],[12,13],[13,14],[14,15],[15,5],[14,16],[16,17],[17,5]].forEach(([a,b])=>{const A=poi[a],B=poi[b];g.moveTo(A.x,A.y);g.quadraticCurveTo((A.x+B.x)/2+(B.y-A.y)*.08,(A.y+B.y)/2+(A.x-B.x)*.08,B.x,B.y);});
+  g.stroke();g.strokeStyle='rgba(191,164,116,.42)';g.lineWidth=108;g.stroke();g.strokeStyle='rgba(50,42,31,.42)';g.lineWidth=9;g.stroke();g.restore();
   poi.forEach((q,i)=>{g.save();g.fillStyle=i===0?'#bde6a3':i===5?'#ff6d75':'#d8cba7';g.strokeStyle='#171914';g.lineWidth=4;g.beginPath();g.arc(q.x,q.y,i===0?32:23,0,Math.PI*2);g.fill();g.stroke();g.fillStyle='#fff';g.font='bold 19px Arial';g.textAlign='center';g.strokeText(q.n,q.x,q.y-37);g.fillText(q.n,q.x,q.y-37);g.restore();});
   // Greenhaven's full grassland biome is the safe zone; no artificial boundary is drawn.
 }
@@ -1404,6 +1432,12 @@ function isInsideBaseSafeZone(x,y){
   return Math.hypot(dx,dy)<=wobble;
 }
 
+const BASE_VEHICLE_LOCATIONS=['old-town','outpost','village','ruins','dark-fortress','lakeside','quarry','watchtower','harbor','factory','farm','rivergate','sunken-city','deadlands-station','east-camp','red-mesa'];
+function resetBaseVehicles(){BASE_VEHICLES=[];if(gameMode!=='base')return;BASE_VEHICLE_LOCATIONS.forEach(id=>{const st=BASE_STRUCTURES.find(q=>q.id===id);if(st)BASE_VEHICLES.push({id:'vehicle-'+id,x:st.x,y:st.y+st.h*.62,locId:id,angle:0,driver:false,gunner:false});});vehicleMode=null;vehicleId=null;}
+function nearbyVehicle(){return BASE_VEHICLES.filter(v=>Math.hypot(v.x-p.x,v.y-p.y)<90).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]||null;}
+function drawMilitaryVehicle(v){g.save();g.translate(v.x,v.y);g.rotate(v.angle||0);el(0,22,44,13,'rgba(0,0,0,.35)');g.fillStyle='#27352a';g.strokeStyle='#101710';g.lineWidth=3;g.fillRect(-42,-18,84,36);g.strokeRect(-42,-18,84,36);g.fillStyle='#3f513b';g.fillRect(-25,-25,42,18);g.fillRect(-30,7,50,11);g.fillStyle='#162018';g.fillRect(-30,-33,18,9);g.fillRect(12,-33,18,9);g.fillRect(-30,24,18,9);g.fillRect(12,24,18,9);g.fillStyle='#111';g.fillRect(0,-5,47,10);g.fillStyle='#5d6d59';g.fillRect(18,-3,38,6);g.fillStyle='#111';g.fillRect(37,-7,25,14);g.fillStyle='#b8c1b0';g.fillRect(57,-3,14,6);g.restore();}
+function updateVehicle(){if(gameMode!=='base'||vehicleMode!=='driver')return;const v=BASE_VEHICLES.find(q=>q.id===vehicleId);if(!v)return;const speed=k.shift?10:7;if(k.w||k.arrowup){v.x+=Math.cos(v.angle)*speed;v.y+=Math.sin(v.angle)*speed;}if(k.s||k.arrowdown){v.x-=Math.cos(v.angle)*speed*.65;v.y-=Math.sin(v.angle)*speed*.65;}if(k.a||k.arrowleft)v.angle-=.045;if(k.d||k.arrowright)v.angle+=.045;v.x=Math.max(40,Math.min(BASE_WORLD_W-40,v.x));v.y=Math.max(40,Math.min(BASE_WORLD_H-40,v.y));p.x=v.x;p.y=v.y;}
+function fireVehicleGun(v){if(gameMode!=='base'||!v||!v.gunner||ammo<2)return false;ammo-=2;const a=Math.atan2(m.y-v.y,m.x-v.x);b.push({x:v.x+Math.cos(a)*55,y:v.y+Math.sin(a)*55,vx:Math.cos(a)*18,vy:Math.sin(a)*18,life:999,t:1,dmg:3*gunMult[0]});muzzle(a,7);return true;}
 function drawWorldMinimap(){
   const mw=Math.min(500,w*.56),mh=mw*(BASE_WORLD_H/BASE_WORLD_W),mx=w-mw-18,my=18;
   g.save();g.fillStyle='rgba(4,7,12,.94)';g.strokeStyle='rgba(225,230,245,.85)';g.lineWidth=2;
@@ -1413,33 +1447,39 @@ function drawWorldMinimap(){
   g.fillStyle='#263a2a';g.fillRect(mx,my,mw,mh);
   const regions=[
     {x:.17,y:.60,rx:.36,ry:.43,c:'#527d3e',seed:2},{x:.34,y:.20,rx:.34,ry:.35,c:'#9b7a43',seed:7},
-    {x:.51,y:.52,rx:.34,ry:.40,c:'#294c39',seed:13},{x:.78,y:.27,rx:.30,ry:.38,c:'#d5e7ec',seed:21},{x:.80,y:.78,rx:.31,ry:.34,c:'#792d39',seed:33}
+    {x:.51,y:.52,rx:.34,ry:.40,c:'#294c39',seed:13},{x:.78,y:.27,rx:.30,ry:.38,c:'#d5e7ec',seed:21},{x:.80,y:.78,rx:.31,ry:.34,c:'#792d39',seed:33},{x:.90,y:.70,rx:.18,ry:.23,c:'#4a3b3b',seed:47}
   ];
   regions.forEach(r=>{g.fillStyle=r.c;g.beginPath();for(let j=0;j<=64;j++){const a=j/64*Math.PI*2,wobble=1+.105*Math.sin(a*3+r.seed)+.075*Math.sin(a*5+r.seed*1.7)+.045*Math.sin(a*9+r.seed*.7);const x=mapX((r.x+Math.cos(a)*r.rx*wobble)*BASE_WORLD_W),y=mapY((r.y+Math.sin(a)*r.ry*wobble)*BASE_WORLD_H);if(!j)g.moveTo(x,y);else g.lineTo(x,y);}g.closePath();g.fill();});
   // Fine grid, rivers/roads and region names add useful geographic detail.
   g.strokeStyle='rgba(255,255,255,.12)';g.lineWidth=.6;for(let i=1;i<8;i++){g.beginPath();g.moveTo(mx+mw*i/8,my);g.lineTo(mx+mw*i/8,my+mh);g.stroke();}for(let i=1;i<6;i++){g.beginPath();g.moveTo(mx,my+mh*i/6);g.lineTo(mx+mw,my+mh*i/6);g.stroke();}
   g.strokeStyle='rgba(220,205,158,.55)';g.lineWidth=1.6;g.beginPath();g.moveTo(mapX(BASE_WORLD_W*.12),mapY(BASE_WORLD_H*.48));g.bezierCurveTo(mapX(BASE_WORLD_W*.22),mapY(BASE_WORLD_H*.32),mapX(BASE_WORLD_W*.25),mapY(BASE_WORLD_H*.25),mapX(BASE_WORLD_W*.31),mapY(BASE_WORLD_H*.16));g.bezierCurveTo(mapX(BASE_WORLD_W*.38),mapY(BASE_WORLD_H*.28),mapX(BASE_WORLD_W*.39),mapY(BASE_WORLD_H*.34),mapX(BASE_WORLD_W*.43),mapY(BASE_WORLD_H*.42));g.stroke();
-  g.font='bold 8px Arial';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.fillText('GREENHAVEN',mapX(BASE_WORLD_W*.17),mapY(BASE_WORLD_H*.60));g.fillText('AUTUMN',mapX(BASE_WORLD_W*.34),mapY(BASE_WORLD_H*.20));g.fillText('BLACKWOOD',mapX(BASE_WORLD_W*.51),mapY(BASE_WORLD_H*.52));g.fillText('FROSTPEAK',mapX(BASE_WORLD_W*.78),mapY(BASE_WORLD_H*.27));g.fillText('CRIMSON',mapX(BASE_WORLD_W*.80),mapY(BASE_WORLD_H*.78));
-  const pois=[ [.12,.48,'CAMP'],[.22,.18,'OLD TOWN'],[.38,.42,'OUTPOST'],[.67,.15,'VILLAGE'],[.51,.52,'RUINS'],[.80,.80,'LAB'],[.08,.78,'DEPOT'],[.27,.82,'QUARRY'],[.54,.12,'WATCH'],[.91,.43,'HARBOR'],[.70,.57,'FACTORY'],[.14,.40,'FARM'] ];
+  g.font='bold 8px Arial';g.textAlign='center';g.fillStyle='rgba(255,255,255,.9)';g.fillText('GREENHAVEN',mapX(BASE_WORLD_W*.17),mapY(BASE_WORLD_H*.60));g.fillText('AUTUMN',mapX(BASE_WORLD_W*.34),mapY(BASE_WORLD_H*.20));g.fillText('BLACKWOOD',mapX(BASE_WORLD_W*.51),mapY(BASE_WORLD_H*.52));g.fillText('FROSTPEAK',mapX(BASE_WORLD_W*.78),mapY(BASE_WORLD_H*.27));g.fillText('CRIMSON',mapX(BASE_WORLD_W*.80),mapY(BASE_WORLD_H*.78));g.fillText('DEADLANDS',mapX(BASE_WORLD_W*.90),mapY(BASE_WORLD_H*.70));
+  const pois=[ [.12,.48,'CAMP'],[.18,.18,'OLD TOWN'],[.34,.40,'OUTPOST'],[.63,.14,'VILLAGE'],[.48,.49,'RUINS'],[.78,.79,'FORTRESS'],[.08,.78,'DEPOT'],[.25,.82,'QUARRY'],[.52,.11,'WATCH'],[.91,.39,'HARBOR'],[.70,.55,'FACTORY'],[.13,.40,'FARM'],[.42,.20,'RIVERGATE'],[.57,.67,'SUNKEN CITY'],[.89,.67,'DEADLANDS'],[.94,.57,'EAST CAMP'],[.70,.90,'RED MESA'] ];
   pois.forEach((q,i)=>{const x=mapX(q[0]*BASE_WORLD_W),y=mapY(q[1]*BASE_WORLD_H);g.fillStyle=i===0?'#c7f4a5':i===5?'#ff6d75':'#f0e2bd';g.strokeStyle='#151515';g.lineWidth=1;g.beginPath();g.arc(x,y,2.6,0,Math.PI*2);g.fill();g.stroke();});
   // Zombie clusters; bosses are marked in gold.
   const clusters=new Map();e.filter(z=>!z.dead).forEach(z=>{const gx=Math.floor(z.x/BASE_WORLD_W*10),gy=Math.floor(z.y/BASE_WORLD_H*7),key=gx+','+gy;if(!clusters.has(key))clusters.set(key,{x:(gx+.5)/10,y:(gy+.5)/7,n:0,boss:false});const q=clusters.get(key);q.n++;if(z.boss)q.boss=true;});
   clusters.forEach(q=>{if(q.n<2&&!q.boss)return;const x=mapX(q.x*BASE_WORLD_W),y=mapY(q.y*BASE_WORLD_H);g.fillStyle=q.boss?'#ffe16b':'#ff655f';g.beginPath();g.arc(x,y,q.boss?3.5:2.2,0,Math.PI*2);g.fill();});
   // Outline the current visible viewport so the minimap communicates scale and position.
-  const viewW=w/(Z*BASE_ZOOM),viewH=h/(Z*BASE_ZOOM);g.strokeStyle='#ffffff';g.lineWidth=1.2;g.strokeRect(mapX(cameraX),mapY(cameraY),viewW/BASE_WORLD_W*mw,viewH/BASE_WORLD_H*mh);
+  const viewW=c.width/(Z*BASE_ZOOM),viewH=c.height/(Z*BASE_ZOOM);g.strokeStyle='#ffffff';g.lineWidth=1.2;g.strokeRect(mapX(cameraX),mapY(cameraY),viewW/BASE_WORLD_W*mw,viewH/BASE_WORLD_H*mh);
   const px=mapX(p.x),py=mapY(p.y);g.fillStyle='#fff';g.strokeStyle='#101010';g.lineWidth=1.5;g.beginPath();g.arc(px,py,3.2,0,Math.PI*2);g.fill();g.stroke();
   g.restore();g.fillStyle='#f1f4e9';g.font='bold 10px Arial';g.textAlign='left';g.fillText('WORLD MAP',mx+8,my+mh+14);g.fillStyle='#ff8177';g.fillRect(mx+mw-84,my+mh+8,6,6);g.fillStyle='#c8d0c7';g.font='9px Arial';g.fillText('ZOMBIES',mx+mw-74,my+mh+14);g.restore();
 }
 /* ---------- main loop ---------- */
+function updateBaseCamera(){
+  if(gameMode!=='base')return;
+  const viewW=c.width/(Z*BASE_ZOOM),viewH=c.height/(Z*BASE_ZOOM);
+  cameraX=Math.max(0,Math.min(BASE_WORLD_W-viewW,p.x-viewW/2));
+  cameraY=Math.max(0,Math.min(BASE_WORLD_H-viewH,p.y-viewH/2));
+}
 function game(){
   fr++;
+  if(gameMode==='base')updateBaseCamera();
   g.save();
   if(S>0){g.translate((Math.random()-.5)*S,(Math.random()-.5)*S);S*=.88;if(S<.5)S=0}
   g.scale(Z,Z);
   if(gameMode==='base'){
-    const viewW=w/(Z*BASE_ZOOM),viewH=h/(Z*BASE_ZOOM);
-    cameraX=Math.max(0,Math.min(BASE_WORLD_W-viewW,p.x-viewW/2));
-    cameraY=Math.max(0,Math.min(BASE_WORLD_H-viewH,p.y-viewH/2));
+    updateBaseCamera();
+    const viewW=c.width/(Z*BASE_ZOOM),viewH=c.height/(Z*BASE_ZOOM);
     updateMouseWorld();
     g.scale(BASE_ZOOM,BASE_ZOOM);
     g.fillStyle='#203b2a';g.fillRect(0,0,viewW,viewH);
@@ -1592,6 +1632,7 @@ function game(){
   const sp=1.2+Math.min(2.3,T/3600);
   if(!dead&&bossCutscene<=0){
     T++;
+    if(gameMode==='base'){baseSupplyClock++;if(baseSupplyClock>=3600){spawnTreeSupplyCrates();baseSupplyClock=0;}updateVehicle();}
     if(gameMode!=='infinite'&&T>=nextUpgrade){
       if(spawnUpgrade()){
         nextUpgrade+=
@@ -1603,10 +1644,12 @@ function game(){
       }
     }
     let mv=0;const v=po>0?2.2:4.8;
-    if(k.w||k.arrowup){p.y-=v;mv=1}
-    if(k.s||k.arrowdown){p.y+=v;mv=1}
-    if(k.a||k.arrowleft){p.x-=v;mv=1}
-    if(k.d||k.arrowright){p.x+=v;mv=1}
+    if(!(gameMode==='base'&&vehicleMode==='driver')){
+      if(k.w||k.arrowup){p.y-=v;mv=1}
+      if(k.s||k.arrowdown){p.y+=v;mv=1}
+      if(k.a||k.arrowleft){p.x-=v;mv=1}
+      if(k.d||k.arrowright){p.x+=v;mv=1}
+    }
     if(mv)wk+=po>0?.14:.28;
     collWall(p,18);
     // hold B to preview a wall; release B to build it
@@ -1635,6 +1678,8 @@ function game(){
   p.x=Math.max(20,Math.min(gameMode==='base'?BASE_WORLD_W-20:w-20,p.x));
   p.y=Math.max(20,Math.min(gameMode==='base'?BASE_WORLD_H-20:h-20,p.y));
   col(p,18);
+  if(gameMode==='base')updateBaseCamera();
+  if(gameMode==='base'){const ap=AMMO.find(q=>!q.got&&Math.hypot(q.x-p.x,q.y-p.y)<42);if(ap){ammo+=ap.amount;ap.got=1;}}
   if(level===4&&!dead&&fireHitCooldown<=0){
     const fire=firePatches.find(f=>Math.hypot(p.x-f.x,p.y-f.y)<f.r+12);
     if(fire){
@@ -1645,6 +1690,7 @@ function game(){
     }
   }
 
+  if(gameMode==='base')BASE_VEHICLES.forEach(drawMilitaryVehicle);
   human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),CH[ci],wk,0.95,wp==2?1:0,fl);
   if(gameMode==='base'&&miningAnim>0){const aa=Math.atan2(m.y-p.y,m.x-p.x),swing=(1-miningAnim/10)*1.4;g.save();g.translate(p.x+Math.cos(aa)*20,p.y+Math.sin(aa)*20);g.rotate(aa+swing);g.strokeStyle='#5a4635';g.lineWidth=4;g.beginPath();g.moveTo(-5,18);g.lineTo(-5,-8);g.stroke();g.strokeStyle='#aeb4b0';g.lineWidth=5;g.beginPath();g.moveTo(-13,-9);g.lineTo(3,-9);g.stroke();g.restore();}
   {const f=Math.max(0,hp/100);g.fillStyle='rgba(0,0,0,.65)';g.fillRect(p.x-27,p.y-47,54,9);
@@ -1863,15 +1909,23 @@ function game(){
     if(!dead&&bossCutscene<=0){
       // Cap movement speed so enemies remain manageable late in a long run.
       const rawSpeed=q.boss ? sp*q.sv : sp*(q.ty==1 ? 1.15+Math.min(1.6,score/70) : q.sv);
-      const v=Math.min(q.boss?1.5:3.2,rawSpeed);
+      const v=Math.min(q.boss?(q.fortressBoss?3.0:1.5):3.2,rawSpeed);
       q.x+=Math.cos(a)*v;q.y+=Math.sin(a)*v;q.wk+=v*.1;
+      if(gameMode==='base'&&q.fortressBoss){
+        const fortress=BASE_STRUCTURES.find(st=>st.id==='dark-fortress');
+        if(fortress){
+          const pad=58;
+          q.x=Math.max(fortress.x-fortress.w/2+pad,Math.min(fortress.x+fortress.w/2-pad,q.x));
+          q.y=Math.max(fortress.y-fortress.h/2+pad,Math.min(fortress.y+fortress.h/2-pad,q.y));
+        }
+      }
       e.forEach(o=>{
         if(o!==q){
           const dx=q.x-o.x,dy=q.y-o.y,dd=Math.hypot(dx,dy);
           if(dd>0&&dd<28){q.x+=dx/dd*.6;q.y+=dy/dd*.6}
         }
       });
-      const zombieRadius=q.boss?24:q.ty==4?20:q.ty==5?12:q.ty==6?13:14;
+      const zombieRadius=q.boss?(q.fortressBoss?17:24):q.ty==4?20:q.ty==5?12:q.ty==6?13:14;
       collWall(q,zombieRadius);
       const damageWall=(o)=>{if(pointWallDist(q.x,q.y,o)<zombieRadius+3){const wallDmg=0.035*(q.boss?2.2:q.ty==4?1.8:q.ty==1?1.25:q.ty==2?.8:1);o.hp-=wallDmg;if(o.hp<=0)o.dead=1;}};
       STATIC_WALLS.forEach(damageWall);
@@ -1898,7 +1952,7 @@ function game(){
       // Boss is drawn larger using the normal zombie artwork.
       g.save();
       g.translate(q.x,q.y);
-      g.scale(1.65,1.65);
+      g.scale(q.fortressBoss?.88:1.65,q.fortressBoss?.88:1.65);
       g.translate(-q.x,-q.y);
       drawZombie(q,a);
       g.restore();
@@ -2058,7 +2112,7 @@ function game(){
   g.fillStyle='#ffd400';g.font='16px Arial';g.fillText('BEST: '+H,15,66);
   g.fillStyle='#aaa';g.font='14px Arial';g.fillText('PLAYER: '+playerName,15,83);
   g.fillStyle='#d8c0a0';g.font='14px Arial';g.fillText('WALLS: '+(gameMode==='base'?'WOOD / STONE (V)':wallCharges),15,98);
-  if(gameMode==='base'){g.fillStyle='#8ed6ff';g.font='bold 16px Arial';g.fillText('AMMO: '+ammo+'  •  COST/SHOT: '+ammoCostForWeapon(wp),15,116);}
+  if(gameMode==='base'){g.fillStyle='#8ed6ff';g.font='bold 16px Arial';g.fillText('AMMO: '+ammo+'  •  COST/SHOT: '+ammoCostForWeapon(wp),15,116);const nv=nearbyVehicle();if(nv&&!vehicleMode){g.fillStyle='#d8e7d2';g.font='bold 13px Arial';g.fillText('E = ENTER MILITARY VEHICLE',15,180);}else if(vehicleMode){g.fillStyle='#d8e7d2';g.font='bold 13px Arial';g.fillText(vehicleMode==='driver'?'DRIVER • E = EXIT • G = GUNNER':'GUNNER • CLICK = FIRE • G = LEAVE',15,180);}}
   if(gameMode==='base'){g.fillStyle='#aeb4b0';g.font='14px Arial';g.fillText('STONE: '+stone+'   PICKAXE: READY   BUILDING: '+buildMaterial.toUpperCase(),15,156);}
   g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+WN[wp]+(own.filter(x=>x).length>1?'  [E]':'')+'  DMG x'+gunMult[wp],15,gameMode==='base'?136:119);
   g.font='18px Arial';
