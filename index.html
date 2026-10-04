@@ -1071,7 +1071,7 @@ setInterval(()=>{
     else if(bossSpawned===2)level2PostBossSpawned++;
   }else if(level===3){level3Spawned++;}
   else if(level===4){level4Spawned++;}
-},gameMode==='base'?2600:1000);
+},gameMode==='base'?Math.round(2600/1.2):1000);
 
 /* ---------- drawing characters ---------- */
 function gun(t){
@@ -1282,6 +1282,11 @@ function makeBaseStructureDoors(){
 }
 let STATIC_WALLS=[];
 let DOORS=[];
+function resetBaseStructures(){
+  if(gameMode!=='base'){STATIC_WALLS=[];DOORS=[];return;}
+  STATIC_WALLS=makeBaseStructureWalls();
+  DOORS=makeBaseStructureDoors();
+}
 function drawWall(q){
   const ux=Math.cos(q.a),uy=Math.sin(q.a),vx=-uy,vy=ux;
   const x1=q.x-ux*q.len/2,y1=q.y-uy*q.len/2,x2=q.x+ux*q.len/2,y2=q.y+uy*q.len/2;
