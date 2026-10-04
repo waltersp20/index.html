@@ -800,22 +800,22 @@ function muzzle(a,n){
 }
 function shoot(){
   const a=Math.atan2(m.y-p.y,m.x-p.x);
-  b.push({x:p.x+Math.cos(a)*52,y:p.y+Math.sin(a)*52,vx:Math.cos(a)*14,vy:Math.sin(a)*14,life:999,t:1,dmg:gunMult[0]});
+  b.push({x:p.x+Math.cos(a)*43,y:p.y+Math.sin(a)*43,vx:Math.cos(a)*14,vy:Math.sin(a)*14,life:999,t:1,dmg:gunMult[0]});
   fl=3;muzzle(a,5);
 }
 function smg(){
   const a=Math.atan2(m.y-p.y,m.x-p.x)+(Math.random()-.5)*.12;
-  b.push({x:p.x+Math.cos(a)*52,y:p.y+Math.sin(a)*52,vx:Math.cos(a)*15,vy:Math.sin(a)*15,life:999,t:1,dmg:gunMult[3]});
+  b.push({x:p.x+Math.cos(a)*43,y:p.y+Math.sin(a)*43,vx:Math.cos(a)*15,vy:Math.sin(a)*15,life:999,t:1,dmg:gunMult[3]});
   fl=2;muzzle(a,2);S=Math.max(S,1.5);
 }
 function homing(){
   const a=Math.atan2(m.y-p.y,m.x-p.x);
-  b.push({x:p.x+Math.cos(a)*52,y:p.y+Math.sin(a)*52,vx:Math.cos(a)*12.5,vy:Math.sin(a)*12.5,life:999,t:1,homing:1,dmg:gunMult[4]});
+  b.push({x:p.x+Math.cos(a)*43,y:p.y+Math.sin(a)*43,vx:Math.cos(a)*12.5,vy:Math.sin(a)*12.5,life:999,t:1,homing:1,dmg:gunMult[4]});
   fl=3;muzzle(a,3);
 }
 function voidOrb(){
   const a=Math.atan2(m.y-p.y,m.x-p.x),speed=6.2;
-  b.push({x:p.x+Math.cos(a)*52,y:p.y+Math.sin(a)*52,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:95,t:2,orb:1,dmg:12*gunMult[5],pulse:0});
+  b.push({x:p.x+Math.cos(a)*43,y:p.y+Math.sin(a)*43,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life:95,t:2,orb:1,dmg:12*gunMult[5],pulse:0});
   fl=3;
   for(let i=0;i<4;i++)pt(p.x+Math.cos(a)*35,p.y+Math.sin(a)*35,(Math.random()-.5)*2,(Math.random()-.5)*2,12,'#76518a',2,0);
 }
@@ -824,7 +824,7 @@ function blast(){
   const a0=Math.atan2(m.y-p.y,m.x-p.x);
   for(let i=0;i<10;i++){
     const a=a0+(Math.random()-.5)*.55,v=11+Math.random()*5;
-    b.push({x:p.x+Math.cos(a0)*52,y:p.y+Math.sin(a0)*52,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:32+Math.random()*10|0,t:0,dmg:gunMult[1]});
+    b.push({x:p.x+Math.cos(a0)*43,y:p.y+Math.sin(a0)*43,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:32+Math.random()*10|0,t:0,dmg:gunMult[1]});
   }
   fl=6;S=Math.max(S,7);muzzle(a0,16);
   p.x-=Math.cos(a0)*8;p.y-=Math.sin(a0)*8;
@@ -880,7 +880,13 @@ onkeydown=q=>{
   k[n]=1;
   if(n=='b'&&!q.repeat&&!dead){buildHeld=1;}
   if(dead){if(document.activeElement===homeUsername)return;if(n>='1'&&n<='3'){ci=n-1;document.querySelectorAll('.char-option').forEach(b=>{const selected=Number(b.dataset.char)===ci;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});}else if(n=='enter'||n==' ')rs();return}
-  if(n=='e'&&!q.repeat&&L<=0){for(let i=1;i<=6;i++){const t=(wp+i)%6;if(own[t]){wp=t;break}}}
+  if(n=='e'&&!q.repeat&&L<=0){
+    const crate=gameMode==='base'?WPN.filter(v=>!v.got&&!v.opened).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
+    if(crate&&Math.hypot(crate.x-p.x,crate.y-p.y)<78){
+      crate.opened=1;crate.got=1;own[crate.t]=1;wp=crate.t;fl=0;
+      for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(crate.x,crate.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#ffd36b',2+Math.random()*2,0)}
+    }else{for(let i=1;i<=6;i++){const t=(wp+i)%6;if(own[t]){wp=t;break}}}
+  }
   if(n=='f'&&!q.repeat)eatApple();
   if(n=='g'&&!q.repeat)eatPear();
 };
@@ -1297,19 +1303,34 @@ function game(){
     g.restore();
   });
 
-  // weapon pickups
+  // Ground weapons in Base World are sealed supply crates; walk up and press E to open.
   WPN=WPN.filter(q=>q.t!==4);
+  let nearbyCrate=null,nearbyCrateDist=Infinity;
   WPN.forEach(q=>{
-    el(q.x+3,q.y+12,26,8,'rgba(0,0,0,.3)');
-    g.save();g.translate(q.x,q.y+Math.sin(fr*.08+q.x)*3);
-    g.strokeStyle='rgba(255,212,0,'+(.4+Math.sin(fr*.1)*.2)+')';g.lineWidth=3;
-    g.beginPath();g.arc(0,0,30,0,7);g.stroke();
-    gun(q.t);
+    if(q.got)return;
+    const bob=Math.sin(fr*.055+q.x*.01)*1.5;
+    el(q.x+3,q.y+17,35,10,'rgba(0,0,0,.35)');
+    g.save();g.translate(q.x,q.y+bob);
+    // Heavy wooden crate with metal corners, lid seam and a glowing weapon emblem.
+    g.fillStyle='#3c2818';g.fillRect(-19,-15,38,30);
+    g.fillStyle='#75502b';g.fillRect(-16,-12,32,24);
+    g.fillStyle='#9a713e';g.fillRect(-16,-12,32,5);g.fillRect(-16,7,32,5);
+    g.fillStyle='#4b321d';g.fillRect(-5,-12,10,24);
+    g.strokeStyle='#c2a16a';g.lineWidth=2;g.strokeRect(-19,-15,38,30);
+    g.fillStyle='#d9b66b';g.fillRect(-3,-4,6,8);
+    g.fillStyle='#fff0b5';g.beginPath();g.arc(0,0,2.2,0,Math.PI*2);g.fill();
     g.restore();
-    g.fillStyle='#ffd400';g.font='bold 13px Arial';g.textAlign='center';
-    g.fillText(WN[q.t],q.x,q.y-40);
-    if(!dead&&Math.hypot(p.x-q.x,p.y-q.y)<40){own[q.t]=1;if(L<=0)wp=q.t;q.got=1}
+    g.fillStyle='#ffd36b';g.font='bold 12px Arial';g.textAlign='center';
+    g.fillText('SUPPLY CRATE',q.x,q.y-27);
+    const dist=Math.hypot(p.x-q.x,p.y-q.y);
+    if(!dead&&dist<nearbyCrateDist){nearbyCrate=q;nearbyCrateDist=dist;}
   });
+  if(nearbyCrate&&nearbyCrateDist<78){
+    g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-112,c.height-86,224,30);
+    g.strokeStyle='#c6a76c';g.strokeRect(c.width/2-112,c.height-86,224,30);
+    g.fillStyle='#fff0c4';g.font='bold 14px Arial';g.textAlign='center';
+    g.fillText('PRESS E TO OPEN CRATE',c.width/2,c.height-66);g.restore();
+  }
   WPN=WPN.filter(q=>!q.got);
 
   if(rc>0)rc--;
@@ -1355,7 +1376,7 @@ function game(){
       else if(wp==5){voidOrb();cd=38}
       else if(wp==2&&rc<=0){
         const a=Math.atan2(m.y-p.y,m.x-p.x);
-        R.push({x:p.x+Math.cos(a)*48,y:p.y+Math.sin(a)*48,vx:Math.cos(a)*7,vy:Math.sin(a)*7,tx:m.x,ty:m.y,dmg:5*gunMult[2]});
+        R.push({x:p.x+Math.cos(a)*43,y:p.y+Math.sin(a)*43,vx:Math.cos(a)*7,vy:Math.sin(a)*7,tx:m.x,ty:m.y,dmg:5*gunMult[2]});
         muzzle(a,8);fl=6;rc=90;cd=55;
       }
     }
@@ -1796,7 +1817,7 @@ function game(){
   g.fillText(!own[2]?'ROCKET: NOT FOUND':rc>0?'ROCKET: RELOADING':'ROCKET: READY',15,145);
   if(po>0){g.fillStyle='#7ccf4a';g.fillText('POISONED (slowed) '+(po/60).toFixed(1)+'s',15,155)}
   g.fillStyle='white';g.font='18px Arial';
-  g.fillText('WASD = MOVE | E = SWAP | CLICK = FIRE | HOLD B + RELEASE = BUILD | F = EAT APPLE | G = EAT PEAR',15,c.height-15);
+  g.fillText('WASD = MOVE | E = OPEN CRATE / SWAP | CLICK = FIRE | HOLD B + RELEASE = BUILD | F = EAT APPLE | G = EAT PEAR',15,c.height-15);
   g.fillStyle='#ffd66b';g.font='bold 16px Arial';g.fillText('APPLES: '+appleCount+'   PEARS: '+pearCount+'   HP: '+Math.ceil(hp)+'%',15,164);
   if((level==2||level===3||level===4)&&!dead){
     g.fillStyle=level===4?'rgba(38,4,10,.88)':level===3?'rgba(5,12,9,.82)':'rgba(70,40,20,.7)';
