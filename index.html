@@ -1165,11 +1165,17 @@ function drawWorldBiomes(){
   // Broken road network between settlements.
   g.save();g.lineCap='round';g.strokeStyle='rgba(220,205,158,.22)';g.lineWidth=24;g.beginPath();g.moveTo(poi[0].x,poi[0].y);g.bezierCurveTo(BASE_WORLD_W*.22,BASE_WORLD_H*.32,BASE_WORLD_W*.25,BASE_WORLD_H*.25,poi[1].x,poi[1].y);g.moveTo(poi[1].x,poi[1].y);g.bezierCurveTo(BASE_WORLD_W*.38,BASE_WORLD_H*.28,BASE_WORLD_W*.39,BASE_WORLD_H*.34,poi[2].x,poi[2].y);g.moveTo(poi[2].x,poi[2].y);g.bezierCurveTo(BASE_WORLD_W*.59,BASE_WORLD_H*.29,BASE_WORLD_W*.67,BASE_WORLD_H*.19,poi[3].x,poi[3].y);g.stroke();g.strokeStyle='rgba(30,25,20,.25)';g.lineWidth=5;g.stroke();g.restore();
   poi.forEach((q,i)=>{g.save();g.fillStyle=i===0?'#bde6a3':i===5?'#ff6d75':'#d8cba7';g.strokeStyle='#171914';g.lineWidth=4;g.beginPath();g.arc(q.x,q.y,i===0?32:23,0,Math.PI*2);g.fill();g.stroke();g.fillStyle='#fff';g.font='bold 19px Arial';g.textAlign='center';g.strokeText(q.n,q.x,q.y-37);g.fillText(q.n,q.x,q.y-37);g.restore();});
-  const sx=BASE_WORLD_W*.12,sy=BASE_WORLD_H*.48,r=190;
-  g.save();g.fillStyle='rgba(160,220,130,.12)';g.strokeStyle='rgba(190,244,157,.8)';g.lineWidth=4;g.beginPath();g.arc(sx,sy,r,0,Math.PI*2);g.fill();g.setLineDash([14,10]);g.stroke();g.setLineDash([]);g.restore();
+  // Greenhaven's full grassland biome is the safe zone; no artificial boundary is drawn.
 }
 function isInsideBaseSafeZone(x,y){
-  return gameMode==='base' && Math.hypot(x-BASE_WORLD_W*.12,y-BASE_WORLD_H*.48)<220;
+  if(gameMode!=='base') return false;
+  // Match the irregular Greenhaven grassland outline drawn by drawWorldBiomes().
+  const cx=BASE_WORLD_W*.17, cy=BASE_WORLD_H*.60;
+  const rx=BASE_WORLD_W*.36, ry=BASE_WORLD_H*.43;
+  const dx=(x-cx)/rx, dy=(y-cy)/ry;
+  const angle=Math.atan2(dy,dx);
+  const wobble=1+0.105*Math.sin(angle*3+2)+0.075*Math.sin(angle*5+2*1.7)+0.045*Math.sin(angle*9+2*.7);
+  return Math.hypot(dx,dy)<=wobble;
 }
 
 function drawWorldMinimap(){
@@ -1194,7 +1200,7 @@ function drawWorldMinimap(){
   const clusters=new Map();e.filter(z=>!z.dead).forEach(z=>{const gx=Math.floor(z.x/BASE_WORLD_W*10),gy=Math.floor(z.y/BASE_WORLD_H*7),key=gx+','+gy;if(!clusters.has(key))clusters.set(key,{x:(gx+.5)/10,y:(gy+.5)/7,n:0,boss:false});const q=clusters.get(key);q.n++;if(z.boss)q.boss=true;});
   clusters.forEach(q=>{if(q.n<2&&!q.boss)return;const x=mapX(q.x*BASE_WORLD_W),y=mapY(q.y*BASE_WORLD_H);g.fillStyle=q.boss?'#ffe16b':'#ff655f';g.beginPath();g.arc(x,y,q.boss?3.5:2.2,0,Math.PI*2);g.fill();});
   // Outline the current visible viewport so the minimap communicates scale and position.
-  const viewW=w/BASE_ZOOM,viewH=h/BASE_ZOOM;g.strokeStyle='#ffffff';g.lineWidth=1.2;g.strokeRect(mapX(cameraX),mapY(cameraY),viewW/BASE_WORLD_W*mw,viewH/BASE_WORLD_H*mh);
+  const viewW=w/(Z*BASE_ZOOM),viewH=h/(Z*BASE_ZOOM);g.strokeStyle='#ffffff';g.lineWidth=1.2;g.strokeRect(mapX(cameraX),mapY(cameraY),viewW/BASE_WORLD_W*mw,viewH/BASE_WORLD_H*mh);
   const px=mapX(p.x),py=mapY(p.y);g.fillStyle='#fff';g.strokeStyle='#101010';g.lineWidth=1.5;g.beginPath();g.arc(px,py,3.2,0,Math.PI*2);g.fill();g.stroke();
   g.restore();g.fillStyle='#f1f4e9';g.font='bold 10px Arial';g.textAlign='left';g.fillText('WORLD MAP',mx+8,my+mh+14);g.fillStyle='#ff8177';g.fillRect(mx+mw-84,my+mh+8,6,6);g.fillStyle='#c8d0c7';g.font='9px Arial';g.fillText('ZOMBIES',mx+mw-74,my+mh+14);g.restore();
 }
@@ -1471,7 +1477,11 @@ function game(){
         }
       }
     }
-    if(!q.dead&&(O.some(o=>Math.hypot(q.x-o.x,q.y-o.y)<o.r)||BLD.some(o=>pointWallDist(q.x,q.y,o)<o.th/2+3))){
+    // The safe camp protects the player, not the player's ability to fire.
+    // Let projectiles travel freely while they remain in the safe-zone radius;
+    // otherwise nearby decorative trees can instantly consume shots at spawn.
+    const projectileInSafeCamp=isInsideBaseSafeZone(q.x,q.y);
+    if(!q.dead&&!projectileInSafeCamp&&(O.some(o=>Math.hypot(q.x-o.x,q.y-o.y)<o.r)||BLD.some(o=>pointWallDist(q.x,q.y,o)<o.th/2+3))){
       if(q.orb&&!q.dead){
         q.dead=1;VORTEX.push({x:q.x,y:q.y,t:0,life:90,r:112,dmg:q.dmg||12});
         for(let i=0;i<12;i++){const aa=Math.random()*6.283,ss=1+Math.random()*3;pt(q.x,q.y,Math.cos(aa)*ss,Math.sin(aa)*ss,18,'#624174',2,0);}
@@ -1769,7 +1779,7 @@ function game(){
   }
 
   // Return to screen coordinates for the HUD while the world camera keeps moving.
-  if(gameMode==='base'){g.restore();g.save();g.scale(Z,Z);}
+  if(gameMode==='base'){g.restore();g.save();}
   // HUD
   g.textAlign='left';
   g.fillStyle='rgba(0,0,0,.5)';g.fillRect(8,8,320,po>0?196:182);
