@@ -160,7 +160,7 @@ const startGameBtn=document.getElementById('startGameBtn');
 let gameMode='classic';
 let cameraX=0,cameraY=0;
 const BASE_WORLD_W=9000, BASE_WORLD_H=6200;
-const BASE_ZOOM=5; // Base World uses a genuine 5x camera zoom; the player is rendered at normal scale.
+const BASE_ZOOM=2.5; // Half the previous 5x zoom; camera zoom changes the view, not player scale.
 function worldW(){return gameMode==='base'?BASE_WORLD_W:w;}
 function worldH(){return gameMode==='base'?BASE_WORLD_H:h;}
 let infiniteNextBossScore=75;
@@ -844,26 +844,36 @@ usernameInput.oninput=()=>{usernameInput.value=usernameInput.value.replace(/[^a-
 /* ---------- input ---------- */
 c.oncontextmenu=q=>q.preventDefault();
 c.style.touchAction='none';
+let lastPointerClient=null;
 function updateMouseWorld(q){
+  if(q && Number.isFinite(q.clientX) && Number.isFinite(q.clientY)) lastPointerClient={clientX:q.clientX,clientY:q.clientY};
+  if(!lastPointerClient)return;
   const r=c.getBoundingClientRect();
-  // The canvas is drawn with g.scale(Z,Z). Undo that CSS/canvas drawing scale exactly once.
-  // Then invert the Base World camera transform: screen = (world - camera) * BASE_ZOOM.
-  const sx=(q.clientX-r.left)/Math.max(1,r.width)*c.width/Z;
-  const sy=(q.clientY-r.top)/Math.max(1,r.height)*c.height/Z;
-  if(gameMode==='base'){
-    m.x=sx/BASE_ZOOM+cameraX;
-    m.y=sy/BASE_ZOOM+cameraY;
-  }else{
-    m.x=sx; m.y=sy;
-  }
+  // Convert CSS pixels to canvas backing pixels, then undo the exact draw transforms.
+  const sx=(lastPointerClient.clientX-r.left)*(c.width/Math.max(1,r.width));
+  const sy=(lastPointerClient.clientY-r.top)*(c.height/Math.max(1,r.height));
+  const scale=Z*(gameMode==='base'?BASE_ZOOM:1);
+  m.x=sx/scale+(gameMode==='base'?cameraX:0);
+  m.y=sy/scale+(gameMode==='base'?cameraY:0);
 }
-c.onmousemove=updateMouseWorld;
-c.onpointermove=updateMouseWorld;
-c.onmousedown=q=>{if(dead||q.button!==0)return;md=1;updateMouseWorld(q)};
-c.onpointerdown=q=>{if(dead||q.button!==0)return;md=1;updateMouseWorld(q)};
-window.addEventListener('pointerup',()=>{md=0});
-window.addEventListener('mouseup',()=>{md=0});
-onblur=()=>{md=0;k={}};
+c.addEventListener('pointermove',updateMouseWorld);
+c.addEventListener('pointerdown',q=>{
+  if(dead || q.button!==0) return;
+  q.preventDefault();
+  updateMouseWorld(q);
+  md=1;
+  // Keep receiving release events if the pointer leaves the canvas while firing.
+  try{c.setPointerCapture(q.pointerId)}catch(_){ }
+});
+function stopFiring(){md=0;}
+c.addEventListener('pointerup',stopFiring);
+c.addEventListener('pointercancel',stopFiring);
+c.addEventListener('lostpointercapture',stopFiring);
+// Mouse fallbacks support browsers/extensions that do not dispatch Pointer Events reliably.
+c.addEventListener('mousemove',updateMouseWorld);
+c.addEventListener('mousedown',q=>{if(!dead&&q.button===0){updateMouseWorld(q);md=1;}});
+window.addEventListener('mouseup',stopFiring);
+window.addEventListener('blur',()=>{md=0;k={}});
 onkeydown=q=>{
   const n=q.key.toLowerCase();
   if(n.indexOf('arrow')==0||n==' ')q.preventDefault();
@@ -918,10 +928,10 @@ setInterval(()=>{
   const side=Math.random()*4|0;let x,y;
   if(gameMode==='base'){
     const pad=100;
-    if(side===0){x=Math.max(25,cameraX-pad);y=cameraY+Math.random()*h;}
-    else if(side===1){x=Math.min(BASE_WORLD_W-25,cameraX+w+pad);y=cameraY+Math.random()*h;}
-    else if(side===2){x=cameraX+Math.random()*w;y=Math.max(25,cameraY-pad);}
-    else{x=cameraX+Math.random()*w;y=Math.min(BASE_WORLD_H-25,cameraY+h+pad);}
+    if(side===0){x=Math.max(25,cameraX-pad);y=cameraY+Math.random()*(h/BASE_ZOOM);}
+    else if(side===1){x=Math.min(BASE_WORLD_W-25,cameraX+w/BASE_ZOOM+pad);y=cameraY+Math.random()*(h/BASE_ZOOM);}
+    else if(side===2){x=cameraX+Math.random()*(w/BASE_ZOOM);y=Math.max(25,cameraY-pad);}
+    else{x=cameraX+Math.random()*(w/BASE_ZOOM);y=Math.min(BASE_WORLD_H-25,cameraY+h/BASE_ZOOM+pad);}
   }else{
     if(side==0){x=-40;y=Math.random()*h}else if(side==1){x=w+40;y=Math.random()*h}
     else if(side==2){x=Math.random()*w;y=-40}else{x=Math.random()*w;y=h+40}
@@ -1198,6 +1208,7 @@ function game(){
     const viewW=w/BASE_ZOOM,viewH=h/BASE_ZOOM;
     cameraX=Math.max(0,Math.min(BASE_WORLD_W-viewW,p.x-viewW/2));
     cameraY=Math.max(0,Math.min(BASE_WORLD_H-viewH,p.y-viewH/2));
+    updateMouseWorld();
     g.scale(BASE_ZOOM,BASE_ZOOM);
     g.fillStyle='#203b2a';g.fillRect(0,0,viewW,viewH);
     g.translate(-cameraX,-cameraY);
