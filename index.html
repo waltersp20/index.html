@@ -840,7 +840,11 @@ function spawnBaseAmmoCrates(reset=true){
   if(gameMode!=='base')return;
   if(reset)AMMO=[];
   const picks=[['old-town',28],['outpost',32],['village',30],['lakeside',28],['quarry',36],['watchtower',26],['harbor',30],['factory',38],['farm',24],['dark-fortress',48],['rivergate',30],['sunken-city',34],['deadlands-station',42],['east-camp',28],['red-mesa',32]];
-  picks.forEach(([id,amount],i)=>{const st=BASE_STRUCTURES.find(q=>q.id===id)||BASE_STRUCTURES[i%BASE_STRUCTURES.length];AMMO.push({x:st.x+(Math.random()-.5)*st.w*.34,y:st.y+(Math.random()-.5)*st.h*.28,amount,crate:1,got:0,life:0});});
+  picks.forEach(([id,amount],i)=>{
+    const st=BASE_STRUCTURES.find(q=>q.id===id)||BASE_STRUCTURES[i%BASE_STRUCTURES.length];
+    const ix=Math.max(55,st.w*.25),iy=Math.max(45,st.h*.24);
+    AMMO.push({x:st.x+(Math.random()-.5)*ix,y:st.y+(Math.random()-.5)*iy,amount,crate:1,buildingCrate:1,buildingId:st.id,got:0,life:0});
+  });
 }
 function spawnTreeSupplyCrates(){
   if(gameMode!=='base')return;
@@ -918,7 +922,7 @@ function updateMouseWorld(q){
 c.addEventListener('pointermove',updateMouseWorld);
 c.addEventListener('pointerdown',q=>{
   if(dead || q.button!==0) return;
-  if(gameMode==='base'&&vehicleMode==='driver'){const v=BASE_VEHICLES.find(v=>v.id===vehicleId);if(v&&v.gunner){q.preventDefault();updateMouseWorld(q);fireVehicleGun(v);return;}}
+  if(gameMode==='base'&&vehicleMode==='gunner'){const v=BASE_VEHICLES.find(v=>v.id===vehicleId);if(v&&v.gunner){q.preventDefault();updateMouseWorld(q);fireVehicleGun(v);return;}}
   q.preventDefault();
   updateMouseWorld(q);
   md=1;
@@ -945,20 +949,20 @@ onkeydown=q=>{
   if(n=='g'&&!q.repeat&&!dead&&gameMode==='base'){
     const v=vehicleId?BASE_VEHICLES.find(q=>q.id===vehicleId):nearbyVehicle();
     if(v){
-      v.gunner=!v.gunner;
-      if(v.gunner){
-        // A player already driving can operate the mounted gun; this also avoids
-        // accidentally eating a pear when G is being used for the vehicle seat.
-        if(!vehicleMode){vehicleMode='gunner';vehicleId=v.id;}
-      }else if(vehicleMode==='gunner'){
-        vehicleMode=null;vehicleId=null;
-      }
-    }else{
-      eatPear();
-    }
+      if(!vehicleMode){v.driver=false;v.gunner=true;vehicleMode='gunner';vehicleId=v.id;p.x=v.x;p.y=v.y;}
+      else if(vehicleMode==='driver'){v.driver=false;v.gunner=true;vehicleMode='gunner';}
+      else if(vehicleMode==='gunner'){v.gunner=false;v.driver=true;vehicleMode='driver';}
+    }else eatPear();
   }
   if(n=='e'&&!q.repeat&&L<=0){
-    if(gameMode==='base'){const v=nearbyVehicle();if(v&&!vehicleMode){v.driver=true;vehicleMode='driver';vehicleId=v.id;p.x=v.x;p.y=v.y;return;}if(v&&vehicleId===v.id&&vehicleMode){v.driver=false;v.gunner=false;vehicleMode=null;vehicleId=null;p.x=v.x+65;p.y=v.y;return;}}
+    if(gameMode==='base'){
+      const v=vehicleId?BASE_VEHICLES.find(q=>q.id===vehicleId):nearbyVehicle();
+      if(v&&!vehicleMode){v.driver=true;v.gunner=false;vehicleMode='driver';vehicleId=v.id;p.x=v.x;p.y=v.y;return;}
+      if(v&&vehicleId===v.id&&vehicleMode){
+        v.driver=false;v.gunner=false;vehicleMode=null;vehicleId=null;
+        p.x=v.x+Math.cos(v.angle+Math.PI/2)*65;p.y=v.y+Math.sin(v.angle+Math.PI/2)*65;return;
+      }
+    }
     const rock=gameMode==='base'?O.filter(o=>o.t===1).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
     if(rock&&Math.hypot(rock.x-p.x,rock.y-p.y)<68){
       if(miningCooldown<=0){
@@ -1445,15 +1449,74 @@ function isInsideBaseSafeZone(x,y){
   return Math.hypot(dx,dy)<=wobble;
 }
 
-const BASE_VEHICLE_LOCATIONS=['old-town','outpost','village','ruins','dark-fortress','lakeside','quarry','watchtower','harbor','factory','farm','rivergate','sunken-city','deadlands-station','east-camp','red-mesa'];
-function resetBaseVehicles(){BASE_VEHICLES=[];if(gameMode!=='base')return;BASE_VEHICLE_LOCATIONS.forEach(id=>{const st=BASE_STRUCTURES.find(q=>q.id===id);if(st)BASE_VEHICLES.push({id:'vehicle-'+id,x:st.x,y:st.y+st.h*.62,locId:id,angle:0,driver:false,gunner:false});});vehicleMode=null;vehicleId=null;}
-function nearbyVehicle(){return BASE_VEHICLES.filter(v=>Math.hypot(v.x-p.x,v.y-p.y)<90).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]||null;}
-function drawMilitaryVehicle(v){g.save();g.translate(v.x,v.y);g.rotate(v.angle||0);el(0,22,44,13,'rgba(0,0,0,.35)');g.fillStyle='#27352a';g.strokeStyle='#101710';g.lineWidth=3;g.fillRect(-42,-18,84,36);g.strokeRect(-42,-18,84,36);g.fillStyle='#3f513b';g.fillRect(-25,-25,42,18);g.fillRect(-30,7,50,11);g.fillStyle='#162018';g.fillRect(-30,-33,18,9);g.fillRect(12,-33,18,9);g.fillRect(-30,24,18,9);g.fillRect(12,24,18,9);g.fillStyle='#111';g.fillRect(0,-5,47,10);g.fillStyle='#5d6d59';g.fillRect(18,-3,38,6);g.fillStyle='#111';g.fillRect(37,-7,25,14);g.fillStyle='#b8c1b0';g.fillRect(57,-3,14,6);g.restore();}
-function updateVehicle(){if(gameMode!=='base'||vehicleMode!=='driver')return;const v=BASE_VEHICLES.find(q=>q.id===vehicleId);if(!v)return;const speed=k.shift?10:7;if(k.w||k.arrowup){v.x+=Math.cos(v.angle)*speed;v.y+=Math.sin(v.angle)*speed;}if(k.s||k.arrowdown){v.x-=Math.cos(v.angle)*speed*.65;v.y-=Math.sin(v.angle)*speed*.65;}if(k.a||k.arrowleft)v.angle-=.045;if(k.d||k.arrowright)v.angle+=.045;v.x=Math.max(40,Math.min(BASE_WORLD_W-40,v.x));v.y=Math.max(40,Math.min(BASE_WORLD_H-40,v.y));p.x=v.x;p.y=v.y;}
+// Fewer, more useful military vehicles: one at selected major locations rather than every POI.
+const BASE_VEHICLE_LOCATIONS=['old-town','village','quarry','harbor','factory','dark-fortress','deadlands-station','red-mesa'];
+function resetBaseVehicles(){
+  BASE_VEHICLES=[];
+  if(gameMode!=='base')return;
+  BASE_VEHICLE_LOCATIONS.forEach(id=>{
+    const st=BASE_STRUCTURES.find(q=>q.id===id);
+    if(st)BASE_VEHICLES.push({id:'vehicle-'+id,x:st.x,y:st.y+st.h*.62,locId:id,angle:0,driver:false,gunner:false,turretAngle:0});
+  });
+  vehicleMode=null;vehicleId=null;
+}
+function nearbyVehicle(){
+  return BASE_VEHICLES.filter(v=>Math.hypot(v.x-p.x,v.y-p.y)<100)
+    .sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]||null;
+}
+function drawMilitaryVehicle(v){
+  g.save();
+  g.translate(v.x,v.y);
+  g.rotate(v.angle||0);
+  el(0,25,58,15,'rgba(0,0,0,.38)');
+  // Armoured body.
+  g.fillStyle='#26382b';g.strokeStyle='#101710';g.lineWidth=3;
+  g.beginPath();g.roundRect(-48,-20,96,40,6);g.fill();g.stroke();
+  g.fillStyle='#3f543e';g.fillRect(-31,-29,48,18);
+  g.fillStyle='#6d7d68';g.fillRect(-27,-25,38,9);
+  g.fillStyle='#111';g.strokeStyle='#0a0d0a';g.lineWidth=2;
+  [[-36,-34],[13,-34],[-36,25],[13,25]].forEach(([x,y])=>{g.fillRect(x,y,22,10);g.strokeRect(x,y,22,10);});
+  // Front grille, headlights and rear details.
+  g.fillStyle='#101712';g.fillRect(37,-13,11,26);
+  g.fillStyle='#d6dfc7';g.fillRect(45,-9,4,6);g.fillRect(45,3,4,6);
+  g.fillStyle='#18241b';g.fillRect(-43,-13,9,26);
+  g.fillStyle='#52664e';g.fillRect(-42,-8,6,4);g.fillRect(-42,4,6,4);
+  // Door seams and armour plates.
+  g.strokeStyle='#71806b';g.lineWidth=1.5;g.strokeRect(-25,-17,28,34);g.strokeRect(7,-17,28,34);
+  g.fillStyle='#111';g.fillRect(0,-2,9,4);g.fillRect(-2,10,5,2);
+  // Turret ring, turret and long barrel.
+  const ta=v.turretAngle||0;
+  g.save();g.rotate(ta-(v.angle||0));
+  g.fillStyle='#1b281e';g.strokeStyle='#0b100c';g.lineWidth=2;
+  g.beginPath();g.arc(0,0,15,0,Math.PI*2);g.fill();g.stroke();
+  g.fillStyle='#3e513b';g.fillRect(-10,-8,23,16);
+  g.fillStyle='#111';g.fillRect(9,-4,42,8);
+  g.fillStyle='#687863';g.fillRect(18,-2,30,4);
+  g.fillStyle='#101';g.fillRect(45,-5,8,10);
+  g.restore();
+  // Small antenna / rear equipment.
+  g.strokeStyle='#8a9682';g.lineWidth=2;g.beginPath();g.moveTo(-30,-29);g.lineTo(-35,-43);g.stroke();
+  g.fillStyle='#b7c3aa';g.beginPath();g.arc(-35,-44,2,0,Math.PI*2);g.fill();
+  g.restore();
+}
+function updateVehicle(){
+  if(gameMode!=='base'||vehicleMode!=='driver')return;
+  const v=BASE_VEHICLES.find(q=>q.id===vehicleId);
+  if(!v)return;
+  // Faster driving. Shift gives a short high-speed boost.
+  const speed=k.shift?17:12;
+  if(k.w||k.arrowup){v.x+=Math.cos(v.angle)*speed;v.y+=Math.sin(v.angle)*speed;}
+  if(k.s||k.arrowdown){v.x-=Math.cos(v.angle)*speed*.62;v.y-=Math.sin(v.angle)*speed*.62;}
+  if(k.a||k.arrowleft)v.angle-=.055;
+  if(k.d||k.arrowright)v.angle+=.055;
+  v.x=Math.max(55,Math.min(BASE_WORLD_W-55,v.x));v.y=Math.max(55,Math.min(BASE_WORLD_H-55,v.y));
+  p.x=v.x;p.y=v.y;
+}
 function fireVehicleGun(v){
-  if(gameMode!=='base'||!v||!v.gunner||ammo<2)return false;
+  if(gameMode!=='base'||vehicleMode!=='gunner'||!v||!v.gunner||ammo<2)return false;
   ammo-=2;
   const a=Math.atan2(m.y-v.y,m.x-v.x);
+  v.turretAngle=a;
   b.push({x:v.x+Math.cos(a)*55,y:v.y+Math.sin(a)*55,vx:Math.cos(a)*18,vy:Math.sin(a)*18,life:999,t:1,dmg:3*gunMult[0],vehicleShot:1});
   const oldX=p.x,oldY=p.y;
   p.x=v.x;p.y=v.y;
@@ -1687,8 +1750,8 @@ function game(){
     }else buildPreview=null;
     // constant fire rate while holding
     if(cd>0)cd--;
-    if(md&&cd<=0){
-      // Weapon firing is permitted everywhere, including the safe camp.
+    if(md&&cd<=0&&vehicleMode!=='driver'){
+      // Weapon firing is permitted everywhere, except while driving.
       if(wp==0&&trySpendAmmo(0)){shoot();cd=12}
       else if(wp==1&&trySpendAmmo(1)){blast();cd=40}
       else if(wp==3&&trySpendAmmo(3)){smg();cd=4}
@@ -1717,7 +1780,7 @@ function game(){
     }
   }
 
-  if(gameMode==='base')BASE_VEHICLES.forEach(drawMilitaryVehicle);
+  if(gameMode==='base'){BASE_VEHICLES.forEach(v=>{if(vehicleMode==='gunner'&&vehicleId===v.id)v.turretAngle=Math.atan2(m.y-v.y,m.x-v.x);drawMilitaryVehicle(v);});}
   human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),CH[ci],wk,0.95,wp==2?1:0,fl);
   if(gameMode==='base'&&miningAnim>0){const aa=Math.atan2(m.y-p.y,m.x-p.x),swing=(1-miningAnim/10)*1.4;g.save();g.translate(p.x+Math.cos(aa)*20,p.y+Math.sin(aa)*20);g.rotate(aa+swing);g.strokeStyle='#5a4635';g.lineWidth=4;g.beginPath();g.moveTo(-5,18);g.lineTo(-5,-8);g.stroke();g.strokeStyle='#aeb4b0';g.lineWidth=5;g.beginPath();g.moveTo(-13,-9);g.lineTo(3,-9);g.stroke();g.restore();}
   {const f=Math.max(0,hp/100);g.fillStyle='rgba(0,0,0,.65)';g.fillRect(p.x-27,p.y-47,54,9);
@@ -2145,7 +2208,7 @@ function game(){
   g.fillStyle='#ffd400';g.font='16px Arial';g.fillText('BEST: '+H,15,66);
   g.fillStyle='#aaa';g.font='14px Arial';g.fillText('PLAYER: '+playerName,15,83);
   g.fillStyle='#d8c0a0';g.font='14px Arial';g.fillText('WALLS: '+(gameMode==='base'?'WOOD / STONE (V)':wallCharges),15,98);
-  if(gameMode==='base'){g.fillStyle='#8ed6ff';g.font='bold 16px Arial';g.fillText('AMMO: '+ammo+'  •  COST/SHOT: '+ammoCostForWeapon(wp),15,116);const nv=nearbyVehicle();if(nv&&!vehicleMode){g.fillStyle='#d8e7d2';g.font='bold 13px Arial';g.fillText('E = ENTER MILITARY VEHICLE',15,180);}else if(vehicleMode){g.fillStyle='#d8e7d2';g.font='bold 13px Arial';g.fillText(vehicleMode==='driver'?'DRIVER • E = EXIT • G = GUNNER':'GUNNER • CLICK = FIRE • G = LEAVE',15,180);}}
+  if(gameMode==='base'){g.fillStyle='#8ed6ff';g.font='bold 16px Arial';g.fillText('AMMO: '+ammo+'  •  COST/SHOT: '+ammoCostForWeapon(wp),15,116);const nv=nearbyVehicle();if(nv&&!vehicleMode){g.fillStyle='#d8e7d2';g.font='bold 13px Arial';g.fillText('E = DRIVE  •  G = TURRET',15,180);}else if(vehicleMode){g.fillStyle='#d8e7d2';g.font='bold 13px Arial';g.fillText(vehicleMode==='driver'?'DRIVER • G = TURRET • E = EXIT':'TURRET • CLICK = FIRE • G = DRIVER • E = EXIT',15,180);}}
   if(gameMode==='base'){g.fillStyle='#aeb4b0';g.font='14px Arial';g.fillText('STONE: '+stone+'   PICKAXE: READY   BUILDING: '+buildMaterial.toUpperCase(),15,156);}
   g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+WN[wp]+(own.filter(x=>x).length>1?'  [E]':'')+'  DMG x'+gunMult[wp],15,gameMode==='base'?136:119);
   g.font='18px Arial';
@@ -2153,7 +2216,7 @@ function game(){
   g.fillText(!own[2]?'ROCKET: NOT FOUND':rc>0?'ROCKET: RELOADING':'ROCKET: READY',15,gameMode==='base'?176:145);
   if(po>0){g.fillStyle='#7ccf4a';g.fillText('POISONED (slowed) '+(po/60).toFixed(1)+'s',15,155)}
   g.fillStyle='white';g.font='18px Arial';
-  g.fillText('WASD = MOVE | D = OPEN DOOR | E = OPEN CRATE / MINE STONE / SWAP | CLICK = FIRE | HOLD B + RELEASE = BUILD | V = WOOD/STONE | F = EAT APPLE | G = EAT PEAR',15,c.height-15);
+  g.fillText('WASD = MOVE | D = OPEN DOOR | E = INTERACT / EXIT VEHICLE | CLICK = FIRE | HOLD B + RELEASE = BUILD | V = WOOD/STONE | F = EAT APPLE | G = EAT PEAR / SWITCH VEHICLE SEAT',15,c.height-15);
   g.fillStyle='#ffd66b';g.font='bold 16px Arial';g.fillText('APPLES: '+appleCount+'   PEARS: '+pearCount+'   HP: '+Math.ceil(hp)+'%',15,164);
   if((level==2||level===3||level===4)&&!dead){
     g.fillStyle=level===4?'rgba(38,4,10,.88)':level===3?'rgba(5,12,9,.82)':'rgba(70,40,20,.7)';
