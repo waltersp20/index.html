@@ -104,7 +104,7 @@ html,body{background:#08060b;color:#f7effb}
         <div class="brand-row"><div class="brand-mark" aria-hidden="true">Z</div><div><div class="eyebrow">Browser survival game</div><div style="font-size:12px;color:#a8b9a8;margin-top:4px">A forest survival challenge</div></div></div>
         <h1>THE FOREST IS <span>INFESTED.</span></h1>
         <p class="lede">Enter a hostile forest, survive increasingly dangerous waves, collect supplies and see how high you can push your score. Every run is different — how long can you last?</p>
-        <div class="hero-pills"><span class="pill">4 evolving environments</span><span class="pill">Survival & high scores</span><span class="pill">Free browser game</span></div>
+        <div class="hero-pills"><span class="pill">4 evolving environments</span><span class="pill">Survival & multiplayer rooms</span><span class="pill">Free browser game</span></div>
       </header>
       <div class="home-content">
         <section class="panel" aria-labelledby="play-heading">
@@ -144,7 +144,7 @@ html,body{background:#08060b;color:#f7effb}
   </div>
 </main>
 
-<div id="chatPanel" class="utility-panel" aria-label="Chat panel"><button class="panel-close" data-close="chatPanel">Close</button><h2>World & local chat</h2><p>Chat with other survivors.</p><div id="chatConnection" class="mode-status">Chat unavailable.</div><label class="field-label" for="roomSelect">LOCAL ROOM</label><select id="roomSelect"><option value="general">General</option><option value="north">Northern camp</option><option value="south">Southern camp</option><option value="trade">Trading post</option></select><div id="chatLog" class="chat-log" aria-live="polite">No messages yet.</div><form id="chatForm"><input id="chatMessage" maxlength="240" placeholder="Write a message"><button type="submit">Send</button></form></div>
+<div id="chatPanel" class="utility-panel" aria-label="Chat panel"><button class="panel-close" data-close="chatPanel">Close</button><h2>World & local chat</h2><p>Chat and see other players in the same mode.</p><div id="chatConnection" class="mode-status">Chat unavailable.</div><label class="field-label" for="roomSelect">LOCAL ROOM</label><select id="roomSelect"><option value="general">General</option><option value="north">Northern camp</option><option value="south">Southern camp</option><option value="trade">Trading post</option></select><div id="chatLog" class="chat-log" aria-live="polite">No messages yet.</div><form id="chatForm"><input id="chatMessage" maxlength="240" placeholder="Write a message"><button type="submit">Send</button></form></div>
 
 <div id="adminPanel" class="utility-panel" aria-label="Admin moderation panel"><button class="panel-close" data-close="adminPanel">Close</button><h2>Admin moderation</h2><p>This panel is intentionally hidden. Press Ctrl + Shift + A to open it. It will only become operational after Firebase Authentication and server-side admin permissions are configured.</p><div id="adminConnection" class="mode-status">LOCKED — backend not configured. No global changes can be made yet.</div><label class="field-label" for="adminTarget">PLAYER UID (not display name)</label><input id="adminTarget" placeholder="Firebase user UID" disabled><label class="field-label" for="adminReason">REASON</label><textarea id="adminReason" rows="2" placeholder="Reason for moderation action" disabled></textarea><div style="display:flex;gap:8px"><button disabled>Ban player</button><button disabled>Unban player</button><button disabled>Remove global score</button></div><p class="small-note">Do not put an admin password or private server key in this HTML file. Admin rights should be assigned with trusted server-side tools/custom claims.</p></div>
 
@@ -222,8 +222,52 @@ const FIREBASE_CONFIG = {
   measurementId: 'G-84ZXQT4Z1Y'
 };
 let firebaseDb=null, firebaseUser=null, activeChatRef=null, chatUnsubscribe=null;
+let multiplayerRef=null, multiplayerListener=null, remotePlayers={};
+let multiplayerRoom='';
+let multiplayerLastSent=0;
 const chatLog=document.getElementById('chatLog');
 const chatConnection=document.getElementById('chatConnection');
+function stopMultiplayer(){
+  if(multiplayerRef){
+    try{multiplayerRef.off(); multiplayerRef.child(firebaseUser?.uid||'').remove();}catch(_){ }
+  }
+  multiplayerRef=null; multiplayerListener=null; remotePlayers={}; multiplayerRoom='';
+}
+function startMultiplayer(){
+  if(!firebaseDb||!firebaseUser||!firebaseUser.uid)return;
+  stopMultiplayer();
+  multiplayerRoom='rooms/'+gameMode;
+  multiplayerRef=firebaseDb.ref(multiplayerRoom+'/players');
+  const selfRef=multiplayerRef.child(firebaseUser.uid);
+  try{selfRef.onDisconnect().remove();}catch(_){ }
+  multiplayerListener=snap=>{
+    remotePlayers={};
+    snap.forEach(child=>{
+      if(child.key!==firebaseUser.uid){
+        const v=child.val()||{};
+        if(Number.isFinite(v.x)&&Number.isFinite(v.y)) remotePlayers[child.key]=v;
+      }
+    });
+  };
+  multiplayerRef.on('value',multiplayerListener);
+  document.getElementById('chatConnection').textContent='Multiplayer connected — other players in this mode will appear live.';
+}
+function syncMultiplayer(force=false){
+  if(!multiplayerRef||!firebaseUser||dead)return;
+  const now=performance.now();
+  if(!force&&now-multiplayerLastSent<100)return;
+  multiplayerLastSent=now;
+  const selfRef=multiplayerRef.child(firebaseUser.uid);
+  selfRef.set({x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),ci:ci||0,name:playerName||'Player',ts:firebase.database.ServerValue.TIMESTAMP});
+}
+function drawRemotePlayers(){
+  Object.values(remotePlayers).forEach(v=>{
+    const idx=Math.max(0,Math.min(CH.length-1,Number(v.ci)||0));
+    human(v.x,v.y,Number(v.a)||0,CH[idx],0,.95,0,0);
+    g.save();g.fillStyle='rgba(8,12,9,.8)';g.font='bold 11px Arial';g.textAlign='center';g.fillText(String(v.name||'Player').slice(0,16),v.x,v.y-28);g.restore();
+  });
+}
+
 function safeChatText(v){return String(v||'').replace(/[<>]/g,'').trim().slice(0,240)}
 function appendChatMessage(msg){
   const row=document.createElement('div');row.style.marginBottom='7px';
@@ -383,12 +427,14 @@ startGameBtn.addEventListener('click',()=>{
   dead=0;
   homePage.classList.add('hidden');
   rs();
+  startMultiplayer();
   returnBaseBtn.style.display=gameMode==='base'?'block':'none';
   homePage.classList.add('hidden');
 });
 returnBaseBtn.onclick=()=>{
   if(gameMode!=='base')return;
   save();
+  stopMultiplayer();
   dead=2;
   md=0;k={};
   returnBaseBtn.style.display='none';
@@ -755,7 +801,7 @@ function save(){
   }
 }
 function sz(){c.width=innerWidth;c.height=innerHeight;w=c.width/Z;h=c.height/Z}
-function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];ammo=25;AMMO=[];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;stone=0;buildMaterial='wood';miningCooldown=0;miningAnim=0;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:BASE_WORLD_W*.12,y:BASE_WORLD_H*.48}:{x:w/2,y:h/2};cameraX=0;cameraY=0;gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}resetBaseStructures();spawnW();resetBaseVehicles();baseSupplyClock=0}
+function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];ammo=gameMode==='base'?25:0;AMMO=[];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;stone=0;buildMaterial='wood';miningCooldown=0;miningAnim=0;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:BASE_WORLD_W*.12,y:BASE_WORLD_H*.48}:{x:w/2,y:h/2};cameraX=0;cameraY=0;gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}resetBaseStructures();spawnW();resetBaseVehicles();baseSupplyClock=0}
 sz();
 p={x:w/2,y:h/2};m={x:w/2+100,y:h/2};gen();
 onresize=sz;
@@ -1062,13 +1108,18 @@ onkeydown=q=>{
         ammo+=ammoPack.amount;ammoPack.got=1;
         for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(ammoPack.x,ammoPack.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#8ed6ff',2+Math.random()*2,0)}
       }else{
-        const crate=gameMode==='base'?WPN.filter(v=>!v.got&&!v.opened).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
-        if(crate&&Math.hypot(crate.x-p.x,crate.y-p.y)<78){
-          crate.opened=1;crate.got=1;own[crate.t]=1;wp=crate.t;fl=0;
-          if(gameMode==='base')ammo+=10+Math.floor(Math.random()*16);
-          for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(crate.x,crate.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#ffd36b',2+Math.random()*2,0)}
+        const groundGun=gameMode!=='base'?WPN.filter(v=>!v.got&&!v.collected).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
+        if(groundGun&&Math.hypot(groundGun.x-p.x,groundGun.y-p.y)<78){
+          groundGun.collected=1;groundGun.got=1;own[groundGun.t]=1;wp=groundGun.t;fl=0;
         }else{
-          for(let i=1;i<=6;i++){const t=(wp+i)%6;if(own[t]){wp=t;break}}
+          const crate=gameMode==='base'?WPN.filter(v=>!v.got&&!v.opened).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
+          if(crate&&Math.hypot(crate.x-p.x,crate.y-p.y)<78){
+            crate.opened=1;crate.got=1;own[crate.t]=1;wp=crate.t;fl=0;
+            if(gameMode==='base')ammo+=10+Math.floor(Math.random()*16);
+            for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(crate.x,crate.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#ffd36b',2+Math.random()*2,0)}
+          }else{
+            for(let i=1;i<=6;i++){const t=(wp+i)%6;if(own[t]){wp=t;break}}
+          }
         }
       }
     }
@@ -1858,33 +1909,44 @@ function game(){
     g.restore();
   });
 
-  // Ground weapons in Base World are sealed supply crates; walk up and press E to open.
+  // Base World uses sealed supply crates. Classic/Infinite use simple ground pickups.
   WPN=WPN.filter(q=>q.t!==4);
-  let nearbyCrate=null,nearbyCrateDist=Infinity;
+  let nearbyCrate=null,nearbyCrateDist=Infinity,nearbyGroundGun=null,nearbyGroundGunDist=Infinity;
   WPN.forEach(q=>{
     if(q.got||q.collected)return;
     const bob=Math.sin(fr*.055+q.x*.01)*1.5;
     el(q.x+3,q.y+17,35,10,'rgba(0,0,0,.35)');
     g.save();g.translate(q.x,q.y+bob);
-    // Heavy wooden crate with metal corners, lid seam and a glowing weapon emblem.
-    g.fillStyle='#3c2818';g.fillRect(-19,-15,38,30);
-    g.fillStyle='#75502b';g.fillRect(-16,-12,32,24);
-    g.fillStyle='#9a713e';g.fillRect(-16,-12,32,5);g.fillRect(-16,7,32,5);
-    g.fillStyle='#4b321d';g.fillRect(-5,-12,10,24);
-    g.strokeStyle='#c2a16a';g.lineWidth=2;g.strokeRect(-19,-15,38,30);
-    g.fillStyle='#d9b66b';g.fillRect(-3,-4,6,8);
-    g.fillStyle='#fff0b5';g.beginPath();g.arc(0,0,2.2,0,Math.PI*2);g.fill();
+    if(gameMode==='base'){
+      g.fillStyle='#3c2818';g.fillRect(-19,-15,38,30);
+      g.fillStyle='#75502b';g.fillRect(-16,-12,32,24);
+      g.fillStyle='#9a713e';g.fillRect(-16,-12,32,5);g.fillRect(-16,7,32,5);
+      g.fillStyle='#4b321d';g.fillRect(-5,-12,10,24);
+      g.strokeStyle='#c2a16a';g.lineWidth=2;g.strokeRect(-19,-15,38,30);
+      g.fillStyle='#d9b66b';g.fillRect(-3,-4,6,8);
+      g.fillStyle='#fff0b5';g.beginPath();g.arc(0,0,2.2,0,Math.PI*2);g.fill();
+    }else{
+      g.rotate(-.18+Math.sin(q.x*.01)*.05);
+      g.fillStyle='#20252a';g.fillRect(-22,-3,42,6);
+      g.fillStyle='#5b3c25';g.fillRect(-7,2,13,6);
+      g.fillStyle='#11161a';g.fillRect(17,-2,13,4);
+      g.fillStyle='#777';g.fillRect(-17,-5,12,2);
+      g.fillStyle='#d5b36a';g.fillRect(-3,-7,5,2);
+    }
     g.restore();
-    g.fillStyle='#ffd36b';g.font='bold 12px Arial';g.textAlign='center';
-    g.fillText('SUPPLY CRATE',q.x,q.y-27);
+    g.fillStyle=gameMode==='base'?'#ffd36b':'#e5e5e5';g.font='bold 11px Arial';g.textAlign='center';
+    g.fillText(gameMode==='base'?'SUPPLY CRATE':'PICKUP '+WN[q.t],q.x,q.y-27);
     const dist=Math.hypot(p.x-q.x,p.y-q.y);
-    if(!dead&&dist<nearbyCrateDist){nearbyCrate=q;nearbyCrateDist=dist;}
+    if(!dead){
+      if(gameMode==='base'&&dist<nearbyCrateDist){nearbyCrate=q;nearbyCrateDist=dist;}
+      if(gameMode!=='base'&&dist<nearbyGroundGunDist){nearbyGroundGun=q;nearbyGroundGunDist=dist;}
+    }
   });
   if(nearbyCrate&&nearbyCrateDist<78){
-    g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-112,c.height-86,224,30);
-    g.strokeStyle='#c6a76c';g.strokeRect(c.width/2-112,c.height-86,224,30);
-    g.fillStyle='#fff0c4';g.font='bold 14px Arial';g.textAlign='center';
-    g.fillText('PRESS E TO OPEN CRATE',c.width/2,c.height-66);g.restore();
+    g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-112,c.height-86,224,30);g.strokeStyle='#c6a76c';g.strokeRect(c.width/2-112,c.height-86,224,30);g.fillStyle='#fff0c4';g.font='bold 14px Arial';g.textAlign='center';g.fillText('PRESS E TO OPEN CRATE',c.width/2,c.height-66);g.restore();
+  }
+  if(nearbyGroundGun&&nearbyGroundGunDist<78){
+    g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-150,c.height-86,300,30);g.strokeStyle='#9cc08e';g.strokeRect(c.width/2-150,c.height-86,300,30);g.fillStyle='#f1f7ed';g.font='bold 14px Arial';g.textAlign='center';g.fillText('PRESS E TO PICK UP '+WN[nearbyGroundGun.t],c.width/2,c.height-66);g.restore();
   }
   // Universal ammunition pickups in Base World.
   let nearbyAmmo=null,nearbyAmmoDist=Infinity;
@@ -1987,6 +2049,8 @@ function game(){
 
   if(gameMode==='base'){BASE_VEHICLES.forEach(v=>{if(vehicleMode==='gunner'&&vehicleId===v.id)v.turretAngle=Math.atan2(m.y-v.y,m.x-v.x);drawMilitaryVehicle(v);});}
   if(!(gameMode==='base'&&vehicleMode)) human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),CH[ci],wk,0.95,wp==2?1:0,fl);
+  drawRemotePlayers();
+  syncMultiplayer();
   if(gameMode==='base'&&miningAnim>0){const aa=Math.atan2(m.y-p.y,m.x-p.x),swing=(1-miningAnim/10)*1.4;g.save();g.translate(p.x+Math.cos(aa)*20,p.y+Math.sin(aa)*20);g.rotate(aa+swing);g.strokeStyle='#5a4635';g.lineWidth=4;g.beginPath();g.moveTo(-5,18);g.lineTo(-5,-8);g.stroke();g.strokeStyle='#aeb4b0';g.lineWidth=5;g.beginPath();g.moveTo(-13,-9);g.lineTo(3,-9);g.stroke();g.restore();}
   {const f=Math.max(0,hp/100);g.fillStyle='rgba(0,0,0,.65)';g.fillRect(p.x-27,p.y-47,54,9);
   g.fillStyle=f>.6?'#2ecc71':f>.3?'#f1c40f':'#e74c3c';g.fillRect(p.x-25,p.y-45,50*f,5)}
@@ -2453,7 +2517,7 @@ function game(){
     homeUsername.value=playerName;
     refreshHome();
   }
-  if(showHome&&dead==2)hideRevivePopup();
+  if(showHome&&dead==2){hideRevivePopup();stopMultiplayer();}
 
   requestAnimationFrame(game);
 }
