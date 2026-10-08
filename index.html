@@ -18,7 +18,7 @@
 html,body{margin:0;min-height:100%;background:#080d0a;color:#eef5ef;font-family:Arial,Helvetica,sans-serif}
 body{overflow:hidden}
 canvas{z-index:0;display:block;width:100vw;height:100vh;image-rendering:auto;will-change:contents;}
-#homePage{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 0%,rgba(60,103,48,.34),transparent 58%),linear-gradient(135deg,rgba(5,10,7,.97),rgba(10,17,12,.94));opacity:1;visibility:visible;pointer-events:auto;transition:opacity .65s ease,visibility .65s ease}
+#homePage{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 0%,rgba(60,103,48,.34),transparent 58%),linear-gradient(135deg,rgba(5,10,7,.97),rgba(10,17,12,.94));opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease}
 #homePage.hidden{opacity:0;visibility:hidden;pointer-events:none}
 .home-layout{width:min(1240px,100%);display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:22px;align-items:stretch;margin:auto}
 .home-main{min-width:0}
@@ -177,6 +177,8 @@ const homeScoreList=document.getElementById('homeScoreList');
 const homeBest=document.getElementById('homeBest');
 const startGameBtn=document.getElementById('startGameBtn');
 let gameMode='classic';
+// Prevent the render loop from fighting the homepage before a run has actually started.
+let gameStarted=false;
 let cameraX=0,cameraY=0;
 let BASE_VEHICLES=[],baseSupplyClock=0,vehicleMode=null,vehicleId=null;
 const BASE_WORLD_W=24000, BASE_WORLD_H=16000;
@@ -376,7 +378,7 @@ if(FIREBASE_CONFIG && FIREBASE_CONFIG.databaseURL){
   try{
     firebase.initializeApp(FIREBASE_CONFIG);firebaseDb=firebase.database();
     firebase.auth().onAuthStateChanged(async user=>{
-      if(user){showAuthUser(user);authReady=true;return;}
+      if(user){showAuthUser(user);authReady=true;if(gameStarted)startMultiplayer();return;}
       showAuthUser(null);
       // Start as a guest by default so existing players can enter Base World chat without a forced login.
       try{await firebase.auth().signInAnonymously();}
@@ -423,13 +425,25 @@ document.querySelectorAll('.char-option').forEach(btn=>{
 startGameBtn.addEventListener('click',()=>{
   setHomeName();
   if(coopRequested){modeStatus.textContent='Co-op is not connected yet, so this run will start in local single-player mode.';}
-  // Start local gameplay immediately; Firebase is not required for Classic or Infinite.
-  dead=0;
-  homePage.classList.add('hidden');
-  rs();
-  startMultiplayer();
+
+  // Reset the complete run before telling the render loop that gameplay has started.
+  // This removes the old race where the loop could immediately re-show the homepage.
+  try{
+    rs();
+    dead=0;
+    gameStarted=true;
+    homePage.classList.add('hidden');
+    updateMobileUI();
+    startMultiplayer();
+  }catch(err){
+    gameStarted=false;
+    homePage.classList.remove('hidden');
+    console.error('Unable to start game:',err);
+    modeStatus.textContent='The game could not start. Please refresh the page and try again.';
+    updateMobileUI();
+    return;
+  }
   returnBaseBtn.style.display=gameMode==='base'?'block':'none';
-  homePage.classList.add('hidden');
 });
 returnBaseBtn.onclick=()=>{
   if(gameMode!=='base')return;
@@ -438,6 +452,7 @@ returnBaseBtn.onclick=()=>{
   dead=2;
   md=0;k={};
   returnBaseBtn.style.display='none';
+  gameStarted=false;
   refreshHome();
   homePage.classList.remove('hidden');
 };
@@ -803,6 +818,7 @@ function save(){
 function sz(){c.width=innerWidth;c.height=innerHeight;w=c.width/Z;h=c.height/Z}
 function rs(){infiniteNextBossScore=75;dead=0;wp=0;cd=0;own=[1,0,0,0,0,0];gunMult=[1,1,1,1,1,1];ammo=gameMode==='base'?25:0;AMMO=[];upgrades=[];nextUpgrade=600;score=0;T=0;L=0;S=0;fl=0;rc=0;md=0;po=0;hp=100;ih=0;appleCount=0;pearCount=0;apples=[];pears=[];AEX=[];buildHeld=0;buildPreview=null;reviveUsed=false;reviveTimer=0;scoreSaved=false;wallCharges=5;stone=0;buildMaterial='wood';miningCooldown=0;miningAnim=0;hideRevivePopup();BLD=[];e=[];R=[];X=[];b=[];P=[];F=[];D=[];level=1;levelBanner=0;totalSpawned=0;level2Kills=0;bossSpawned=0;bossCutscene=0;level2Spawned=0;level2PostBossSpawned=0;level2PostBossKills=0;level3Spawned=0;level3Kills=0;level4Spawned=0;level4Kills=0;firePatches=[];fireHitCooldown=0;halfHealthBlastUsed=false;reviveUsed=false;reviveTimer=0;scoreSaved=false;p=gameMode==='base'?{x:BASE_WORLD_W*.12,y:BASE_WORLD_H*.48}:{x:w/2,y:h/2};cameraX=0;cameraY=0;gen();if(gameMode==='base'){try{BLD=JSON.parse(localStorage.getItem('zs_base_walls')||'[]')}catch(_){BLD=[]}}resetBaseStructures();spawnW();resetBaseVehicles();baseSupplyClock=0}
 sz();
+gameStarted=false;
 p={x:w/2,y:h/2};m={x:w/2+100,y:h/2};gen();
 onresize=sz;
 
@@ -2509,13 +2525,18 @@ function game(){
 
   if(gameMode==='base')g.restore();
 
-  // The accessible HTML homepage is shown for both first launch and after death.
-  const showHome=dead!==0;
+  // The homepage owns the initial screen. Once a run starts, death can return to it;
+  // otherwise the render loop must never toggle it during startup.
+  const showHome=!gameStarted || dead!==0;
   const wasHomeVisible=!homePage.classList.contains('hidden');
-  homePage.classList.toggle('hidden',!showHome);
-  if(showHome&&!wasHomeVisible){
-    homeUsername.value=playerName;
-    refreshHome();
+  if(showHome){
+    homePage.classList.remove('hidden');
+    if(!wasHomeVisible || !gameStarted){
+      homeUsername.value=playerName;
+      refreshHome();
+    }
+  }else{
+    homePage.classList.add('hidden');
   }
   if(showHome&&dead==2){hideRevivePopup();stopMultiplayer();}
 
