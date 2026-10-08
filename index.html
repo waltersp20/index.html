@@ -18,7 +18,7 @@
 html,body{margin:0;min-height:100%;background:#080d0a;color:#eef5ef;font-family:Arial,Helvetica,sans-serif}
 body{overflow:hidden}
 canvas{z-index:0;display:block;width:100vw;height:100vh;image-rendering:auto;will-change:contents;}
-#homePage{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 0%,rgba(60,103,48,.34),transparent 58%),linear-gradient(135deg,rgba(5,10,7,.97),rgba(10,17,12,.94));opacity:1;visibility:visible;pointer-events:auto;transition:opacity .22s ease,visibility .22s ease}
+#homePage{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;overflow:auto;padding:24px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 0%,rgba(60,103,48,.34),transparent 58%),linear-gradient(135deg,rgba(5,10,7,.97),rgba(10,17,12,.94));opacity:1;visibility:visible;pointer-events:auto;transition:opacity .65s ease,visibility .65s ease}
 #homePage.hidden{opacity:0;visibility:hidden;pointer-events:none}
 .home-layout{width:min(1240px,100%);display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:22px;align-items:stretch;margin:auto}
 .home-main{min-width:0}
@@ -177,7 +177,7 @@ const homeScoreList=document.getElementById('homeScoreList');
 const homeBest=document.getElementById('homeBest');
 const startGameBtn=document.getElementById('startGameBtn');
 let gameMode='classic';
-// Prevent the render loop from fighting the homepage before a run has actually started.
+// Local gameplay owns startup. Firebase/multiplayer is optional and must never prevent a Classic/Infinite run.
 let gameStarted=false;
 let cameraX=0,cameraY=0;
 let BASE_VEHICLES=[],baseSupplyClock=0,vehicleMode=null,vehicleId=null;
@@ -378,7 +378,13 @@ if(FIREBASE_CONFIG && FIREBASE_CONFIG.databaseURL){
   try{
     firebase.initializeApp(FIREBASE_CONFIG);firebaseDb=firebase.database();
     firebase.auth().onAuthStateChanged(async user=>{
-      if(user){showAuthUser(user);authReady=true;if(gameStarted)startMultiplayer();return;}
+      if(user){
+        showAuthUser(user);
+        authReady=true;
+        // Only Base World uses multiplayer. Classic and Infinite stay completely local.
+        if(gameStarted&&gameMode==='base')safeStartMultiplayer();
+        return;
+      }
       showAuthUser(null);
       // Start as a guest by default so existing players can enter Base World chat without a forced login.
       try{await firebase.auth().signInAnonymously();}
@@ -392,6 +398,52 @@ if(FIREBASE_CONFIG && FIREBASE_CONFIG.databaseURL){
 }else{
   authStatus.textContent='';
   chatConnection.textContent='Firebase is not configured. Check the web app settings.';
+}
+
+// Multiplayer is deliberately isolated from local startup. Any Firebase/network/database
+// failure is swallowed here so it can never stop Classic or Infinite from starting.
+function safeStartMultiplayer(){
+  if(gameMode!=='base'||!gameStarted)return;
+  try{
+    startMultiplayer();
+  }catch(err){
+    console.warn('Base World multiplayer unavailable:',err);
+    if(chatConnection)chatConnection.textContent='Multiplayer unavailable — Base World is still playable locally.';
+  }
+}
+
+function startLocalRun(){
+  setHomeName();
+  if(coopRequested){
+    modeStatus.textContent='Co-op is not connected yet, so this run will start in local single-player mode.';
+  }
+
+  // IMPORTANT: only local game state is reset here. Firebase is never required.
+  // This means Classic/Infinite can start even when Firebase authentication or the
+  // Realtime Database is disabled, offline, or misconfigured.
+  try{
+    rs();
+  }catch(err){
+    gameStarted=false;
+    dead=2;
+    homePage.classList.remove('hidden');
+    console.error('Local game startup failed:',err);
+    modeStatus.textContent='The local game could not start: '+(err&&err.message?err.message:'Unknown startup error');
+    try{updateMobileUI()}catch(_){ }
+    return false;
+  }
+
+  dead=0;
+  gameStarted=true;
+  homePage.classList.add('hidden');
+  returnBaseBtn.style.display=gameMode==='base'?'block':'none';
+  try{updateMobileUI()}catch(err){console.warn('Mobile UI update failed:',err);}
+
+  // Multiplayer is an optional follow-up, and only for Base World.
+  if(gameMode==='base'){
+    setTimeout(()=>safeStartMultiplayer(),0);
+  }
+  return true;
 }
 
 const saveHomeNameBtn=document.getElementById('saveHomeName');
@@ -422,37 +474,15 @@ document.querySelectorAll('.char-option').forEach(btn=>{
     document.querySelectorAll('.char-option').forEach(b=>{const selected=b===btn;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});
   });
 });
-startGameBtn.addEventListener('click',()=>{
-  setHomeName();
-  if(coopRequested){modeStatus.textContent='Co-op is not connected yet, so this run will start in local single-player mode.';}
-
-  // Reset the complete run before telling the render loop that gameplay has started.
-  // This removes the old race where the loop could immediately re-show the homepage.
-  try{
-    rs();
-    dead=0;
-    gameStarted=true;
-    homePage.classList.add('hidden');
-    updateMobileUI();
-    startMultiplayer();
-  }catch(err){
-    gameStarted=false;
-    homePage.classList.remove('hidden');
-    console.error('Unable to start game:',err);
-    modeStatus.textContent='The game could not start. Please refresh the page and try again.';
-    updateMobileUI();
-    return;
-  }
-  returnBaseBtn.style.display=gameMode==='base'?'block':'none';
-});
+startGameBtn.addEventListener('click',startLocalRun);
 returnBaseBtn.onclick=()=>{
   if(gameMode!=='base')return;
   save();
   stopMultiplayer();
   dead=2;
+  gameStarted=false;
   md=0;k={};
   returnBaseBtn.style.display='none';
-  gameStarted=false;
   refreshHome();
   homePage.classList.remove('hidden');
 };
@@ -1092,7 +1122,16 @@ onkeydown=q=>{
   if(n==='d'&&!q.repeat&&gameMode==='base'&&!dead&&toggleNearbyDoor()){q.preventDefault();return;}
   k[n]=1;
   if(n=='b'&&!q.repeat&&!dead){buildHeld=1;}
-  if(dead){if(document.activeElement===homeUsername)return;if(n>='1'&&n<='3'){ci=n-1;document.querySelectorAll('.char-option').forEach(b=>{const selected=Number(b.dataset.char)===ci;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});}else if(n=='enter'||n==' ')rs();return}
+  if(dead){
+    if(document.activeElement===homeUsername)return;
+    if(n>='1'&&n<='3'){
+      ci=n-1;
+      document.querySelectorAll('.char-option').forEach(b=>{const selected=Number(b.dataset.char)===ci;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected));});
+    }else if(n=='enter'||n==' '){
+      startLocalRun();
+    }
+    return;
+  }
   if(n=='v'&&!q.repeat&&!dead&&gameMode==='base'){buildMaterial=buildMaterial==='wood'?'stone':'wood';}
   if(n=='g'&&!q.repeat&&!dead&&gameMode==='base'){
     const v=vehicleId?BASE_VEHICLES.find(q=>q.id===vehicleId):nearbyVehicle();
@@ -2525,13 +2564,13 @@ function game(){
 
   if(gameMode==='base')g.restore();
 
-  // The homepage owns the initial screen. Once a run starts, death can return to it;
-  // otherwise the render loop must never toggle it during startup.
-  const showHome=!gameStarted || dead!==0;
+  // The homepage is the initial screen and the post-death screen. During an active
+  // run the render loop must not be allowed to bring it back.
+  const showHome=!gameStarted||dead!==0;
   const wasHomeVisible=!homePage.classList.contains('hidden');
   if(showHome){
     homePage.classList.remove('hidden');
-    if(!wasHomeVisible || !gameStarted){
+    if(!wasHomeVisible||!gameStarted){
       homeUsername.value=playerName;
       refreshHome();
     }
