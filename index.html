@@ -118,6 +118,13 @@ html,body{background:#08060b;color:#f7effb}
             <button class="mode-card" data-mode="base" type="button" aria-pressed="false"><span class="mode-icon">⌂</span><strong>BASE WORLD</strong><span>Explore a vast world of distinct biomes, settlements and dangerous outbreak zones.</span></button>
           </div>
           
+          <div id="classicPartyRow" style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:#c5d3c6;font-size:11px">
+            <label for="classicPartySize">CLASSIC PARTY</label>
+            <select id="classicPartySize" style="background:#101710;color:#eef6ed;border:1px solid #40513f;border-radius:7px;padding:8px;min-width:150px">
+              <option value="1" selected>Solo (1 player)</option><option value="2">Co-op team of 2</option><option value="3">Co-op team of 3</option><option value="4">Co-op team of 4</option>
+            </select>
+            <span>Friends must choose the same party size to join the same run.</span>
+          </div>
           <div id="modeStatus" class="mode-status" aria-live="polite">Choose a mode and character, then start playing.</div>
           <div class="field-label" style="margin-top:16px">CHOOSE YOUR SURVIVOR</div>
           <div class="char-grid">
@@ -205,6 +212,13 @@ function chooseMode(mode){
   if(mode!=='base')document.getElementById('chatPanel').classList.remove('open');
 }
 document.querySelectorAll('.mode-card').forEach(btn=>btn.addEventListener('click',()=>chooseMode(btn.dataset.mode)));
+const classicPartyRow=document.getElementById('classicPartyRow');
+const classicPartySize=document.getElementById('classicPartySize');
+function updatePartyModeUI(){if(classicPartyRow)classicPartyRow.style.display=gameMode==='classic'?'flex':'none';if(gameMode==='classic'&&modeStatus){const n=selectedClassicPartySize();modeStatus.textContent=n===1?'Classic solo: this run is local to your browser.':'Classic co-op: choose team of '+n+' and start; friends must choose the same team size. Firebase login and database Rules must allow player read/write.';}}
+if(classicPartySize)classicPartySize.addEventListener('change',updatePartyModeUI);
+const originalChooseMode=chooseMode;
+chooseMode=function(mode){originalChooseMode(mode);updatePartyModeUI();};
+updatePartyModeUI();
 
 document.getElementById('openChatBtn').addEventListener('click',()=>{if(gameMode==='base')document.getElementById('chatPanel').classList.add('open');});
 document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>document.getElementById(btn.dataset.close).classList.remove('open')));
@@ -213,7 +227,7 @@ window.addEventListener('keydown',ev=>{if(ev.ctrlKey&&ev.shiftKey&&ev.key.toLowe
 // FIREBASE SETUP: create a Firebase project, enable Anonymous Authentication and Realtime Database,
 // then replace null with the Firebase WEB APP config. Web config is public; never paste service-account keys here.
 const FIREBASE_CONFIG = {
-  apiKey: 'AIzaSyDAtdLV3FqYoZsB96rUcKTQDazEP6jTmwug',
+  apiKey: 'AIzaSyDAtlV3FqYoZsB96rUcKTQDazEP6jTmwug',
   authDomain: 'zshootermulti.firebaseapp.com',
   // Realtime Database URL supplied by the user.
   databaseURL: 'https://zshootermulti-default-rtdb.europe-west1.firebasedatabase.app',
@@ -229,30 +243,45 @@ let multiplayerRoom='';
 let multiplayerLastSent=0;
 const chatLog=document.getElementById('chatLog');
 const chatConnection=document.getElementById('chatConnection');
+function selectedClassicPartySize(){
+  const el=document.getElementById('classicPartySize');
+  return Math.max(1,Math.min(4,Number(el&&el.value)||1));
+}
+function multiplayerEnabledForCurrentMode(){
+  return gameMode==='base' || (gameMode==='classic' && selectedClassicPartySize()>1);
+}
 function stopMultiplayer(){
   if(multiplayerRef){
-    try{multiplayerRef.off(); multiplayerRef.child(firebaseUser?.uid||'').remove();}catch(_){ }
+    try{multiplayerRef.off();}catch(_){ }
+    try{if(firebaseUser)multiplayerRef.child(firebaseUser.uid).remove();}catch(_){ }
   }
   multiplayerRef=null; multiplayerListener=null; remotePlayers={}; multiplayerRoom='';
 }
 function startMultiplayer(){
-  if(!firebaseDb||!firebaseUser||!firebaseUser.uid)return;
+  if(!firebaseDb||!firebaseUser||!firebaseUser.uid||!multiplayerEnabledForCurrentMode())return;
   stopMultiplayer();
-  multiplayerRoom='rooms/'+gameMode;
+  // Each Classic party size gets a shared room; Base World is one persistent shared world.
+  multiplayerRoom=gameMode==='base'?'rooms/base':'rooms/classic-party-'+selectedClassicPartySize();
   multiplayerRef=firebaseDb.ref(multiplayerRoom+'/players');
   const selfRef=multiplayerRef.child(firebaseUser.uid);
-  try{selfRef.onDisconnect().remove();}catch(_){ }
+  selfRef.onDisconnect().remove().catch(err=>console.warn('Could not configure disconnect cleanup:',err));
   multiplayerListener=snap=>{
-    remotePlayers={};
+    const next={};
     snap.forEach(child=>{
       if(child.key!==firebaseUser.uid){
         const v=child.val()||{};
-        if(Number.isFinite(v.x)&&Number.isFinite(v.y)) remotePlayers[child.key]=v;
+        if(Number.isFinite(v.x)&&Number.isFinite(v.y))next[child.key]=v;
       }
     });
+    remotePlayers=next;
   };
-  multiplayerRef.on('value',multiplayerListener);
-  document.getElementById('chatConnection').textContent='Multiplayer connected — other players in this mode will appear live.';
+  multiplayerRef.on('value',multiplayerListener,err=>{
+    console.warn('Multiplayer read failed:',err);
+    if(chatConnection)chatConnection.textContent='Multiplayer read blocked: check Realtime Database Rules.';
+  });
+  if(chatConnection)chatConnection.textContent=gameMode==='base'
+    ?'Connected to the shared Base World. Player positions update live.'
+    :'Connected to Classic co-op team of '+selectedClassicPartySize()+'. Choose the same party size to meet friends.';
 }
 function syncMultiplayer(force=false){
   if(!multiplayerRef||!firebaseUser||dead)return;
@@ -260,8 +289,10 @@ function syncMultiplayer(force=false){
   if(!force&&now-multiplayerLastSent<100)return;
   multiplayerLastSent=now;
   const selfRef=multiplayerRef.child(firebaseUser.uid);
-  selfRef.set({x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),ci:ci||0,name:playerName||'Player',ts:firebase.database.ServerValue.TIMESTAMP});
+  selfRef.update({x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),ci:ci||0,name:playerName||'Player',mode:gameMode,ts:firebase.database.ServerValue.TIMESTAMP})
+    .catch(err=>{console.warn('Multiplayer write failed:',err);if(chatConnection)chatConnection.textContent='Multiplayer write blocked: check Realtime Database Rules.';});
 }
+
 function drawRemotePlayers(){
   Object.values(remotePlayers).forEach(v=>{
     const idx=Math.max(0,Math.min(CH.length-1,Number(v.ci)||0));
@@ -382,7 +413,7 @@ if(FIREBASE_CONFIG && FIREBASE_CONFIG.databaseURL){
         showAuthUser(user);
         authReady=true;
         // Only Base World uses multiplayer. Classic and Infinite stay completely local.
-        if(gameStarted&&gameMode==='base')safeStartMultiplayer();
+        if(gameStarted&&multiplayerEnabledForCurrentMode())safeStartMultiplayer();
         return;
       }
       showAuthUser(null);
@@ -403,7 +434,7 @@ if(FIREBASE_CONFIG && FIREBASE_CONFIG.databaseURL){
 // Multiplayer is deliberately isolated from local startup. Any Firebase/network/database
 // failure is swallowed here so it can never stop Classic or Infinite from starting.
 function safeStartMultiplayer(){
-  if(gameMode!=='base'||!gameStarted)return;
+  if(!multiplayerEnabledForCurrentMode()||!gameStarted)return;
   try{
     startMultiplayer();
   }catch(err){
@@ -440,7 +471,7 @@ function startLocalRun(){
   try{updateMobileUI()}catch(err){console.warn('Mobile UI update failed:',err);}
 
   // Multiplayer is an optional follow-up, and only for Base World.
-  if(gameMode==='base'){
+  if(multiplayerEnabledForCurrentMode()){
     setTimeout(()=>safeStartMultiplayer(),0);
   }
   return true;
@@ -1068,6 +1099,7 @@ function updateMobileUI(){
   // Controls are hidden on the homepage and become active only after Play starts.
   const inGame=!homePage.classList.contains('hidden')?false:true;
   const active=isMobileDevice() && inGame;
+  if(!mobileControls)return;
   mobileControls.style.display=active?'block':'none';
   mobileControls.setAttribute('aria-hidden',String(!active));
   if(!active){clearMobileMovement();setMobileKey('shift',false);md=0;mobileJoyPointer=null;mobileFirePointer=null;mobileStick.style.transform='translate(0,0)';}
@@ -1090,10 +1122,12 @@ function releaseMobileJoystick(ev){
   mobileJoyPointer=null;clearMobileMovement();mobileStick.style.transform='translate(0,0)';
   try{mobileJoystick.releasePointerCapture(ev.pointerId)}catch(_){ }
 }
-mobileJoystick.addEventListener('pointerdown',ev=>{if(!isMobileDevice())return;ev.preventDefault();mobileJoyPointer=ev.pointerId;try{mobileJoystick.setPointerCapture(ev.pointerId)}catch(_){ }mobileMoveFromPointer(ev)});
-mobileJoystick.addEventListener('pointermove',mobileMoveFromPointer);
-mobileJoystick.addEventListener('pointerup',releaseMobileJoystick);
-mobileJoystick.addEventListener('pointercancel',releaseMobileJoystick);
+if(mobileJoystick){
+  mobileJoystick.addEventListener('pointerdown',ev=>{if(!isMobileDevice())return;ev.preventDefault();mobileJoyPointer=ev.pointerId;try{mobileJoystick.setPointerCapture(ev.pointerId)}catch(_){ }mobileMoveFromPointer(ev)});
+  mobileJoystick.addEventListener('pointermove',mobileMoveFromPointer);
+  mobileJoystick.addEventListener('pointerup',releaseMobileJoystick);
+  mobileJoystick.addEventListener('pointercancel',releaseMobileJoystick);
+}
 function mobileAim(ev){
   const r=mobileFire.getBoundingClientRect();
   mobileFireAngle=Math.atan2(ev.clientY-(r.top+r.height/2),ev.clientX-(r.left+r.width/2));
