@@ -1102,7 +1102,7 @@ function updateMobileUI(){
   if(!mobileControls)return;
   mobileControls.style.display=active?'block':'none';
   mobileControls.setAttribute('aria-hidden',String(!active));
-  if(!active){clearMobileMovement();setMobileKey('shift',false);md=0;mobileJoyPointer=null;mobileFirePointer=null;mobileStick.style.transform='translate(0,0)';}
+  if(!active){clearMobileMovement();setMobileKey('shift',false);md=0;mobileJoyPointer=null;mobileFirePointer=null;if(mobileStick)mobileStick.style.transform='translate(0,0)';}
 }
 function mobileMoveFromPointer(ev){
   if(mobileJoyPointer!==ev.pointerId)return;
@@ -1112,14 +1112,14 @@ function mobileMoveFromPointer(ev){
   const max=r.width*.34,dist=Math.hypot(dx,dy)||1;
   if(dist>max){dx=dx/dist*max;dy=dy/dist*max;}
   const nx=dx/max,ny=dy/max;
-  mobileStick.style.transform=`translate(${dx}px,${dy}px)`;
+  if(mobileStick)mobileStick.style.transform=`translate(${dx}px,${dy}px)`;
   clearMobileMovement();
   if(Math.abs(nx)>.22)setMobileKey(nx>0?'d':'a',true);
   if(Math.abs(ny)>.22)setMobileKey(ny>0?'s':'w',true);
 }
 function releaseMobileJoystick(ev){
   if(mobileJoyPointer!==ev.pointerId)return;
-  mobileJoyPointer=null;clearMobileMovement();mobileStick.style.transform='translate(0,0)';
+  mobileJoyPointer=null;clearMobileMovement();if(mobileStick)mobileStick.style.transform='translate(0,0)';
   try{mobileJoystick.releasePointerCapture(ev.pointerId)}catch(_){ }
 }
 if(mobileJoystick){
@@ -1135,10 +1135,12 @@ function mobileAim(ev){
   const dist=Math.max(window.innerWidth,window.innerHeight)*1.4;
   updateMouseWorld({clientX:window.innerWidth/2+Math.cos(mobileFireAngle)*dist,clientY:window.innerHeight/2+Math.sin(mobileFireAngle)*dist});
 }
-mobileFire.addEventListener('pointerdown',ev=>{if(!isMobileDevice()||dead)return;ev.preventDefault();mobileFirePointer=ev.pointerId;try{mobileFire.setPointerCapture(ev.pointerId)}catch(_){ }mobileAim(ev);md=1;});
-mobileFire.addEventListener('pointermove',ev=>{if(mobileFirePointer===ev.pointerId)mobileAim(ev)});
-function releaseMobileFire(ev){if(mobileFirePointer!==ev.pointerId)return;mobileFirePointer=null;md=0;try{mobileFire.releasePointerCapture(ev.pointerId)}catch(_){ }}
-mobileFire.addEventListener('pointerup',releaseMobileFire);mobileFire.addEventListener('pointercancel',releaseMobileFire);
+function releaseMobileFire(ev){if(mobileFirePointer!==ev.pointerId)return;mobileFirePointer=null;md=0;try{if(mobileFire)mobileFire.releasePointerCapture(ev.pointerId)}catch(_){ }}
+if(mobileFire){
+  mobileFire.addEventListener('pointerdown',ev=>{if(!isMobileDevice()||dead)return;ev.preventDefault();mobileFirePointer=ev.pointerId;try{mobileFire.setPointerCapture(ev.pointerId)}catch(_){ }mobileAim(ev);md=1;});
+  mobileFire.addEventListener('pointermove',ev=>{if(mobileFirePointer===ev.pointerId)mobileAim(ev)});
+  mobileFire.addEventListener('pointerup',releaseMobileFire);mobileFire.addEventListener('pointercancel',releaseMobileFire);
+}
 document.querySelectorAll('.mobile-action').forEach(btn=>{
   const key=btn.dataset.key;
   const down=ev=>{if(!isMobileDevice()||dead)return;ev.preventDefault();if(key==='b'){buildHeld=1;return}setMobileKey(key,true);if(key==='shift')return;onkeydown({key,repeat:false,preventDefault(){}});};
@@ -1463,7 +1465,7 @@ function zom(q,a){
 
 function seededNoise(n){const v=Math.sin(n*127.1+311.7)*43758.5453;return v-Math.floor(v)}
 // Fixed landmarks provide believable places for weapon crates to spawn.
-const BASE_STRUCTURES=[
+var BASE_STRUCTURES=[
   {id:'old-town',x:BASE_WORLD_W*.22,y:BASE_WORLD_H*.18,w:760,h:520,label:'OLD TOWN',kind:'town',rooms:3},
   {id:'old-town-east',x:BASE_WORLD_W*.27,y:BASE_WORLD_H*.20,w:430,h:330,label:'OLD TOWN EAST',kind:'town',rooms:2},
   {id:'outpost',x:BASE_WORLD_W*.38,y:BASE_WORLD_H*.42,w:650,h:470,label:'MILITARY OUTPOST',kind:'outpost',rooms:3},
