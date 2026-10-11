@@ -337,7 +337,8 @@ function processMultiplayerAction(action){
   else if(action.type==='collectFruit'){const arr=action.fruitType==='pear'?pears:apples;const item=arr.find(q=>q.id===action.fruitId);if(item)item.got=1;if(action.fruitType==='pear')pears=pears.filter(q=>!q.got);else apples=apples.filter(q=>!q.got);}
   else if(action.type==='collectUpgrade'){const item=upgrades.find(q=>q.id===action.upgradeId);if(item)item.got=1;upgrades=upgrades.filter(q=>!q.got&&!q.collected);}
   else if(action.type==='collectAmmo'&&gameMode==='base'){const item=AMMO.find(q=>q.id===action.itemId);if(item)item.got=1;AMMO=AMMO.filter(q=>!q.got);}
-  else if(action.type==='openGunCrate'&&gameMode==='base'){const item=WPN.find(q=>q.id===action.itemId);if(item)item.got=1;}
+  else if(action.type==='openGunCrate'&&gameMode==='base'){const item=WPN.find(q=>q.id===action.itemId&&!q.artifact&&Number(q.t)>=0&&Number(q.t)<=4);if(item){item.opened=1;item.got=1;}}
+  else if(action.type==='claimVoidRelic'&&gameMode==='base'){const item=WPN.find(q=>q.id===action.itemId&&q.artifact);if(item){item.opened=1;item.got=1;}}
   else if(action.type==='mineRock'&&gameMode==='base'){const rock=O.find(q=>q.id===action.objectId);if(rock){rock.mineHits=(rock.mineHits||0)+1;if(rock.mineHits>=5)rock.dead=1;}}
 }
 function stopMultiplayer(markOffline=true){
@@ -987,7 +988,7 @@ function spawnBaseFortressContent(){
   const fortress=BASE_STRUCTURES.find(st=>st.id==='dark-fortress');
   if(!fortress)return;
   const voidX=fortress.x, voidY=fortress.y-fortress.h*.18;
-  WPN.push({x:voidX,y:voidY,t:5,structureId:fortress.id,got:0,opened:0,ground:1,artifact:1});
+  WPN.push({id:newEntityId('void-relic'),x:voidX,y:voidY,t:5,structureId:fortress.id,got:0,opened:0,ground:1,artifact:1});
   // Three bosses guard the Void Orb inside the Dark Fortress.
   if(!e.some(z=>z.boss)){
     const spots=[[-170,80],[0,-80],[170,80]];
@@ -997,41 +998,23 @@ function spawnBaseFortressContent(){
 function spawnW(){
   WPN=[];
   if(gameMode==='base'){
-    // Make the common gun types discoverable, including the Homing Gun.
-    // The Void Orb is deliberately excluded here and remains inside the Dark Fortress.
-    const startX=BASE_WORLD_W*.12,startY=BASE_WORLD_H*.48;
-    const startTypes=[0,1,2,3,4];
-    const startCrates=[];
-    for(let i=0;i<startTypes.length;i++){
-      const angle=-Math.PI/2+i*(Math.PI*2/startTypes.length);
-      let spot=null;
-      for(let attempt=0;attempt<80&&!spot;attempt++){
-        const radius=155+Math.floor(attempt/12)*44;
-        const a=angle+(attempt%12)*.19;
-        const x=Math.max(35,Math.min(BASE_WORLD_W-35,startX+Math.cos(a)*radius));
-        const y=Math.max(35,Math.min(BASE_WORLD_H-35,startY+Math.sin(a)*radius));
-        const clearTrees=O.every(o=>o.dead||Math.hypot(o.x-x,o.y-y)>o.r+34);
-        const clearCrates=startCrates.every(q=>Math.hypot(q.x-x,q.y-y)>76);
-        if(clearTrees&&clearCrates)spot={x,y};
-      }
-      if(!spot)spot={x:startX+Math.cos(angle)*(150+i*35),y:startY+Math.sin(angle)*(150+i*35)};
-      const crate={...spot,t:startTypes[i],got:0,opened:0,ground:0,nearSpawn:1};
-      startCrates.push(crate);WPN.push(crate);
-    }
-    // Additional landmark crates are distributed around the map for repeated finds.
+    // Ordinary gun crates live inside named landmark buildings, never in the safe-spawn clearing.
+    // Types 0-4 are available from crates; the Void Orb (type 5) remains a separate fortress relic.
     const cratePlan=[
-      [1,'farm'],[2,'old-town'],[3,'outpost'],[4,'village'],
-      [1,'lakeside'],[2,'quarry'],[3,'watchtower'],[4,'harbor'],
-      [1,'factory'],[2,'rivergate'],[3,'sunken-city'],[4,'deadlands-station'],
-      [1,'east-camp'],[2,'red-mesa'],[3,'village-west'],[4,'outpost-north'],
-      [1,'old-town-east'],[2,'outpost-garage'],[3,'village-house'],[4,'deadlands-station-bunker']
+      [0,'old-town'],[1,'outpost'],[2,'village'],[3,'ruins'],[4,'harbor'],
+      [1,'lakeside'],[2,'quarry'],[3,'watchtower'],[4,'factory'],
+      [0,'rivergate'],[1,'sunken-city'],[2,'deadlands-station'],[3,'east-camp'],[4,'red-mesa'],
+      [1,'old-town-east'],[2,'outpost-garage'],[3,'village-store'],[4,'deadlands-station-bunker'],
+      [0,'east-camp-hut'],[2,'red-mesa-house']
     ];
     cratePlan.forEach(([t,id],i)=>{
-      const st=BASE_STRUCTURES.find(q=>q.id===id);if(!st)return;
-      // The central doorway is in the south wall, so place crates just inside it.
-      const x=st.x+(Math.random()-.5)*Math.min(70,st.w*.08);
-      const y=st.y+st.h/2-66;
-      WPN.push({x,y,t,structureId:st.id,got:0,opened:0,ground:0});
+      const st=BASE_STRUCTURES.find(q=>q.id===id);
+      if(!st)return;
+      // Place the crate just inside the lower half of the building, clear of the exterior wall,
+      // doors and centre partitions. Avoid the farm by the safe-spawn area entirely.
+      const x=st.x+Math.sin(i*1.73)*Math.min(18,st.w*.025);
+      const y=st.y+st.h*.18+Math.cos(i*1.19)*Math.min(10,st.h*.02);
+      WPN.push({id:newEntityId('guncrate'),x,y,t:Number(t),structureId:st.id,buildingCrate:1,got:0,opened:0,ground:0,artifact:0});
     });
     spawnBaseAmmoCrates();
     spawnBaseFortressContent();
@@ -1205,17 +1188,30 @@ function spawnAmmoDrop(z){
 function spawnBaseAmmoCrates(reset=true){
   if(gameMode!=='base')return;
   if(reset)AMMO=[];
-  const picks=[['old-town',28],['outpost',32],['village',30],['lakeside',28],['quarry',36],['watchtower',26],['harbor',30],['factory',38],['farm',24],['dark-fortress',48],['rivergate',30],['sunken-city',34],['deadlands-station',42],['east-camp',28],['red-mesa',32]];
+  const picks=[['old-town',28],['outpost',32],['village',30],['lakeside',28],['quarry',36],['watchtower',26],['harbor',30],['factory',38],['dark-fortress',48],['rivergate',30],['sunken-city',34],['deadlands-station',42],['east-camp',28],['red-mesa',32]];
   picks.forEach(([id,amount],i)=>{
     const st=BASE_STRUCTURES.find(q=>q.id===id)||BASE_STRUCTURES[i%BASE_STRUCTURES.length];
-    const ix=Math.max(55,st.w*.25),iy=Math.max(45,st.h*.24);
-    AMMO.push({x:st.x+(Math.random()-.5)*ix,y:st.y+(Math.random()-.5)*iy,amount,crate:1,buildingCrate:1,buildingId:st.id,got:0,life:0});
+    // Keep supplies in the lower central room so they are inside the building and away
+    // from horizontal room partitions, the exterior shell, and the safe-spawn clearing.
+    const x=st.x+Math.sin(i*1.31)*Math.min(16,st.w*.025);
+    const y=st.y+st.h*.2+Math.cos(i*1.73)*Math.min(8,st.h*.02);
+    AMMO.push({id:newEntityId('ammo-crate'),x,y,amount,crate:1,buildingCrate:1,buildingId:st.id,got:0,life:0});
   });
 }
 function spawnTreeSupplyCrates(){
   if(gameMode!=='base')return;
-  const trees=O.filter(o=>o.t===0&&!o.dead); const used=[]; const count=Math.min(8,Math.max(4,Math.floor(trees.length/90)));
-  for(let i=0;i<count;i++){let tree=null;for(let n=0;n<80;n++){const c=trees[Math.random()*trees.length|0];if(c&&!used.some(t=>Math.hypot(t.x-c.x,t.y-c.y)<180)){tree=c;break;}}if(!tree)continue;used.push(tree);AMMO.push({x:tree.x+(Math.random()-.5)*24,y:tree.y+tree.r*.65,amount:18+Math.floor(Math.random()*21),crate:1,got:0,life:0,treeDrop:1});}
+  // Timed resupply crates are placed inside main POI buildings, not around arbitrary trees
+  // or in Greenhaven's safe-spawn clearing.
+  const locations=BASE_STRUCTURES.filter(st=>st.id!=='farm'&&(st.primary||st.rooms>=3)&&st.id!=='old-town-house');
+  if(!locations.length)return;
+  const shuffled=locations.slice().sort(()=>Math.random()-.5);
+  let spawned=0;
+  for(const st of shuffled){
+    if(spawned>=4)break;
+    if(AMMO.some(q=>!q.got&&q.buildingId===st.id&&q.buildingCrate))continue;
+    AMMO.push({id:newEntityId('supplycrate'),x:st.x,y:st.y+st.h*.2,amount:18+Math.floor(Math.random()*21),crate:1,buildingCrate:1,buildingId:st.id,got:0,life:0});
+    spawned++;
+  }
 }
 /* ---------- shooting ---------- */
 function muzzle(a,n){
@@ -1259,9 +1255,10 @@ function voidOrb(){
 }
 
 function spawnRosieBurstBullets(x,y,visualOnly=false){
+  const count=150; // Three times the original 50-bullet burst.
   const speed=23,life=Math.ceil(Math.max(worldW(),worldH())/speed)+4;
-  for(let i=0;i<50;i++){
-    const a=(Math.PI*2*i)/50;
+  for(let i=0;i<count;i++){
+    const a=(Math.PI*2*i)/count;
     b.push({x:x+Math.cos(a)*18,y:y+Math.sin(a)*18,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life,t:0,rosieBullet:1,visualOnly:!!visualOnly,dmg:999999});
   }
 }
@@ -1276,7 +1273,7 @@ function spawnInevitableRockets(x,y,visualOnly=false){
     const a=(Math.PI*2*i)/count;
     const tx=Math.max(12,Math.min(worldW()-12,x+Math.cos(a)*reach));
     const ty=Math.max(12,Math.min(worldH()-12,y+Math.sin(a)*reach));
-    R.push({x:x+Math.cos(a)*30,y:y+Math.sin(a)*30,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,tx,ty,dmg:5* Math.max(1,gunMult[2]||1),rocket:1,inevitableRocket:1,visualOnly:!!visualOnly});
+    R.push({x:x+Math.cos(a)*30,y:y+Math.sin(a)*30,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,tx,ty,life:100,dmg:5*Math.max(1,gunMult[2]||1),rocket:1,inevitableRocket:1,visualOnly:!!visualOnly});
   }
   for(let i=0;i<30;i++){const a=Math.random()*Math.PI*2,sp=2+Math.random()*5;pt(x,y,Math.cos(a)*sp,Math.sin(a)*sp,20,'#ff233e',2+Math.random()*3,0);}
 }
@@ -1422,6 +1419,44 @@ const originalStartGameHandler=()=>setTimeout(updateMobileUI,120);
 startGameBtn.addEventListener('click',originalStartGameHandler);
 updateMobileUI();
 
+function openBaseGunCrate(crate){
+  if(gameMode!=='base'||!crate||crate.artifact||crate.got||crate.opened)return false;
+  const t=Number(crate.t);
+  if(!Number.isInteger(t)||t<0||t>4){
+    console.warn('Ignored invalid Base World gun crate:',crate);
+    return false;
+  }
+  try{
+    if(!Array.isArray(own))throw new Error('Weapon inventory is unavailable');
+    if(!crate.id)crate.id=newEntityId('guncrate');
+    // Apply the pickup as one small transaction, after validating the crate's gun type.
+    own[t]=1;wp=t;fl=0;cd=0;
+    ammo=Math.max(0,Number(ammo)||0)+10+Math.floor(Math.random()*16);
+    crate.opened=1;crate.got=1;
+    for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(crate.x,crate.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#ffd36b',2+Math.random()*2,0);}
+    if(activeSharedRun()&&!multiplayerIsAuthority)queueMultiplayerAction({type:'openGunCrate',itemId:crate.id});
+    if(modeStatus)modeStatus.textContent='Collected '+(WN[t]||'gun')+' from '+(crate.structureId||'the building')+'.';
+    return true;
+  }catch(err){
+    crate.opened=0;crate.got=0;
+    console.error('Could not open gun crate; game state was left recoverable:',err);
+    if(modeStatus)modeStatus.textContent='Crate pickup failed safely. Try again or check the browser console.';
+    return false;
+  }
+}
+function claimBaseVoidRelic(relic){
+  if(gameMode!=='base'||!relic||!relic.artifact||relic.got)return false;
+  try{
+    if(!Array.isArray(own))throw new Error('Weapon inventory is unavailable');
+    own[5]=1;wp=5;cd=0;relic.got=1;relic.opened=1;
+    if(activeSharedRun()&&!multiplayerIsAuthority)queueMultiplayerAction({type:'claimVoidRelic',itemId:relic.id});
+    if(modeStatus)modeStatus.textContent='Void Orb relic claimed from the Dark Fortress.';
+    return true;
+  }catch(err){
+    relic.got=0;relic.opened=0;console.error('Could not claim Void Orb relic:',err);return false;
+  }
+}
+
 onkeydown=q=>{
   const n=q.key.toLowerCase();
   if(isPaused)return;
@@ -1457,6 +1492,16 @@ onkeydown=q=>{
         p.x=v.x+Math.cos(v.angle+Math.PI/2)*65;p.y=v.y+Math.sin(v.angle+Math.PI/2)*65;return;
       }
     }
+    if(gameMode==='base'){
+      const closeWeaponPickup=WPN.filter(v=>!v.got&&!v.opened&&Math.hypot(v.x-p.x,v.y-p.y)<78)
+        .sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
+      if(closeWeaponPickup){
+        q.preventDefault();
+        if(closeWeaponPickup.artifact)claimBaseVoidRelic(closeWeaponPickup);
+        else openBaseGunCrate(closeWeaponPickup);
+        return;
+      }
+    }
     const rock=gameMode==='base'?O.filter(o=>o.t===1).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
     if(rock&&Math.hypot(rock.x-p.x,rock.y-p.y)<68){
       if(miningCooldown<=0){
@@ -1476,11 +1521,9 @@ onkeydown=q=>{
         if(groundGun&&Math.hypot(groundGun.x-p.x,groundGun.y-p.y)<78){
           groundGun.collected=1;groundGun.got=1;own[groundGun.t]=1;wp=groundGun.t;fl=0;
         }else{
-          const crate=gameMode==='base'?WPN.filter(v=>!v.got&&!v.opened).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
+          const crate=gameMode==='base'?WPN.filter(v=>!v.artifact&&!v.got&&!v.opened&&Number.isInteger(Number(v.t))&&Number(v.t)>=0&&Number(v.t)<=4).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
           if(crate&&Math.hypot(crate.x-p.x,crate.y-p.y)<78){
-            crate.opened=1;crate.got=1;own[crate.t]=1;wp=crate.t;fl=0;
-            if(gameMode==='base'){ammo+=10+Math.floor(Math.random()*16);if(activeSharedRun()&&!multiplayerIsAuthority)queueMultiplayerAction({type:'openGunCrate',itemId:crate.id});}
-            for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(crate.x,crate.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#ffd36b',2+Math.random()*2,0)}
+            openBaseGunCrate(crate);
           }else{
             for(let i=1;i<=8;i++){const t=(wp+i)%8;if((t===6&&rosieMode)||(t===7&&inevitableMode)||(t<6&&own[t])){wp=t;break}}
           }
@@ -2201,7 +2244,16 @@ function drawUltraHUDFrame(){
   [[8,8,1,1],[328,8,-1,1],[8,gameMode==='base'?204:190,1,-1],[328,gameMode==='base'?204:190,-1,-1]].forEach(([x,y,sx,sy])=>{g.beginPath();g.moveTo(x,y);g.lineTo(x+sx*18,y);g.moveTo(x,y);g.lineTo(x,y+sy*18);g.stroke();});
   g.restore();
 }
-function game(){
+function renderGameFrame(){
+  // Sanitize world item arrays before drawing. A malformed/stale Firebase crate record
+  // must not abort this frame and leave the HUD or animation loop frozen.
+  if(!Array.isArray(WPN))WPN=[];
+  WPN=WPN.filter(q=>q&&Number.isFinite(Number(q.x))&&Number.isFinite(Number(q.y))&&Number.isInteger(Number(q.t)));
+  if(!Array.isArray(AMMO))AMMO=[];
+  AMMO=AMMO.filter(q=>q&&Number.isFinite(Number(q.x))&&Number.isFinite(Number(q.y)));
+  if(!Array.isArray(R))R=[];
+  if(!Array.isArray(b))b=[];
+  if(!Array.isArray(e))e=[];
   // Freeze every simulation and animation update during a solo pause. In multiplayer,
   // keep the shared world running so teammates are not frozen by one player's pause.
   if(isPaused&&!activeSharedRun()){requestAnimationFrame(game);return;}
@@ -2301,7 +2353,7 @@ function game(){
     g.restore();
   });
 
-  // Base World uses sealed supply crates. Classic/Infinite use simple ground pickups.
+  // Base World weapon crates are in landmark buildings. Classic/Infinite use simple ground pickups.
   let nearbyCrate=null,nearbyCrateDist=Infinity,nearbyGroundGun=null,nearbyGroundGunDist=Infinity;
   WPN.forEach(q=>{
     if(q.got||q.collected)return;
@@ -2766,15 +2818,28 @@ function game(){
   g.globalAlpha=1;
   P=P.filter(q=>q.life>0);
 
-  // rockets
+  // Rockets. Inevitable Ring rockets have a hard lifetime so they always detonate,
+  // even if they never hit a zombie or obstacle. Visual copies use the same timer.
   R.forEach(q=>{
     q.x+=q.vx;q.y+=q.vy;
+    if(q.inevitableRocket)q.life=(Number.isFinite(Number(q.life))?Number(q.life):100)-1;
     const boundW=worldW(),boundH=worldH();
+    const reachedTarget=Math.hypot(q.tx-q.x,q.ty-q.y)<10;
+    const outOfBounds=q.x<0||q.x>boundW||q.y<0||q.y>boundH;
+    const hitZombie=e.some(z=>!z.dead&&Math.hypot(z.x-q.x,z.y-q.y)<30);
+    const hitObject=O.some(o=>Math.hypot(q.x-o.x,q.y-o.y)<o.r)||BLD.some(o=>pointWallDist(q.x,q.y,o)<o.th/2+3)||STATIC_WALLS.some(o=>pointWallDist(q.x,q.y,o)<o.th/2+3);
+    const timedOut=!!q.inevitableRocket&&q.life<=0;
     if(q.visualOnly){
-      if(Math.hypot(q.tx-q.x,q.ty-q.y)<10||q.x<0||q.x>boundW||q.y<0||q.y>boundH)q.dead=1;
-      g.save();g.translate(q.x,q.y);g.rotate(Math.atan2(q.vy,q.vx));g.globalAlpha=.72;g.fillStyle='#ddd';g.fillRect(-8,-3,14,6);g.fillStyle='#c0392b';g.beginPath();g.moveTo(6,-3);g.lineTo(13,0);g.lineTo(6,3);g.fill();g.fillRect(-9,-6,4,3);g.fillRect(-9,3,4,3);g.restore();return;
+      const visualBoom=reachedTarget||outOfBounds||hitZombie||hitObject||timedOut;
+      if(visualBoom){
+        q.dead=1;X.push({x:q.x,y:q.y,t:0});
+        for(let i=0;i<18;i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*5;pt(q.x,q.y,Math.cos(a)*sp,Math.sin(a)*sp,12+Math.random()*15|0,['#ff3d00','#ff9d00','#ffe066'][i%3],2+Math.random()*3,0);}
+      }else{
+        g.save();g.translate(q.x,q.y);g.rotate(Math.atan2(q.vy,q.vx));g.globalAlpha=.72;g.fillStyle='#ddd';g.fillRect(-8,-3,14,6);g.fillStyle='#c0392b';g.beginPath();g.moveTo(6,-3);g.lineTo(13,0);g.lineTo(6,3);g.fill();g.fillRect(-9,-6,4,3);g.fillRect(-9,3,4,3);g.restore();
+      }
+      return;
     }
-    const boom=Math.hypot(q.tx-q.x,q.ty-q.y)<10||q.x<0||q.x>boundW||q.y<0||q.y>boundH||e.some(z=>!z.dead&&Math.hypot(z.x-q.x,z.y-q.y)<30)||O.some(o=>Math.hypot(q.x-o.x,q.y-o.y)<o.r);
+    const boom=reachedTarget||outOfBounds||hitZombie||hitObject||timedOut;
     if(boom){
       q.dead=1;S=16;X.push({x:q.x,y:q.y,t:0});
       const cols=['#ff3d00','#ff9d00','#ffe066','#ffffff'];
@@ -2954,6 +3019,24 @@ function game(){
   updatePauseUI();
 
   requestAnimationFrame(game);
+}
+let lastRecoveredFrameError='';
+function game(){
+  try{renderGameFrame();}
+  catch(err){
+    const message=String(err&&err.message||err||'unknown rendering error');
+    if(message!==lastRecoveredFrameError){console.error('Game frame error recovered; HUD/render loop will retry:',err);lastRecoveredFrameError=message;}
+    // Canvas context stacks can be left unbalanced by an exception in a draw helper.
+    // Reset the backing store, show a useful diagnostic for one frame, then retry.
+    try{
+      const width=c.width,height=c.height;c.width=width;c.height=height;
+      g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.shadowBlur=0;g.textAlign='left';
+      g.fillStyle='#130b0d';g.fillRect(0,0,width,height);
+      g.fillStyle='#ffd8dc';g.font='bold 18px Arial';g.fillText('A drawing error was recovered; retrying the game frame.',20,34);
+      g.fillStyle='#f1b8bd';g.font='13px Arial';g.fillText('Open the browser console for the error details.',20,57);
+    }catch(_){ }
+    requestAnimationFrame(game);
+  }
 }
 game();
 // Render homepage only after every game-state variable and handler exists.
