@@ -225,7 +225,7 @@
   <div id="adminPanel" class="utility-panel" aria-label="Secret admin leaderboard panel">
     <button class="panel-close" data-close="adminPanel" aria-label="Close admin panel">×</button>
     <h2>Admin · Leaderboard Controls</h2>
-    <p>Secret panel. Open with <strong>Ctrl + Shift + A</strong>. Editing is enabled only for a signed-in account with the Firebase custom claim <code>admin: true</code>.</p>
+    <p>Secret panel. Open with <strong>Ctrl + Shift + A</strong>. Editing is enabled only for the authorised admin UID or a signed-in account with the Firebase custom claim <code>admin: true</code>.</p>
     <div id="adminConnection" class="mode-status" role="status">LOCKED — checking Firebase admin permissions…</div>
     <label class="field-label" for="adminMode">LEADERBOARD MODE</label>
     <select id="adminMode" data-admin-control disabled><option value="classic">Classic</option><option value="infinite">Infinite</option><option value="base">Base World</option><option value="ffa">Free For All</option></select>
@@ -238,7 +238,7 @@
     <label class="field-label" for="adminPlayerName">DISPLAY NAME (max 16 chars)</label><input id="adminPlayerName" data-admin-control maxlength="16" placeholder="Player name" disabled>
     <div class="admin-actions"><button id="adminSaveScore" type="button" data-admin-control disabled>Set / update score</button><button id="adminRemoveScore" type="button" class="admin-danger" data-admin-control disabled>Remove score</button></div>
     <p id="adminActionStatus" class="small-note" aria-live="polite">No changes have been made.</p>
-    <p class="small-note">A hidden shortcut is not a security boundary. Firebase's server-side rules and the admin custom claim enforce access. Never put a service-account key or admin password in this HTML.</p>
+    <p class="small-note">A hidden shortcut is not a security boundary. Firebase's server-side rules enforce access for the allowlisted UID or an admin custom claim. Never put a service-account key or admin password in this HTML.</p>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -1644,8 +1644,10 @@
   document.getElementById('openChatBtn').addEventListener('click',()=>{if(isBaseWorldMode()){document.getElementById('chatPanel').classList.add('open');if(firebaseDb&&firebaseUser)watchChat();}});
   document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>{document.getElementById(btn.dataset.close).classList.remove('open');if(btn.dataset.close==='chatPanel')stopChatWatch();}));
   document.getElementById('chatForm').addEventListener('submit',ev=>ev.preventDefault());
-  // Secret admin shortcut. The panel can be opened by anyone, but database writes are
-  // separately protected by Firebase's auth.token.admin custom claim and Realtime Database rules.
+  // Secret admin shortcut. The panel can be opened by anyone. Admin permission is
+  // granted to this exact authenticated UID or to accounts with a server-set admin claim.
+  // Realtime Database rules must independently enforce the same UID/claim check.
+  const ZS_ADMIN_UID='zo10fEWivHUXiRBqw4GW7vA5Ito2';
   window.addEventListener('keydown',ev=>{
     if(ev.ctrlKey&&ev.shiftKey&&ev.key.toLowerCase()==='a'){
       ev.preventDefault();
@@ -1670,12 +1672,12 @@
     if(!firebaseDb||!user){if(status)status.textContent='LOCKED — Firebase is not connected or no account is signed in.';return false;}
     try{
       const token=await user.getIdTokenResult(!!forceRefresh);
-      adminClaimVerified=!!(token&&token.claims&&token.claims.admin===true);
+      adminClaimVerified=(user.uid===ZS_ADMIN_UID)||!!(token&&token.claims&&token.claims.admin===true);
       if(adminClaimVerified){
         if(status)status.textContent='ADMIN VERIFIED · '+(user.email||user.uid)+' · leaderboard edits enabled.';
         setAdminControlsEnabled(true);return true;
       }
-      if(status)status.textContent='LOCKED — this account has no admin claim. UID: '+user.uid;
+      if(status)status.textContent='LOCKED — this account is not on the admin allowlist. UID: '+user.uid;
       return false;
     }catch(err){if(status)status.textContent='Could not verify admin permissions ('+(err.code||'token error')+').';return false;}
   }
