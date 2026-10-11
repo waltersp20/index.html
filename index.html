@@ -281,7 +281,7 @@ const FIREBASE_CONFIG = {
   appId: '1:268579170784:web:82020d6d28e60f4f7d2385',
   measurementId: 'G-84ZXQT4Z1Y'
 };
-let firebaseDb=null, firebaseUser=null, activeChatRef=null, activeChatQuery=null, chatUnsubscribe=null;
+let firebaseDb=null, firebaseUser=null, activeChatRef=null, activeChatQuery=null, chatUnsubscribe=null, chatRosterRef=null, chatRosterHandlers=null, chatMessageWatchers={}, chatSeenIds={};
 let multiplayerRef=null, multiplayerListener=null, remotePlayers={}, multiplayerMembers={};
 let multiplayerRoom='', multiplayerLastSent=0, lastSharedStateSent=0, lastPersonalSent=0, multiplayerJoinedAt=0;
 let multiplayerIsAuthority=false, multiplayerAuthorityKnown=false, roomFull=false;
@@ -294,14 +294,14 @@ function multiplayerEnabledForCurrentMode(){return gameMode==='base'||(gameMode=
 function activeSharedRun(){return !!(gameStarted&&multiplayerRef&&firebaseUser&&multiplayerAuthorityKnown&&!roomFull&&multiplayerEnabledForCurrentMode());}
 function sharedWorldShouldRun(){if(!activeSharedRun())return !dead&&!isPaused;if(multiplayerIsAuthority)return !dead||Object.values(remotePlayers).some(v=>v.online!==false&&!v.dead);return false;}
 function newEntityId(prefix='e'){return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9);}
-function ensureSharedEntityIds(){e.forEach(z=>{if(!z.id)z.id=newEntityId('z');});apples.forEach(a=>{if(!a.id)a.id=newEntityId('a');});pears.forEach(a=>{if(!a.id)a.id=newEntityId('p');});upgrades.forEach(a=>{if(!a.id)a.id=newEntityId('upgrade');});AMMO.forEach(a=>{if(!a.id)a.id=newEntityId('m');});BLD.forEach(w=>{if(!w.id)w.id=newEntityId('wall');});O.forEach(o=>{if(!o.id)o.id=newEntityId('obj');});}
+function ensureSharedEntityIds(){e.forEach(z=>{if(!z.id)z.id=newEntityId('z');});apples.forEach(a=>{if(!a.id)a.id=newEntityId('a');});pears.forEach(a=>{if(!a.id)a.id=newEntityId('p');});upgrades.forEach(a=>{if(!a.id)a.id=newEntityId('upgrade');});AMMO.forEach(a=>{if(!a.id)a.id=newEntityId('m');});WPN.forEach(q=>{if(!q.id)q.id=newEntityId('guncrate');});BLD.forEach(w=>{if(!w.id)w.id=newEntityId('wall');});O.forEach(o=>{if(!o.id)o.id=newEntityId('obj');});}
 function serializeArray(arr){return JSON.parse(JSON.stringify(arr||[]));}
 function createSharedSnapshot(){
   ensureSharedEntityIds();
   return {v:2,mode:gameMode,room:multiplayerRoom,ts:Date.now(),e:serializeArray(e),VORTEX:serializeArray(VORTEX),
     apples:apples.map(a=>({id:a.id,x:a.x,y:a.y,got:!!a.got})),pears:pears.map(a=>({id:a.id,x:a.x,y:a.y,got:!!a.got})),upgrades:serializeArray(upgrades),
     BLD:serializeArray(BLD),O:serializeArray(O),STATIC_WALLS:gameMode==='base'?serializeArray(STATIC_WALLS):[],DOORS:gameMode==='base'?serializeArray(DOORS):[],
-    firePatches:serializeArray(firePatches),AMMO:gameMode==='base'?serializeArray(AMMO):[],
+    firePatches:serializeArray(firePatches),AMMO:gameMode==='base'?serializeArray(AMMO):[],WPN:gameMode==='base'?serializeArray(WPN):[],
     level,score,T,totalSpawned,level2Kills,bossSpawned,bossCutscene,level2Spawned,level2PostBossSpawned,level2PostBossKills,
     level3Spawned,level3Kills,level4Spawned,level4Kills,levelBanner,transitionFade,environmentFromLevel,environmentBlend,wallCharges,nextUpgrade,infiniteNextBossScore};
 }
@@ -311,36 +311,38 @@ function applySharedSnapshot(state){
   e=Array.isArray(state.e)?serializeArray(state.e):e;VORTEX=Array.isArray(state.VORTEX)?serializeArray(state.VORTEX):VORTEX;apples=Array.isArray(state.apples)?serializeArray(state.apples):apples;pears=Array.isArray(state.pears)?serializeArray(state.pears):pears;upgrades=Array.isArray(state.upgrades)?serializeArray(state.upgrades):upgrades;
   BLD=Array.isArray(state.BLD)?serializeArray(state.BLD):BLD;O=Array.isArray(state.O)?serializeArray(state.O):O;
   if(gameMode==='base'){
-    STATIC_WALLS=Array.isArray(state.STATIC_WALLS)?serializeArray(state.STATIC_WALLS):STATIC_WALLS;DOORS=Array.isArray(state.DOORS)?serializeArray(state.DOORS):DOORS;AMMO=Array.isArray(state.AMMO)?serializeArray(state.AMMO):AMMO;
+    STATIC_WALLS=Array.isArray(state.STATIC_WALLS)?serializeArray(state.STATIC_WALLS):STATIC_WALLS;DOORS=Array.isArray(state.DOORS)?serializeArray(state.DOORS):DOORS;AMMO=Array.isArray(state.AMMO)?serializeArray(state.AMMO):AMMO;WPN=Array.isArray(state.WPN)?serializeArray(state.WPN):WPN;
     try{localStorage.setItem('zs_base_walls',JSON.stringify(BLD))}catch(_){}
   }
   firePatches=Array.isArray(state.firePatches)?serializeArray(state.firePatches):firePatches;
   const numeric=['level','score','T','totalSpawned','level2Kills','bossSpawned','bossCutscene','level2Spawned','level2PostBossSpawned','level2PostBossKills','level3Spawned','level3Kills','level4Spawned','level4Kills','levelBanner','transitionFade','environmentFromLevel','environmentBlend','wallCharges','nextUpgrade','infiniteNextBossScore'];
   numeric.forEach(key=>{if(Number.isFinite(Number(state[key]))) { if(key==='score'){score=Number(state[key]);H=Math.max(H,score);} else if(key==='level')level=Number(state[key]);else if(key==='T')T=Number(state[key]);else if(key==='totalSpawned')totalSpawned=Number(state[key]);else if(key==='level2Kills')level2Kills=Number(state[key]);else if(key==='bossSpawned')bossSpawned=Number(state[key]);else if(key==='bossCutscene')bossCutscene=Number(state[key]);else if(key==='level2Spawned')level2Spawned=Number(state[key]);else if(key==='level2PostBossSpawned')level2PostBossSpawned=Number(state[key]);else if(key==='level2PostBossKills')level2PostBossKills=Number(state[key]);else if(key==='level3Spawned')level3Spawned=Number(state[key]);else if(key==='level3Kills')level3Kills=Number(state[key]);else if(key==='level4Spawned')level4Spawned=Number(state[key]);else if(key==='level4Kills')level4Kills=Number(state[key]);else if(key==='levelBanner')levelBanner=Number(state[key]);else if(key==='transitionFade')transitionFade=Number(state[key]);else if(key==='environmentFromLevel')environmentFromLevel=Number(state[key]);else if(key==='environmentBlend')environmentBlend=Number(state[key]);else if(key==='wallCharges')wallCharges=Number(state[key]);else if(key==='nextUpgrade')nextUpgrade=Number(state[key]);else if(key==='infiniteNextBossScore')infiniteNextBossScore=Number(state[key]);}});
 }
-function playerPersonalSnapshot(){return {x:p.x,y:p.y,hp,own:own.slice(),wp,gunMult:gunMult.slice(),ammo,stone,appleCount,pearCount,buildMaterial,halfHealthBlastUsed:!!halfHealthBlastUsed,name:playerName,ci,gender:skinGender,rosieMode:!!rosieMode,updatedAt:Date.now()};}
+function playerPersonalSnapshot(){return {x:p.x,y:p.y,hp,own:own.slice(),wp,gunMult:gunMult.slice(),ammo,stone,appleCount,pearCount,buildMaterial,halfHealthBlastUsed:!!halfHealthBlastUsed,name:playerName,ci,gender:skinGender,rosieMode:!!rosieMode,inevitableMode:!!inevitableMode,updatedAt:Date.now()};}
 function restorePersonalProgress(record){
   if(!record||personalRestored)return;personalRestored=true;const v=record.personal||record;
   if(Number.isFinite(Number(v.x)))p.x=Math.max(20,Math.min(worldW()-20,Number(v.x)));if(Number.isFinite(Number(v.y)))p.y=Math.max(20,Math.min(worldH()-20,Number(v.y)));
   if(Number.isFinite(Number(v.hp)))hp=Math.max(1,Math.min(100,Number(v.hp)));if(Array.isArray(v.own)&&v.own.length===6)own=v.own.map(Boolean).map(Number);
-  if(Number.isFinite(Number(v.wp))&&Number(v.wp)>=0&&Number(v.wp)<6)wp=Number(v.wp);if(Array.isArray(v.gunMult)&&v.gunMult.length===6)gunMult=v.gunMult.map(x=>Math.max(1,Number(x)||1));
+  if(Number.isFinite(Number(v.wp))&&Number(v.wp)>=0&&(Number(v.wp)<6||(Number(v.wp)===6&&(v.rosieMode||rosieMode))||(Number(v.wp)===7&&(v.inevitableMode||inevitableMode))))wp=Number(v.wp);if(Array.isArray(v.gunMult)&&v.gunMult.length===6)gunMult=v.gunMult.map(x=>Math.max(1,Number(x)||1));
   if(Number.isFinite(Number(v.ammo)))ammo=Number(v.ammo);if(Number.isFinite(Number(v.stone)))stone=Number(v.stone);if(Number.isFinite(Number(v.appleCount)))appleCount=Number(v.appleCount);if(Number.isFinite(Number(v.pearCount)))pearCount=Number(v.pearCount);
-  if(v.buildMaterial==='stone'||v.buildMaterial==='wood')buildMaterial=v.buildMaterial;if(v.halfHealthBlastUsed!==undefined)halfHealthBlastUsed=!!v.halfHealthBlastUsed;if(Number.isFinite(Number(v.ci)))ci=Math.max(0,Math.min(CH.length-1,Number(v.ci)));if(v.gender)setSkinGender(v.gender,false);if(v.rosieMode!==undefined)rosieMode=!!v.rosieMode;cameraX=0;cameraY=0;
+  if(v.buildMaterial==='stone'||v.buildMaterial==='wood')buildMaterial=v.buildMaterial;if(v.halfHealthBlastUsed!==undefined)halfHealthBlastUsed=!!v.halfHealthBlastUsed;if(Number.isFinite(Number(v.ci)))ci=Math.max(0,Math.min(CH.length-1,Number(v.ci)));if(v.gender)setSkinGender(v.gender,false);if(v.rosieMode!==undefined)rosieMode=!!v.rosieMode;if(v.inevitableMode!==undefined)inevitableMode=!!v.inevitableMode;cameraX=0;cameraY=0;
 }
 function queueMultiplayerAction(action){if(!activeSharedRun()||multiplayerIsAuthority)return;nextActionSeq++;recentNetworkActions.push({...action,seq:nextActionSeq,sessionId:clientSessionId,from:firebaseUser.uid,ts:Date.now()});if(recentNetworkActions.length>40)recentNetworkActions=recentNetworkActions.slice(-40);}
 function processMultiplayerAction(action){
   if(!action)return;
   if(action.type==='hit'){const z=e.find(q=>q.id===action.zombieId&&!q.dead);if(z&&Number(action.damage)>0)hit(z,Math.min(1000000,Number(action.damage)),true);}
   else if(action.type==='voidImpact'&&Number.isFinite(Number(action.x))&&Number.isFinite(Number(action.y))){createVoidVortex(Number(action.x),Number(action.y),Math.max(1,Number(action.damage)||12),true);}
+  else if(action.type==='inevitableBurst'&&Number.isFinite(Number(action.x))&&Number.isFinite(Number(action.y))){spawnInevitableRockets(Number(action.x),Number(action.y),false);}
   else if(action.type==='placeWall'&&action.wall){const wall=action.wall;if(!wall.id||BLD.some(w=>w.id===wall.id)||(!Number.isFinite(Number(wall.x)))||!Number.isFinite(Number(wall.y)))return;if(gameMode!=='base'&&wallCharges<=0)return;BLD.push({...wall});if(gameMode!=='base')wallCharges=Math.max(0,wallCharges-1);if(gameMode==='base')try{localStorage.setItem('zs_base_walls',JSON.stringify(BLD))}catch(_){};}
   else if(action.type==='collectFruit'){const arr=action.fruitType==='pear'?pears:apples;const item=arr.find(q=>q.id===action.fruitId);if(item)item.got=1;if(action.fruitType==='pear')pears=pears.filter(q=>!q.got);else apples=apples.filter(q=>!q.got);}
   else if(action.type==='collectUpgrade'){const item=upgrades.find(q=>q.id===action.upgradeId);if(item)item.got=1;upgrades=upgrades.filter(q=>!q.got&&!q.collected);}
   else if(action.type==='collectAmmo'&&gameMode==='base'){const item=AMMO.find(q=>q.id===action.itemId);if(item)item.got=1;AMMO=AMMO.filter(q=>!q.got);}
+  else if(action.type==='openGunCrate'&&gameMode==='base'){const item=WPN.find(q=>q.id===action.itemId);if(item)item.got=1;}
   else if(action.type==='mineRock'&&gameMode==='base'){const rock=O.find(q=>q.id===action.objectId);if(rock){rock.mineHits=(rock.mineHits||0)+1;if(rock.mineHits>=5)rock.dead=1;}}
 }
 function stopMultiplayer(markOffline=true){
   const oldRef=multiplayerRef,uid=firebaseUser&&firebaseUser.uid;if(oldRef){try{oldRef.off()}catch(_){}if(markOffline&&uid)oldRef.child(uid).update({online:false,dead:true}).catch(()=>{});}
-  multiplayerRef=null;multiplayerListener=null;remotePlayers={};multiplayerMembers={};multiplayerRoom='';multiplayerIsAuthority=false;multiplayerAuthorityKnown=false;roomFull=false;hasPublishedSharedState=false;personalRestored=false;multiplayerInitialStateLoaded=false;lastAppliedSharedTs=0;processedActionSeq={};remoteRosieSeen={};
+  multiplayerRef=null;multiplayerListener=null;remotePlayers={};multiplayerMembers={};multiplayerRoom='';multiplayerIsAuthority=false;multiplayerAuthorityKnown=false;roomFull=false;hasPublishedSharedState=false;personalRestored=false;multiplayerInitialStateLoaded=false;lastAppliedSharedTs=0;processedActionSeq={};remoteRosieSeen={};remoteInevitableSeen={};
 }
 function startMultiplayer(){
   if(!firebaseDb||!firebaseUser||!firebaseUser.uid||!multiplayerEnabledForCurrentMode())return;
@@ -350,7 +352,7 @@ function startMultiplayer(){
   clientSessionId=Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9);nextActionSeq=0;recentNetworkActions=[];processedActionSeq={};multiplayerJoinedAt=Date.now();
   multiplayerRef=firebaseDb.ref(multiplayerRoom+'/players');const selfRef=multiplayerRef.child(firebaseUser.uid);
   selfRef.onDisconnect().update({online:false,dead:true}).catch(err=>console.warn('Could not configure disconnect cleanup:',err));
-  selfRef.update({online:true,dead:false,joinedAt:multiplayerJoinedAt,sessionId:clientSessionId,name:playerName||'Player',ci:ci||0,gender:skinGender,rosieMode:!!rosieMode,mode:gameMode,partySize:gameMode==='classic'?selectedClassicPartySize():0,roomCode:code||'BASE',x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),updatedAt:Date.now()}).catch(err=>console.warn('Could not join multiplayer room:',err));
+  selfRef.update({online:true,dead:false,joinedAt:multiplayerJoinedAt,sessionId:clientSessionId,name:playerName||'Player',ci:ci||0,gender:skinGender,rosieMode:!!rosieMode,rosieSelected:!!(rosieMode&&wp===6),inevitableMode:!!inevitableMode,inevitableSelected:!!(inevitableMode&&wp===7),wp,mode:gameMode,partySize:gameMode==='classic'?selectedClassicPartySize():0,roomCode:code||'BASE',x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),updatedAt:Date.now()}).catch(err=>console.warn('Could not join multiplayer room:',err));
   multiplayerListener=snap=>{
     const all={};snap.forEach(child=>{all[child.key]=child.val()||{};});multiplayerMembers=all;
     const activeEntries=Object.entries(all).filter(([uid,v])=>v.online!==false&&v.sessionId&&v.mode===gameMode);
@@ -360,7 +362,12 @@ function startMultiplayer(){
     if(gameMode==='classic'&&activeEntries.length>cap&&myRank>=cap&&!roomFull){roomFull=true;selfRef.update({online:false,dead:true}).catch(()=>{});if(chatConnection)chatConnection.textContent='That lobby is full. Generate a new code or join another lobby.';if(modeStatus)modeStatus.textContent='That lobby is full. Use a different code to start another co-op run.';return;}
     if(roomFull)return;
     const next={};for(const [uid,v] of Object.entries(all)){if(uid!==firebaseUser.uid&&v.online!==false&&v.sessionId&&v.mode===gameMode&&Number.isFinite(Number(v.x))&&Number.isFinite(Number(v.y)))next[uid]={...v,uid};}remotePlayers=next;
-    for(const [uid,v] of Object.entries(next)){const burst=v.rosieBurst;const ts=Number(burst&&burst.ts)||0;if(ts>(remoteRosieSeen[uid]||0)){remoteRosieSeen[uid]=ts;if(Date.now()-ts<5000&&typeof spawnRosieBurstBullets==='function')spawnRosieBurstBullets(Number(burst.x)||0,Number(burst.y)||0,true);}}
+    for(const [uid,v] of Object.entries(next)){
+      const burst=v.rosieBurst;const ts=Number(burst&&burst.ts)||0;
+      if(ts>(remoteRosieSeen[uid]||0)){remoteRosieSeen[uid]=ts;if(Date.now()-ts<5000&&typeof spawnRosieBurstBullets==='function')spawnRosieBurstBullets(Number(burst.x)||0,Number(burst.y)||0,true);}
+      const inevitableBurst=v.inevitableBurst;const its=Number(inevitableBurst&&inevitableBurst.ts)||0;
+      if(its>(remoteInevitableSeen[uid]||0)){remoteInevitableSeen[uid]=its;if(!multiplayerIsAuthority&&Date.now()-its<5000&&typeof spawnInevitableRockets==='function')spawnInevitableRockets(Number(inevitableBurst.x)||0,Number(inevitableBurst.y)||0,true);}
+    }
     const elected=activeEntries.length?activeEntries[0][0]:firebaseUser.uid;
     multiplayerIsAuthority=elected===firebaseUser.uid;multiplayerAuthorityKnown=true;
     const self=all[firebaseUser.uid]||{};if(!personalRestored&&self.personal)restorePersonalProgress(self);
@@ -376,12 +383,12 @@ function startMultiplayer(){
 }
 function syncMultiplayer(force=false){
   if(!multiplayerRef||!firebaseUser||roomFull)return;const now=performance.now();if(!force&&now-multiplayerLastSent<100)return;multiplayerLastSent=now;const selfRef=multiplayerRef.child(firebaseUser.uid);
-  const update={x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),ci:ci||0,gender:skinGender,rosieMode:!!rosieMode,rosieBurst:lastRosieBurst||null,name:playerName||'Player',mode:gameMode,dead:dead!==0,online:true,sessionId:clientSessionId,joinedAt:multiplayerJoinedAt,roomCode:gameMode==='classic'?selectedLobbyCode():'BASE',ts:firebase.database.ServerValue.TIMESTAMP,actions:recentNetworkActions};
+  const update={x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),ci:ci||0,gender:skinGender,rosieMode:!!rosieMode,rosieSelected:!!(rosieMode&&wp===6),inevitableMode:!!inevitableMode,inevitableSelected:!!(inevitableMode&&wp===7),wp,rosieBurst:lastRosieBurst||null,inevitableBurst:lastInevitableBurst||null,name:playerName||'Player',mode:gameMode,dead:dead!==0,online:true,sessionId:clientSessionId,joinedAt:multiplayerJoinedAt,roomCode:gameMode==='classic'?selectedLobbyCode():'BASE',ts:firebase.database.ServerValue.TIMESTAMP,actions:recentNetworkActions};
   if(now-lastPersonalSent>550||force){update.personal=playerPersonalSnapshot();lastPersonalSent=now;}
   if(multiplayerIsAuthority&&multiplayerInitialStateLoaded&&(force||now-lastSharedStateSent>500)&&dead!==2){const state=createSharedSnapshot();update.state=state;lastSharedStateSent=now;hasPublishedSharedState=true;lastAppliedSharedTs=state.ts;}
   selfRef.update(update).catch(err=>{console.warn('Multiplayer write failed:',err);if(chatConnection)chatConnection.textContent='Multiplayer write blocked: check Realtime Database Rules.';});
 }
-function drawRemotePlayers(){Object.values(remotePlayers).forEach(v=>{if(v.dead)return;const idx=Math.max(0,Math.min(CH.length-1,Number(v.ci)||0));human(Number(v.x)||0,Number(v.y)||0,Number(v.a)||0,skinForPlayer(idx,v.gender||'male'),0,.95,0,0,!!v.rosieMode);g.save();g.fillStyle='rgba(8,12,9,.8)';g.font='bold 11px Arial';g.textAlign='center';g.fillText(String(v.name||'Player').slice(0,16),v.x,v.y-28);g.restore();});}
+function drawRemotePlayers(){Object.values(remotePlayers).forEach(v=>{if(v.dead)return;const idx=Math.max(0,Math.min(CH.length-1,Number(v.ci)||0));human(Number(v.x)||0,Number(v.y)||0,Number(v.a)||0,skinForPlayer(idx,v.gender||'male'),0,.95,0,0,!!v.rosieSelected);if(v.inevitableMode)drawInevitableRing(Number(v.x)||0,Number(v.y)||0);g.save();g.fillStyle='rgba(8,12,9,.8)';g.font='bold 11px Arial';g.textAlign='center';g.fillText(String(v.name||'Player').slice(0,16),v.x,v.y-28);g.restore();});}
 
 function safeChatText(v){return String(v||'').replace(/[<>]/g,'').trim().slice(0,240)}
 function appendChatMessage(msg){
@@ -390,16 +397,36 @@ function appendChatMessage(msg){
   const body=document.createElement('span');body.textContent=safeChatText(msg.text);
   row.append(name,body);chatLog.appendChild(row);while(chatLog.children.length>80)chatLog.firstChild.remove();chatLog.scrollTop=chatLog.scrollHeight;
 }
+function stopChatWatch(){
+  if(chatRosterRef&&chatRosterHandlers){
+    try{chatRosterRef.off('child_added',chatRosterHandlers.added);chatRosterRef.off('child_changed',chatRosterHandlers.changed);}catch(_){}
+  }
+  Object.values(chatMessageWatchers).forEach(item=>{try{item.query.off('child_added',item.handler);}catch(_){}});
+  chatRosterRef=null;chatRosterHandlers=null;chatMessageWatchers={};chatSeenIds={};activeChatRef=null;activeChatQuery=null;chatUnsubscribe=null;
+}
 function watchChat(){
   if(!firebaseDb||!firebaseUser)return;
-  if(activeChatQuery&&chatUnsubscribe)activeChatQuery.off('child_added',chatUnsubscribe);
+  stopChatWatch();
   const room=document.getElementById('roomSelect').value;
-  activeChatRef=room==='global'?firebaseDb.ref('chats/global'):firebaseDb.ref('chats/rooms/'+room);
+  const storageRoom='chat-'+(room==='global'?'global':String(room).replace(/[^a-z0-9_-]/gi,''));
+  chatRosterRef=firebaseDb.ref('rooms/'+storageRoom+'/players');
   chatLog.textContent='Loading messages…';
-  chatUnsubscribe=snap=>appendChatMessage(snap.val()||{});
-  activeChatQuery=activeChatRef.limitToLast(60);
-  activeChatQuery.on('child_added',chatUnsubscribe,err=>{console.warn('Chat read failed:',err);document.getElementById('chatConnection').textContent='Chat read blocked: allow authenticated reads under /chats in Firebase Database Rules.';});
-  document.getElementById('chatConnection').textContent=room==='global'?'Connected to global chat.':'Connected to local room: '+room+'.';
+  const attachPlayerMessages=snap=>{
+    const uid=snap&&snap.key;if(!uid||chatMessageWatchers[uid])return;
+    const query=chatRosterRef.child(uid).child('chatMessages').limitToLast(60);
+    const handler=messageSnap=>{
+      const key=uid+'|'+messageSnap.key;if(chatSeenIds[key])return;chatSeenIds[key]=true;
+      const msg=messageSnap.val()||{};appendChatMessage(msg);
+    };
+    query.on('child_added',handler,err=>{console.warn('Chat read failed:',err);chatConnection.textContent='Chat read permission denied. Check authenticated /rooms/*/players read rules.';});
+    chatMessageWatchers[uid]={query,handler};
+  };
+  const added=snap=>attachPlayerMessages(snap);
+  const changed=snap=>attachPlayerMessages(snap);
+  chatRosterHandlers={added,changed};
+  chatRosterRef.on('child_added',added,err=>{console.warn('Chat roster read failed:',err);chatConnection.textContent='Chat unavailable: check authenticated /rooms/*/players read rules.';});
+  chatRosterRef.on('child_changed',changed,err=>{console.warn('Chat roster read failed:',err);chatConnection.textContent='Chat unavailable: check authenticated /rooms/*/players read rules.';});
+  chatConnection.textContent=room==='global'?'Connected to global chat.':'Connected to local room: '+room+'.';
 }
 document.getElementById('roomSelect').insertAdjacentHTML('afterbegin','<option value="global">Global chat</option>');
 document.getElementById('roomSelect').value='global';
@@ -408,14 +435,28 @@ document.getElementById('chatForm').addEventListener('submit',async ev=>{
   ev.preventDefault();const input=document.getElementById('chatMessage');const text=safeChatText(input.value);
   if(!text)return;
   if(text.toUpperCase()==='FORROSIE321'){
-    rosieMode=true;input.value='';
-    appendChatMessage({name:'SYSTEM',text:'Rosie Cannon unlocked for this player. Hold fire to launch a 50-shot radial burst.'});
-    if(firebaseDb&&firebaseUser&&multiplayerRef)multiplayerRef.child(firebaseUser.uid).update({rosieMode:true}).catch(()=>{});
+    rosieMode=true;wp=6;cd=0;WN[6]='ROSIE CANNON';input.value='';
+    appendChatMessage({name:'SYSTEM',text:'Rosie Cannon unlocked and selected. Click to fire a 50-shot radial burst.'});
+    if(firebaseDb&&firebaseUser&&multiplayerRef)multiplayerRef.child(firebaseUser.uid).update({rosieMode:true,wp:6,rosieSelected:true}).catch(()=>{});
     return;
   }
-  if(!firebaseDb||!firebaseUser)return;
-  try{await firebaseDb.ref('chats/'+(document.getElementById('roomSelect').value==='global'?'global':'rooms/'+document.getElementById('roomSelect').value)).push({uid:firebaseUser.uid,name:playerName||'Player',text,ts:firebase.database.ServerValue.TIMESTAMP});input.value='';}
-  catch(err){chatConnection.textContent='Message not sent. Check Firebase Database rules and connection.';}
+  if(text.toUpperCase().replace(/[\s_-]/g,'')==='CHANGEISINEVITABLE'){
+    inevitableMode=true;wp=7;cd=0;lastInevitableClickAt=0;input.value='';
+    appendChatMessage({name:'SYSTEM',text:'Inevitable Ring unlocked and selected. Click to launch 20 rockets in a circle.'});
+    if(firebaseDb&&firebaseUser&&multiplayerRef)multiplayerRef.child(firebaseUser.uid).update({inevitableMode:true,wp:7,inevitableSelected:true}).catch(()=>{});
+    return;
+  }
+  if(!firebaseDb||!firebaseUser){chatConnection.textContent='Chat needs a signed-in guest or account. Please use the sign-in buttons first.';return;}
+  const selectedRoom=document.getElementById('roomSelect').value;
+  const storageRoom='chat-'+(selectedRoom==='global'?'global':String(selectedRoom).replace(/[^a-z0-9_-]/gi,''));
+  const ownChatRef=firebaseDb.ref('rooms/'+storageRoom+'/players/'+firebaseUser.uid);
+  try{
+    // Reuse the authenticated per-user write permission already required by multiplayer,
+    // rather than writing to a separate /chats branch that may be denied by existing Rules.
+    await ownChatRef.update({chatOnly:true,name:playerName||'Player',uid:firebaseUser.uid,createdAt:firebase.database.ServerValue.TIMESTAMP});
+    await ownChatRef.child('chatMessages').push({uid:firebaseUser.uid,name:playerName||'Player',text,ts:firebase.database.ServerValue.TIMESTAMP});
+    input.value='';chatConnection.textContent=selectedRoom==='global'?'Message sent to global chat.':'Message sent to '+selectedRoom+'.';
+  }catch(err){console.warn('Chat send failed:',err);chatConnection.textContent='Message not sent ('+(err&&err.code?err.code:'permission or connection error')+'). Check authenticated writes under /rooms/*/players/<your UID>.';}
 });
 pauseButton.addEventListener('click',()=>setPaused(!isPaused));
 document.getElementById('continueGameBtn').addEventListener('click',()=>{document.getElementById('chatPanel').classList.remove('open');setPaused(false);});
@@ -689,13 +730,13 @@ watchAdBtn.onclick=()=>{
 };
 skipAdBtn.onclick=()=>{hideRevivePopup();save()};
 const Z=.8;
-const WN=['PISTOL','SHOTGUN','ROCKET LAUNCHER','SMG','HOMING GUN','VOID ORB'];
+const WN=['PISTOL','SHOTGUN','ROCKET LAUNCHER','SMG','HOMING GUN','VOID ORB','ROSIE CANNON','INEVITABLE RING'];
 let w=0,h=0,p={x:0,y:0},e=[],b=[],k={},score=0,H=0,dead=2,R=[],X=[],VORTEX=[],P=[],F=[],D=[],S=0,rc=0,L=0,T=0,fl=0,wk=0,fr=0,ci=0,md=0,m={x:0,y:0},wp=0,cd=0,BLD=[],WPN=[],AMMO=[],ammo=0,own=[1,0,0,0,0,0],SC=[],po=0,O=[],G=[],hp=100,ih=0,apples=[],appleCount=0,pears=[],pearCount=0,AEX=[],buildHeld=0,buildPreview=null,gunMult=[1,1,1,1,1,1],upgrades=[],nextUpgrade=20,level=1,levelBanner=0,transitionFade=0,environmentBlend=1,environmentFromLevel=1,totalSpawned=0,level2Kills=0,bossSpawned=0,bossCutscene=0,level2Spawned=0,level2PostBossSpawned=0,level2PostBossKills=0,level3Spawned=0,level3Kills=0,level4Spawned=0,level4Kills=0,firePatches=[],fireHitCooldown=0,halfHealthBlastUsed=false,reviveUsed=false,reviveTimer=0,scoreSaved=false,wallCharges=5,stone=0,pickaxe=true,miningCooldown=0,miningAnim=0,buildMaterial='wood';
 const CH=[
 {n:'SOLDIER',shirt:'#4b5a32',vest:'#3a4526',pants:'#3b4028',helm:'#3d4a2a',skin:'#e0ac82',boot:'#1a1a1a'},
 {n:'SURVIVOR',shirt:'#8e2b2b',pants:'#2f4a6b',hair:'#5a3a1e',skin:'#f0c39a',pack:'#5d4a2f',boot:'#3b2a1a'},
 {n:'SWAT',shirt:'#1f2a3a',vest:'#0e141b',pants:'#141a22',helm:'#0d1117',skin:'#c68e62',boot:'#000'}];
-let skinGender='male', rosieMode=false, lastRosieBurst=null, remoteRosieSeen={};
+let skinGender='male', rosieMode=false, inevitableMode=false, lastRosieBurst=null, lastInevitableBurst=null, remoteRosieSeen={}, remoteInevitableSeen={};
 try{skinGender=localStorage.getItem('zs_skin_gender')==='female'?'female':'male'}catch(_){}
 setSkinGender(skinGender,false);
 function skinForPlayer(index,gender='male'){
@@ -946,7 +987,7 @@ function spawnBaseFortressContent(){
   const fortress=BASE_STRUCTURES.find(st=>st.id==='dark-fortress');
   if(!fortress)return;
   const voidX=fortress.x, voidY=fortress.y-fortress.h*.18;
-  WPN.push({x:voidX,y:voidY,t:5,structureId:fortress.id,got:0,opened:0,ground:0});
+  WPN.push({x:voidX,y:voidY,t:5,structureId:fortress.id,got:0,opened:0,ground:1,artifact:1});
   // Three bosses guard the Void Orb inside the Dark Fortress.
   if(!e.some(z=>z.boss)){
     const spots=[[-170,80],[0,-80],[170,80]];
@@ -955,23 +996,55 @@ function spawnBaseFortressContent(){
 }
 function spawnW(){
   WPN=[];
-  [1,2,3].forEach((t,index)=>{
-    if(gameMode==='base'){
-      // Each weapon crate is placed inside a fixed landmark structure, not in open wilderness.
-      const available=BASE_STRUCTURES.filter(st=>st.kind!=='ruins'||t!==1);
-      const structure=available[(index+Math.floor(Math.random()*available.length))%available.length];
-      const x=structure.x+(Math.random()-.5)*structure.w*.46;
-      const y=structure.y+(Math.random()-.5)*structure.h*.38;
-      WPN.push({x,y,t,structureId:structure.id,got:0,opened:0});
-      return;
+  if(gameMode==='base'){
+    // Make the common gun types discoverable, including the Homing Gun.
+    // The Void Orb is deliberately excluded here and remains inside the Dark Fortress.
+    const startX=BASE_WORLD_W*.12,startY=BASE_WORLD_H*.48;
+    const startTypes=[0,1,2,3,4];
+    const startCrates=[];
+    for(let i=0;i<startTypes.length;i++){
+      const angle=-Math.PI/2+i*(Math.PI*2/startTypes.length);
+      let spot=null;
+      for(let attempt=0;attempt<80&&!spot;attempt++){
+        const radius=155+Math.floor(attempt/12)*44;
+        const a=angle+(attempt%12)*.19;
+        const x=Math.max(35,Math.min(BASE_WORLD_W-35,startX+Math.cos(a)*radius));
+        const y=Math.max(35,Math.min(BASE_WORLD_H-35,startY+Math.sin(a)*radius));
+        const clearTrees=O.every(o=>o.dead||Math.hypot(o.x-x,o.y-y)>o.r+34);
+        const clearCrates=startCrates.every(q=>Math.hypot(q.x-x,q.y-y)>76);
+        if(clearTrees&&clearCrates)spot={x,y};
+      }
+      if(!spot)spot={x:startX+Math.cos(angle)*(150+i*35),y:startY+Math.sin(angle)*(150+i*35)};
+      const crate={...spot,t:startTypes[i],got:0,opened:0,ground:0,nearSpawn:1};
+      startCrates.push(crate);WPN.push(crate);
     }
+    // Additional landmark crates are distributed around the map for repeated finds.
+    const cratePlan=[
+      [1,'farm'],[2,'old-town'],[3,'outpost'],[4,'village'],
+      [1,'lakeside'],[2,'quarry'],[3,'watchtower'],[4,'harbor'],
+      [1,'factory'],[2,'rivergate'],[3,'sunken-city'],[4,'deadlands-station'],
+      [1,'east-camp'],[2,'red-mesa'],[3,'village-west'],[4,'outpost-north'],
+      [1,'old-town-east'],[2,'outpost-garage'],[3,'village-house'],[4,'deadlands-station-bunker']
+    ];
+    cratePlan.forEach(([t,id],i)=>{
+      const st=BASE_STRUCTURES.find(q=>q.id===id);if(!st)return;
+      // The central doorway is in the south wall, so place crates just inside it.
+      const x=st.x+(Math.random()-.5)*Math.min(70,st.w*.08);
+      const y=st.y+st.h/2-66;
+      WPN.push({x,y,t,structureId:st.id,got:0,opened:0,ground:0});
+    });
+    spawnBaseAmmoCrates();
+    spawnBaseFortressContent();
+    return;
+  }
+  [1,2,3,4].forEach(t=>{
     for(let n=0;n<300;n++){
       const x=80+Math.random()*(worldW()-160),y=80+Math.random()*(worldH()-160);
-      if(Math.hypot(x-w/2,y-h/2)>120&&O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+45)&&WPN.every(q=>Math.hypot(q.x-x,q.y-y)>150)){WPN.push({x:x,y:y,t:t});break}
+      if(Math.hypot(x-w/2,y-h/2)>120&&O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+45)&&WPN.every(q=>Math.hypot(q.x-x,q.y-y)>150)){WPN.push({x,y,t});break;}
     }
   });
-  if(gameMode==='base'){spawnBaseAmmoCrates();spawnBaseFortressContent();}
 }
+
 
 function spawnUpgrade(){
   const owned=[];
@@ -1197,6 +1270,32 @@ function shootRosieBurst(){
   spawnRosieBurstBullets(p.x,p.y,false);
   for(let i=0;i<28;i++){const a=Math.random()*Math.PI*2,sp=2+Math.random()*5;pt(p.x,p.y,Math.cos(a)*sp,Math.sin(a)*sp,18,'#e38cff',2+Math.random()*2,0);}
 }
+function spawnInevitableRockets(x,y,visualOnly=false){
+  const count=20,speed=7.2,reach=Math.max(420,Math.min(950,Math.max(worldW(),worldH())*.4));
+  for(let i=0;i<count;i++){
+    const a=(Math.PI*2*i)/count;
+    const tx=Math.max(12,Math.min(worldW()-12,x+Math.cos(a)*reach));
+    const ty=Math.max(12,Math.min(worldH()-12,y+Math.sin(a)*reach));
+    R.push({x:x+Math.cos(a)*30,y:y+Math.sin(a)*30,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,tx,ty,dmg:5* Math.max(1,gunMult[2]||1),rocket:1,inevitableRocket:1,visualOnly:!!visualOnly});
+  }
+  for(let i=0;i<30;i++){const a=Math.random()*Math.PI*2,sp=2+Math.random()*5;pt(x,y,Math.cos(a)*sp,Math.sin(a)*sp,20,'#ff233e',2+Math.random()*3,0);}
+}
+function shootInevitableRing(){
+  const x=p.x,y=p.y,ts=Date.now();
+  lastInevitableBurst={x,y,ts};
+  if(activeSharedRun()&&!multiplayerIsAuthority){
+    queueMultiplayerAction({type:'inevitableBurst',x,y,burstId:ts});
+    spawnInevitableRockets(x,y,true);
+  }else spawnInevitableRockets(x,y,false);
+}
+let lastRosieClickAt=0,lastInevitableClickAt=0;
+function fireRosieClick(){
+  const now=performance.now();
+  // Pointer Events and legacy mouse events can both fire for one physical click.
+  if(wp===6&&rosieMode){if(now-lastRosieClickAt<45)return true;lastRosieClickAt=now;shootRosieBurst();cd=1000000;md=0;return true;}
+  if(wp===7&&inevitableMode){if(now-lastInevitableClickAt<45)return true;lastInevitableClickAt=now;shootInevitableRing();cd=0;md=0;return true;}
+  return false;
+}
 function blast(){
   const a0=Math.atan2(m.y-p.y,m.x-p.x);
   for(let i=0;i<7;i++){
@@ -1239,17 +1338,18 @@ c.addEventListener('pointerdown',q=>{
   if(gameMode==='base'&&vehicleMode==='gunner'){const v=BASE_VEHICLES.find(v=>v.id===vehicleId);if(v&&v.gunner){q.preventDefault();updateMouseWorld(q);fireVehicleGun(v);return;}}
   q.preventDefault();
   updateMouseWorld(q);
+  if(fireRosieClick())return;
   md=1;
   // Keep receiving release events if the pointer leaves the canvas while firing.
   try{c.setPointerCapture(q.pointerId)}catch(_){ }
 });
-function stopFiring(){md=0;}
+function stopFiring(){md=0;if(wp===6&&rosieMode)cd=0;}
 c.addEventListener('pointerup',stopFiring);
 c.addEventListener('pointercancel',stopFiring);
 c.addEventListener('lostpointercapture',stopFiring);
 // Mouse fallbacks support browsers/extensions that do not dispatch Pointer Events reliably.
 c.addEventListener('mousemove',updateMouseWorld);
-c.addEventListener('mousedown',q=>{if(!dead&&q.button===0){updateMouseWorld(q);md=1;}});
+c.addEventListener('mousedown',q=>{if(!dead&&q.button===0){updateMouseWorld(q);if(fireRosieClick())return;md=1;}});
 window.addEventListener('mouseup',stopFiring);
 window.addEventListener('blur',()=>{md=0;k={}});
 
@@ -1305,9 +1405,9 @@ function mobileAim(ev){
   const dist=Math.max(window.innerWidth,window.innerHeight)*1.4;
   updateMouseWorld({clientX:window.innerWidth/2+Math.cos(mobileFireAngle)*dist,clientY:window.innerHeight/2+Math.sin(mobileFireAngle)*dist});
 }
-function releaseMobileFire(ev){if(mobileFirePointer!==ev.pointerId)return;mobileFirePointer=null;md=0;try{if(mobileFire)mobileFire.releasePointerCapture(ev.pointerId)}catch(_){ }}
+function releaseMobileFire(ev){if(mobileFirePointer!==ev.pointerId)return;mobileFirePointer=null;md=0;if(wp===6&&rosieMode)cd=0;try{if(mobileFire)mobileFire.releasePointerCapture(ev.pointerId)}catch(_){ }}
 if(mobileFire){
-  mobileFire.addEventListener('pointerdown',ev=>{if(!isMobileDevice()||dead)return;ev.preventDefault();mobileFirePointer=ev.pointerId;try{mobileFire.setPointerCapture(ev.pointerId)}catch(_){ }mobileAim(ev);md=1;});
+  mobileFire.addEventListener('pointerdown',ev=>{if(!isMobileDevice()||dead)return;ev.preventDefault();mobileFirePointer=ev.pointerId;try{mobileFire.setPointerCapture(ev.pointerId)}catch(_){ }mobileAim(ev);if(!fireRosieClick())md=1;});
   mobileFire.addEventListener('pointermove',ev=>{if(mobileFirePointer===ev.pointerId)mobileAim(ev)});
   mobileFire.addEventListener('pointerup',releaseMobileFire);mobileFire.addEventListener('pointercancel',releaseMobileFire);
 }
@@ -1379,10 +1479,10 @@ onkeydown=q=>{
           const crate=gameMode==='base'?WPN.filter(v=>!v.got&&!v.opened).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
           if(crate&&Math.hypot(crate.x-p.x,crate.y-p.y)<78){
             crate.opened=1;crate.got=1;own[crate.t]=1;wp=crate.t;fl=0;
-            if(gameMode==='base')ammo+=10+Math.floor(Math.random()*16);
+            if(gameMode==='base'){ammo+=10+Math.floor(Math.random()*16);if(activeSharedRun()&&!multiplayerIsAuthority)queueMultiplayerAction({type:'openGunCrate',itemId:crate.id});}
             for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(crate.x,crate.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#ffd36b',2+Math.random()*2,0)}
           }else{
-            for(let i=1;i<=6;i++){const t=(wp+i)%6;if(own[t]){wp=t;break}}
+            for(let i=1;i<=8;i++){const t=(wp+i)%8;if((t===6&&rosieMode)||(t===7&&inevitableMode)||(t<6&&own[t])){wp=t;break}}
           }
         }
       }
@@ -1423,7 +1523,7 @@ setInterval(()=>{
   if(gameMode==='infinite'&&score>=infiniteNextBossScore&&!e.some(z=>z.boss&&!z.dead)){spawnBoss();return;}
   if(level==1&&totalSpawned>=120&&gameMode!=='infinite')return;
   if(level===3&&level3Spawned>=160)return;
-  if(level===4&&level4Spawned>=75)return;
+  if(level===4&&level4Spawned>=60)return;
 
   // Level 2: 55 regular zombies before the boss. No regular spawns while
   // the boss is alive. After the boss dies and the cutscene ends, a fresh
@@ -1497,7 +1597,7 @@ setInterval(()=>{
     else if(bossSpawned===2)level2PostBossSpawned++;
   }else if(level===3){level3Spawned++;}
   else if(level===4){level4Spawned++;}
-},gameMode==='base'?Math.round(2600/1.2):1000);
+},gameMode==='base'?Math.round(2200/1.2):850);
 setInterval(()=>{if(gameMode!=='base'||bossCutscene>0||(activeSharedRun()&&!multiplayerIsAuthority)||!sharedWorldShouldRun())return;const dx=(p.x-BASE_WORLD_W*.90)/(BASE_WORLD_W*.18),dy=(p.y-BASE_WORLD_H*.70)/(BASE_WORLD_H*.23);if(dx*dx+dy*dy>1)return;const alive=e.reduce((c,z)=>c+(!z.dead?1:0),0);if(alive>=80)return;for(let i=0;i<2;i++){const a=Math.random()*6.283,r=180+Math.random()*180,x=Math.max(30,Math.min(BASE_WORLD_W-30,p.x+Math.cos(a)*r)),y=Math.max(30,Math.min(BASE_WORLD_H-30,p.y+Math.sin(a)*r)),hp=1+Math.floor(score/18);e.push({x,y,ty:0,hp,mh:hp,ar:70+Math.min(60,score),wk:Math.random()*6,sv:.82+Math.random()*.18,sh:'#3b3030',sk:'#a79b8e',deadlands:1});totalSpawned++;}},1000);
 
 /* ---------- drawing characters ---------- */
@@ -1518,6 +1618,13 @@ function gun(t){
     g.fillStyle='#00d9ff';g.fillRect(-5,5,7,10);
   }else{g.fillStyle='#222';g.fillRect(-18,-3,34,6);g.fillStyle='#111';g.fillRect(16,-1.5,10,3);g.fillStyle='#333';g.fillRect(-4,3,7,14);g.fillRect(-16,3,5,5)}
 }
+function drawInevitableRing(x,y,phase=fr){
+  const r=32+Math.sin(phase*.12)*2.2;
+  g.save();g.strokeStyle='rgba(255,35,58,.95)';g.fillStyle='rgba(255,20,48,.10)';g.lineWidth=3;g.shadowColor='#ff173c';g.shadowBlur=14;
+  g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();g.stroke();
+  g.shadowBlur=0;g.lineWidth=1.5;g.strokeStyle='rgba(255,125,135,.8)';g.beginPath();g.arc(x,y,r+5,-phase*.025,Math.PI*1.2-phase*.025);g.stroke();g.restore();
+}
+
 function human(x,y,a,ch,wk,s,L,fl,rosie=false){
   g.save();g.translate(x,y);g.scale(s,s);
   el(2,3,20,17,'rgba(0,0,0,.42)');
@@ -1992,13 +2099,15 @@ function updateVehicle(){
 function fireVehicleGun(v){
   if(gameMode!=='base'||vehicleMode!=='gunner'||!v||!v.gunner||ammo<2)return false;
   ammo-=2;
-  const a=Math.atan2(m.y-v.y,m.x-v.x);
-  v.turretAngle=a;
-  b.push({x:v.x+Math.cos(a)*55,y:v.y+Math.sin(a)*55,vx:Math.cos(a)*18,vy:Math.sin(a)*18,life:999,t:1,dmg:3*gunMult[0],vehicleShot:1});
-  const oldX=p.x,oldY=p.y;
-  p.x=v.x;p.y=v.y;
-  muzzle(a,7);
-  p.x=oldX;p.y=oldY;
+  const a=Math.atan2(m.y-v.y,m.x-v.x);v.turretAngle=a;
+  // A two-rocket salvo costs exactly two ammo; a small spread keeps both visible.
+  for(const [index,spread] of [-0.035,0.035].entries()){
+    const angle=a+spread,side=index===0?-7:7;
+    const sx=v.x+Math.cos(angle)*55-Math.sin(angle)*side;
+    const sy=v.y+Math.sin(angle)*55+Math.cos(angle)*side;
+    b.push({x:sx,y:sy,vx:Math.cos(angle)*16,vy:Math.sin(angle)*16,life:999,t:1,rocket:1,vehicleShot:1,dmg:7*gunMult[0]});
+  }
+  const oldX=p.x,oldY=p.y;p.x=v.x;p.y=v.y;muzzle(a,7);p.x=oldX;p.y=oldY;
   return true;
 }
 function drawWorldMinimap(){
@@ -2193,14 +2302,19 @@ function game(){
   });
 
   // Base World uses sealed supply crates. Classic/Infinite use simple ground pickups.
-  WPN=WPN.filter(q=>q.t!==4);
   let nearbyCrate=null,nearbyCrateDist=Infinity,nearbyGroundGun=null,nearbyGroundGunDist=Infinity;
   WPN.forEach(q=>{
     if(q.got||q.collected)return;
     const bob=Math.sin(fr*.055+q.x*.01)*1.5;
     el(q.x+3,q.y+17,35,10,'rgba(0,0,0,.35)');
     g.save();g.translate(q.x,q.y+bob);
-    if(gameMode==='base'){
+    if(gameMode==='base'&&q.artifact){
+      // The Void Orb is a unique relic at the fortress, not a standard gun crate.
+      g.shadowColor='#8f4bb8';g.shadowBlur=18;g.fillStyle='rgba(38,9,55,.85)';g.beginPath();g.arc(0,0,17,0,Math.PI*2);g.fill();
+      g.strokeStyle='#bf8be5';g.lineWidth=2;g.beginPath();g.ellipse(0,0,22,8,fr*.035,0,Math.PI*1.75);g.stroke();
+      g.strokeStyle='#8d57b6';g.lineWidth=1.7;g.beginPath();g.ellipse(0,0,18,6,-fr*.04,Math.PI*.1,Math.PI*1.85);g.stroke();
+      g.fillStyle='#020104';g.beginPath();g.arc(0,0,7,0,Math.PI*2);g.fill();g.shadowBlur=0;
+    }else if(gameMode==='base'){
       g.fillStyle='#3c2818';g.fillRect(-19,-15,38,30);
       g.fillStyle='#75502b';g.fillRect(-16,-12,32,24);
       g.fillStyle='#9a713e';g.fillRect(-16,-12,32,5);g.fillRect(-16,7,32,5);
@@ -2218,7 +2332,7 @@ function game(){
     }
     g.restore();
     g.fillStyle=gameMode==='base'?'#ffd36b':'#e5e5e5';g.font='bold 11px Arial';g.textAlign='center';
-    g.fillText(gameMode==='base'?'SUPPLY CRATE':'PICKUP '+WN[q.t],q.x,q.y-27);
+    g.fillText(gameMode==='base'?(q.artifact?'VOID ORB RELIC':'GUN CRATE'):'PICKUP '+WN[q.t],q.x,q.y-27);
     const dist=Math.hypot(p.x-q.x,p.y-q.y);
     if(!dead){
       if(gameMode==='base'&&dist<nearbyCrateDist){nearbyCrate=q;nearbyCrateDist=dist;}
@@ -2226,7 +2340,7 @@ function game(){
     }
   });
   if(nearbyCrate&&nearbyCrateDist<78){
-    g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-112,c.height-86,224,30);g.strokeStyle='#c6a76c';g.strokeRect(c.width/2-112,c.height-86,224,30);g.fillStyle='#fff0c4';g.font='bold 14px Arial';g.textAlign='center';g.fillText('PRESS E TO OPEN CRATE',c.width/2,c.height-66);g.restore();
+    g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-112,c.height-86,224,30);g.strokeStyle='#c6a76c';g.strokeRect(c.width/2-112,c.height-86,224,30);g.fillStyle='#fff0c4';g.font='bold 14px Arial';g.textAlign='center';g.fillText(nearbyCrate.artifact?'PRESS E TO CLAIM VOID ORB':'PRESS E TO OPEN GUN CRATE',c.width/2,c.height-66);g.restore();
   }
   if(nearbyGroundGun&&nearbyGroundGunDist<78){
     g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-150,c.height-86,300,30);g.strokeStyle='#9cc08e';g.strokeRect(c.width/2-150,c.height-86,300,30);g.fillStyle='#f1f7ed';g.font='bold 14px Arial';g.textAlign='center';g.fillText('PRESS E TO PICK UP '+WN[nearbyGroundGun.t],c.width/2,c.height-66);g.restore();
@@ -2287,7 +2401,7 @@ function game(){
       }
     }
     let mv=0;const v=po>0?2.2:4.8;
-    if(!dead&&!isPaused&&!(gameMode==='base'&&vehicleMode==='driver')){
+    if(!dead&&!isPaused&&!(gameMode==='base'&&(vehicleMode==='driver'||vehicleMode==='gunner'))){
       if(k.w||k.arrowup){p.y-=v;mv=1}
       if(k.s||k.arrowdown){p.y+=v;mv=1}
       if(k.a||k.arrowleft){p.x-=v;mv=1}
@@ -2305,7 +2419,8 @@ function game(){
     if(cd>0)cd--;
     if(!isPaused&&!dead&&md&&cd<=0&&vehicleMode!=='driver'){
       // The unlocked Rosie Cannon overrides normal fire with a radial burst.
-      if(rosieMode){shootRosieBurst();cd=78;}
+      if(wp===6&&rosieMode){shootRosieBurst();cd=1000000;}
+      else if(wp===7&&inevitableMode){shootInevitableRing();cd=90;}
       // Weapon firing is permitted everywhere, except while driving.
       else if(wp==0&&trySpendAmmo(0)){shoot();cd=12}
       else if(wp==1&&trySpendAmmo(1)){blast();cd=40}
@@ -2319,6 +2434,11 @@ function game(){
       }
     }
     if(L>0)L=0;
+  }
+  // In turret mode the player's view, health bar and camera anchor stay attached to the vehicle.
+  if(gameMode==='base'&&vehicleMode==='gunner'){
+    const mountedVehicle=BASE_VEHICLES.find(v=>v.id===vehicleId&&v.gunner);
+    if(mountedVehicle){p.x=mountedVehicle.x;p.y=mountedVehicle.y;}
   }
   p.x=Math.max(20,Math.min(gameMode==='base'?BASE_WORLD_W-20:w-20,p.x));
   p.y=Math.max(20,Math.min(gameMode==='base'?BASE_WORLD_H-20:h-20,p.y));
@@ -2336,7 +2456,8 @@ function game(){
   }
 
   if(gameMode==='base'){BASE_VEHICLES.forEach(v=>{if(vehicleMode==='gunner'&&vehicleId===v.id)v.turretAngle=Math.atan2(m.y-v.y,m.x-v.x);drawMilitaryVehicle(v);});}
-  if(!isPaused&&!(gameMode==='base'&&vehicleMode)) human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),skinForPlayer(ci,skinGender),wk,0.95,wp==2?1:0,fl,rosieMode);
+  if(!isPaused&&!(gameMode==='base'&&vehicleMode)) human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),skinForPlayer(ci,skinGender),wk,0.95,wp==2?1:0,fl,!!(rosieMode&&wp===6));
+  if(inevitableMode&&!isPaused)drawInevitableRing(p.x,p.y);
   drawRemotePlayers();
   syncMultiplayer();
   if(gameMode==='base'&&miningAnim>0){const aa=Math.atan2(m.y-p.y,m.x-p.x),swing=(1-miningAnim/10)*1.4;g.save();g.translate(p.x+Math.cos(aa)*20,p.y+Math.sin(aa)*20);g.rotate(aa+swing);g.strokeStyle='#5a4635';g.lineWidth=4;g.beginPath();g.moveTo(-5,18);g.lineTo(-5,-8);g.stroke();g.strokeStyle='#aeb4b0';g.lineWidth=5;g.beginPath();g.moveTo(-13,-9);g.lineTo(3,-9);g.stroke();g.restore();}
@@ -2459,6 +2580,10 @@ function game(){
       g.strokeStyle='rgba(226,140,255,.18)';g.lineWidth=8;g.beginPath();g.moveTo(-25,0);g.lineTo(2,0);g.stroke();
       g.strokeStyle='#f3c5ff';g.lineWidth=3;g.beginPath();g.moveTo(-20,0);g.lineTo(3,0);g.stroke();
       g.fillStyle='#e38cff';g.beginPath();g.arc(3,0,3.2,0,Math.PI*2);g.fill();
+    }else if(q.rocket){
+      g.strokeStyle='rgba(255,105,35,.65)';g.lineWidth=5;g.beginPath();g.moveTo(-23,0);g.lineTo(-5,0);g.stroke();
+      g.fillStyle='#b73524';g.fillRect(-8,-3.2,13,6.4);g.fillStyle='#f4d0a2';g.beginPath();g.moveTo(5,-3.2);g.lineTo(11,0);g.lineTo(5,3.2);g.closePath();g.fill();
+      g.fillStyle='#ff8c36';g.beginPath();g.moveTo(-8,-3);g.lineTo(-13,-6);g.lineTo(-12,0);g.lineTo(-13,6);g.lineTo(-8,3);g.closePath();g.fill();
     }else if(q.homing){
       const gr=g.createLinearGradient(-44,0,0,0);
       gr.addColorStop(0,'rgba(0,217,255,0)');gr.addColorStop(1,'rgba(170,250,255,.95)');
@@ -2645,6 +2770,10 @@ function game(){
   R.forEach(q=>{
     q.x+=q.vx;q.y+=q.vy;
     const boundW=worldW(),boundH=worldH();
+    if(q.visualOnly){
+      if(Math.hypot(q.tx-q.x,q.ty-q.y)<10||q.x<0||q.x>boundW||q.y<0||q.y>boundH)q.dead=1;
+      g.save();g.translate(q.x,q.y);g.rotate(Math.atan2(q.vy,q.vx));g.globalAlpha=.72;g.fillStyle='#ddd';g.fillRect(-8,-3,14,6);g.fillStyle='#c0392b';g.beginPath();g.moveTo(6,-3);g.lineTo(13,0);g.lineTo(6,3);g.fill();g.fillRect(-9,-6,4,3);g.fillRect(-9,3,4,3);g.restore();return;
+    }
     const boom=Math.hypot(q.tx-q.x,q.ty-q.y)<10||q.x<0||q.x>boundW||q.y<0||q.y>boundH||e.some(z=>!z.dead&&Math.hypot(z.x-q.x,z.y-q.y)<30)||O.some(o=>Math.hypot(q.x-o.x,q.y-o.y)<o.r);
     if(boom){
       q.dead=1;S=16;X.push({x:q.x,y:q.y,t:0});
@@ -2781,13 +2910,13 @@ function game(){
   g.fillStyle='white';g.font='bold 22px Arial';g.fillText('SCORE: '+score,15,32);
   g.fillStyle=level===4?'#ff6578':level===3?'#a98bd4':level==2?'#f2d39b':'#7ccf4a';
   g.font='bold 14px Arial';
-  g.fillText((gameMode==='infinite'?'INFINITE • WAVES '+Math.floor(score/10):gameMode==='base'?'BASE WORLD':'LEVEL: '+level)+(gameMode==='infinite'?'':level==2?(bossSpawned===0?'  PRE-BOSS: '+level2Spawned+'/55':bossSpawned===1?'  BOSS FIGHT':bossCutscene>0?'  BOSS DEFEATED':'  AFTER BOSS: '+level2PostBossSpawned+'/100'):level===3?'  DARK FOREST: '+level3Kills+'/150  |  SPAWNED: '+level3Spawned+'/160':level===4?'  CRIMSON FOREST: '+level4Kills+' KILLS  |  SPAWNED: '+level4Spawned+'/75':''),15,48);
+  g.fillText((gameMode==='infinite'?'INFINITE • WAVES '+Math.floor(score/10):gameMode==='base'?'BASE WORLD':'LEVEL: '+level)+(gameMode==='infinite'?'':level==2?(bossSpawned===0?'  PRE-BOSS: '+level2Spawned+'/55':bossSpawned===1?'  BOSS FIGHT':bossCutscene>0?'  BOSS DEFEATED':'  AFTER BOSS: '+level2PostBossSpawned+'/100'):level===3?'  DARK FOREST: '+level3Kills+'/150  |  SPAWNED: '+level3Spawned+'/160':level===4?'  CRIMSON FOREST: '+level4Kills+' KILLS  |  SPAWNED: '+level4Spawned+'/60':''),15,48);
   g.fillStyle='#ffd400';g.font='16px Arial';g.fillText('BEST: '+H,15,66);
   g.fillStyle='#aaa';g.font='14px Arial';g.fillText('PLAYER: '+playerName,15,83);
   g.fillStyle='#d8c0a0';g.font='14px Arial';g.fillText('WALLS: '+(gameMode==='base'?'WOOD / STONE (V)':wallCharges),15,98);
   if(gameMode==='base'){g.fillStyle='#8ed6ff';g.font='bold 16px Arial';g.fillText('AMMO: '+ammo+'  •  COST/SHOT: '+ammoCostForWeapon(wp),15,116);const nv=nearbyVehicle();if(nv&&!vehicleMode){g.fillStyle='#d8e7d2';g.font='bold 13px Arial';g.fillText('E = DRIVE  •  G = TURRET',15,180);}else if(vehicleMode){g.fillStyle='#d8e7d2';g.font='bold 13px Arial';g.fillText(vehicleMode==='driver'?'DRIVER • G = TURRET • E = EXIT':'TURRET • CLICK = FIRE • G = DRIVER • E = EXIT',15,180);}}
   if(gameMode==='base'){g.fillStyle='#aeb4b0';g.font='14px Arial';g.fillText('STONE: '+stone+'   PICKAXE: READY   BUILDING: '+buildMaterial.toUpperCase(),15,156);}
-  g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+WN[wp]+(own.filter(x=>x).length>1?'  [E]':'')+'  DMG x'+gunMult[wp],15,gameMode==='base'?136:119);
+  g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+(WN[wp]||'PISTOL')+(own.filter(x=>x).length>1||rosieMode||inevitableMode?'  [E]':'')+(wp===6&&rosieMode?'  • ZERO RELOAD':wp===7&&inevitableMode?'  • 20-ROCKET SALVO':'  DMG x'+(gunMult[wp]||1)),15,gameMode==='base'?136:119);
   g.font='18px Arial';
   g.fillStyle=!own[2]?'#888':rc>0?'#e74c3c':'#2ecc71';
   g.fillText(!own[2]?'ROCKET: NOT FOUND':rc>0?'ROCKET: RELOADING':'ROCKET: READY',15,gameMode==='base'?176:145);
