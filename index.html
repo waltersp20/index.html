@@ -39,7 +39,14 @@
   .howto{margin-top:16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.howto-item{border:1px solid #28372b;border-radius:10px;padding:11px;background:#0d140f}.howto-item b{display:block;color:#d6edc9;font-size:11px;margin-bottom:4px}.howto-item span{display:block;color:#9eada0;font-size:11px;line-height:1.45}
   .home-rail{display:flex;flex-direction:column;gap:16px;min-width:0}.auth-card{border:1px solid #40513f;border-radius:14px;background:linear-gradient(160deg,#172219,#0c120e);padding:16px}.auth-card h3{margin:0 0 7px;color:#b8e99d;font-size:12px;letter-spacing:1px;text-transform:uppercase}.auth-card p{margin:0 0 12px;color:#aebcaf;font-size:11px;line-height:1.5}.auth-card button{width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid #4a6349;background:#273a28;color:#eef7ea;font-weight:700;cursor:pointer}.auth-card button.google{background:#f5f5f5;color:#222;border-color:#ddd}.auth-card button:disabled{opacity:.55;cursor:wait}.auth-status{font-size:10px!important;color:#b8c9b8!important;margin-top:10px!important;overflow-wrap:anywhere}.ad-card{box-sizing:border-box;width:100%;min-width:0;min-height:280px;flex:0 0 auto;border:1px dashed #40513f;border-radius:16px;background:linear-gradient(160deg,#111812,#0b100c);display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;text-align:center;padding:12px;color:#647465;font-size:11px}.ad-card .adsbygoogle{display:block;box-sizing:border-box;width:100%;min-width:0;min-height:250px;margin:8px auto 0}.ad-card .ad-label{align-self:flex-start;text-transform:uppercase;letter-spacing:1.5px;font-size:9px;color:#536354;margin-bottom:auto}.side-info{border:1px solid #2e3e30;border-radius:14px;background:#111812;padding:16px}.side-info h3{margin:0 0 8px;color:#b8e99d;font-size:12px;letter-spacing:1px;text-transform:uppercase}.side-info p{margin:0;color:#aebcaf;font-size:12px;line-height:1.6}
   #nameBox{display:none!important}
-  #adminPanel,.auth-card{display:none!important}
+  .auth-card{display:none!important}
+  /* Admin panel is hidden by default, but must be allowed to open through its secret shortcut. */
+  #adminPanel{display:none}
+  #adminPanel.open{display:block}
+  #adminPanel .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #adminPanel .admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  #adminPanel .admin-actions button{flex:1;min-width:120px}
+  #adminPanel .admin-danger{border-color:#985252;background:#3a1d20;color:#ffe8e8}
   /* Responsive AdSense strips on the homepage only. The game itself remains unobstructed. */
   .edge-ad{display:none;position:fixed;left:0;right:0;z-index:25;box-sizing:border-box;min-height:90px;padding:5px 16px;background:rgba(5,9,6,.97);border-color:#283629;border-style:solid;align-items:center;justify-content:center;overflow:hidden}
   .edge-ad-bottom{bottom:0;border-width:1px 0 0}
@@ -215,7 +222,24 @@
   <button id="buildMenuToggle" class="build-menu-toggle" type="button" aria-expanded="false">⌂ BUILD MENU <span>U</span></button>
   <section id="buildPanel" class="utility-panel build-panel" aria-label="Base building menu"><button id="buildPanelClose" class="panel-close" type="button" aria-label="Close build menu">×</button><h2>Base Construction</h2><p>Choose a structure, then click a clear spot in the world to place it. Walls snap together on a grid.</p><div id="buildResources" class="build-resources"><span>WOOD <b id="buildWoodCount">0</b></span><span>STONE <b id="buildStoneCount">0</b></span></div><div id="buildSelectionStatus" class="mode-status">Select a build below.</div><div id="buildCategoryTabs" class="build-category-tabs"><button type="button" class="active" data-build-category="walls">Walls</button><button type="button" data-build-category="defences">Auto-defence</button><button type="button" data-build-category="decor">Decoration</button><button type="button" data-build-category="utility">Utility</button></div><div id="buildOptions" class="build-options"></div><p class="small-note">Tip: gather wood from trees with E and stone from rocks with E. Press Escape to cancel placement.</p></section>
 
-  <div id="adminPanel" class="utility-panel" aria-label="Admin moderation panel"><button class="panel-close" data-close="adminPanel">Close</button><h2>Admin moderation</h2><p>This panel is intentionally hidden. Press Ctrl + Shift + A to open it. It will only become operational after Firebase Authentication and server-side admin permissions are configured.</p><div id="adminConnection" class="mode-status">LOCKED — backend not configured. No global changes can be made yet.</div><label class="field-label" for="adminTarget">PLAYER UID (not display name)</label><input id="adminTarget" placeholder="Firebase user UID" disabled><label class="field-label" for="adminReason">REASON</label><textarea id="adminReason" rows="2" placeholder="Reason for moderation action" disabled></textarea><div style="display:flex;gap:8px"><button disabled>Ban player</button><button disabled>Unban player</button><button disabled>Remove global score</button></div><p class="small-note">Do not put an admin password or private server key in this HTML file. Admin rights should be assigned with trusted server-side tools/custom claims.</p></div>
+  <div id="adminPanel" class="utility-panel" aria-label="Secret admin leaderboard panel">
+    <button class="panel-close" data-close="adminPanel" aria-label="Close admin panel">×</button>
+    <h2>Admin · Leaderboard Controls</h2>
+    <p>Secret panel. Open with <strong>Ctrl + Shift + A</strong>. Editing is enabled only for a signed-in account with the Firebase custom claim <code>admin: true</code>.</p>
+    <div id="adminConnection" class="mode-status" role="status">LOCKED — checking Firebase admin permissions…</div>
+    <label class="field-label" for="adminMode">LEADERBOARD MODE</label>
+    <select id="adminMode" data-admin-control disabled><option value="classic">Classic</option><option value="infinite">Infinite</option><option value="base">Base World</option><option value="ffa">Free For All</option></select>
+    <label class="field-label" for="adminEntrySelect">EXISTING CLOUD ENTRY</label>
+    <select id="adminEntrySelect" data-admin-control disabled><option value="">Load entries after admin access is verified</option></select>
+    <div class="admin-grid">
+      <div><label class="field-label" for="adminTarget">PLAYER UID</label><input id="adminTarget" data-admin-control placeholder="Firebase user UID" disabled></div>
+      <div><label class="field-label" for="adminScore">SCORE</label><input id="adminScore" data-admin-control type="number" min="0" max="2147483647" step="1" placeholder="New score" disabled></div>
+    </div>
+    <label class="field-label" for="adminPlayerName">DISPLAY NAME (max 16 chars)</label><input id="adminPlayerName" data-admin-control maxlength="16" placeholder="Player name" disabled>
+    <div class="admin-actions"><button id="adminSaveScore" type="button" data-admin-control disabled>Set / update score</button><button id="adminRemoveScore" type="button" class="admin-danger" data-admin-control disabled>Remove score</button></div>
+    <p id="adminActionStatus" class="small-note" aria-live="polite">No changes have been made.</p>
+    <p class="small-note">A hidden shortcut is not a security boundary. Firebase's server-side rules and the admin custom claim enforce access. Never put a service-account key or admin password in this HTML.</p>
+  </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -1620,7 +1644,88 @@
   document.getElementById('openChatBtn').addEventListener('click',()=>{if(isBaseWorldMode()){document.getElementById('chatPanel').classList.add('open');if(firebaseDb&&firebaseUser)watchChat();}});
   document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>{document.getElementById(btn.dataset.close).classList.remove('open');if(btn.dataset.close==='chatPanel')stopChatWatch();}));
   document.getElementById('chatForm').addEventListener('submit',ev=>ev.preventDefault());
-  window.addEventListener('keydown',ev=>{if(ev.ctrlKey&&ev.shiftKey&&ev.key.toLowerCase()==='a'){ev.preventDefault();document.getElementById('adminPanel').classList.toggle('open');}});
+  // Secret admin shortcut. The panel can be opened by anyone, but database writes are
+  // separately protected by Firebase's auth.token.admin custom claim and Realtime Database rules.
+  window.addEventListener('keydown',ev=>{
+    if(ev.ctrlKey&&ev.shiftKey&&ev.key.toLowerCase()==='a'){
+      ev.preventDefault();
+      const panel=document.getElementById('adminPanel');
+      panel.classList.toggle('open');
+      if(panel.classList.contains('open')){
+        verifyAdminAccess(true).then(ok=>{if(ok)loadAdminLeaderboardEntries();});
+      }
+    }
+  });
+
+  let adminClaimVerified=false;
+  function setAdminControlsEnabled(enabled){
+    document.querySelectorAll('[data-admin-control]').forEach(el=>{el.disabled=!enabled;});
+    const save=document.getElementById('adminSaveScore'),remove=document.getElementById('adminRemoveScore');
+    if(save)save.disabled=!enabled;if(remove)remove.disabled=!enabled;
+  }
+  async function verifyAdminAccess(forceRefresh=false){
+    const status=document.getElementById('adminConnection');
+    adminClaimVerified=false;setAdminControlsEnabled(false);
+    const user=(window.firebase&&firebase.auth&&firebase.auth().currentUser)||null;
+    if(!firebaseDb||!user){if(status)status.textContent='LOCKED — Firebase is not connected or no account is signed in.';return false;}
+    try{
+      const token=await user.getIdTokenResult(!!forceRefresh);
+      adminClaimVerified=!!(token&&token.claims&&token.claims.admin===true);
+      if(adminClaimVerified){
+        if(status)status.textContent='ADMIN VERIFIED · '+(user.email||user.uid)+' · leaderboard edits enabled.';
+        setAdminControlsEnabled(true);return true;
+      }
+      if(status)status.textContent='LOCKED — this account has no admin claim. UID: '+user.uid;
+      return false;
+    }catch(err){if(status)status.textContent='Could not verify admin permissions ('+(err.code||'token error')+').';return false;}
+  }
+  async function loadAdminLeaderboardEntries(){
+    if(!await verifyAdminAccess(false))return;
+    const mode=document.getElementById('adminMode').value;
+    const select=document.getElementById('adminEntrySelect'),actionStatus=document.getElementById('adminActionStatus');
+    select.replaceChildren();const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Choose a saved cloud score…';select.appendChild(placeholder);
+    try{
+      const snap=await firebaseDb.ref('leaderboards/'+mode).once('value');let count=0;
+      snap.forEach(child=>{
+        const v=child.val()||{},uid=String(child.key||'');if(!uid)return;
+        const opt=document.createElement('option');opt.value=uid;opt.textContent=String(v.name||'Player')+' — '+(Number(v.score)||0)+' pts · '+uid.slice(0,8)+'…';
+        opt.dataset.name=String(v.name||'Player');opt.dataset.score=String(Math.max(0,Number(v.score)||0));select.appendChild(opt);count++;
+      });
+      if(actionStatus)actionStatus.textContent=count?('Loaded '+count+' cloud entries for '+mode+'.'):'No cloud entries exist in this mode yet.';
+    }catch(err){if(actionStatus)actionStatus.textContent='Could not load entries ('+(err.code||'read failed')+'). Check the leaderboard read rules.';}
+  }
+  document.getElementById('adminMode').addEventListener('change',()=>loadAdminLeaderboardEntries());
+  document.getElementById('adminEntrySelect').addEventListener('change',ev=>{
+    const opt=ev.target.selectedOptions&&ev.target.selectedOptions[0];if(!opt||!opt.value)return;
+    document.getElementById('adminTarget').value=opt.value;
+    document.getElementById('adminPlayerName').value=opt.dataset.name||'';
+    document.getElementById('adminScore').value=opt.dataset.score||'0';
+  });
+  async function adminWriteScore(removeEntry){
+    const status=document.getElementById('adminActionStatus');
+    if(!adminClaimVerified||!await verifyAdminAccess(false)){if(status)status.textContent='Locked: admin permission could not be verified.';return;}
+    const mode=document.getElementById('adminMode').value,uid=String(document.getElementById('adminTarget').value||'').trim();
+    if(!['classic','infinite','base','ffa'].includes(mode)){if(status)status.textContent='Choose a valid leaderboard mode.';return;}
+    if(!uid||/[.#$\[\]\/]/.test(uid)){if(status)status.textContent='Enter a valid Firebase player UID.';return;}
+    const ref=firebaseDb.ref('leaderboards/'+mode+'/'+uid);
+    try{
+      if(removeEntry){await ref.remove();if(status)status.textContent='Removed '+uid+' from '+mode+'.';}
+      else{
+        const score=Number(document.getElementById('adminScore').value);
+        const name=String(document.getElementById('adminPlayerName').value||'').trim().replace(/[^a-zA-Z0-9 _-]/g,'').slice(0,16);
+        if(!Number.isSafeInteger(score)||score<0||score>2147483647){if(status)status.textContent='Enter a whole-number score from 0 to 2,147,483,647.';return;}
+        const snap=await ref.once('value'),current=snap.val()||{};
+        if(!name&&!current.name){if(status)status.textContent='Enter a display name for this new entry.';return;}
+        await ref.set({name:name||String(current.name||'Player'),score,mode,uid,updatedAt:Date.now()});
+        if(status)status.textContent='Saved '+(name||current.name)+' with '+score+' points in '+mode+'.';
+      }
+      await loadAdminLeaderboardEntries();
+      if(typeof watchLeaderboard==='function'&&!gameStarted)watchLeaderboard(leaderboardMode);
+    }catch(err){if(status)status.textContent='Change denied ('+(err.code||'database error')+'). Ensure this account has the admin claim and the Firebase rules allow admin leaderboard writes.';console.warn('Admin leaderboard action failed:',err);}
+  }
+  document.getElementById('adminSaveScore').addEventListener('click',()=>adminWriteScore(false));
+  document.getElementById('adminRemoveScore').addEventListener('click',()=>{if(confirm('Remove this player score from the selected shared leaderboard?'))adminWriteScore(true);});
+
   // FIREBASE SETUP: create a Firebase project, enable Anonymous Authentication and Realtime Database,
   // then replace null with the Firebase WEB APP config. Web config is public; never paste service-account keys here.
   const FIREBASE_CONFIG = {
@@ -2212,6 +2317,7 @@
       // The leaderboard subscription starts below, after its state variables and saved
       // local scores have been initialised. Calling it here hit the temporal dead zone.
       firebase.auth().onAuthStateChanged(async user=>{
+        if(document.getElementById('adminPanel').classList.contains('open'))verifyAdminAccess(false).then(ok=>{if(ok)loadAdminLeaderboardEntries();});
         if(user){
           showAuthUser(user);
           authReady=true;
