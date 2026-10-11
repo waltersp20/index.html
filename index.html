@@ -286,6 +286,7 @@
     crimson:{root:33,scale:[0,2,3,5,7,8,11,12],progression:[0,8,6,11],pulse:1.08,family:'crimson'},
     deadlands:{root:31,scale:[0,3,5,6,7,10,12,15],progression:[0,6,8,10],pulse:.94,family:'dead'}
   };
+  const AMBIENT_THEME_LABELS={classic:'Classic Survival',infinite:'Infinite Survival',base:'Base World',ffa:'Free For All',grasslands:'Greenhaven Grasslands',autumn:'Autumn Wildlands',blackwood:'Blackwood Forest',frostpeak:'Frostpeak Snowfields',crimson:'Crimson Forest',deadlands:'Deadlands'};
   let lastGunSoundAt={},lastZombieSoundAt=0,lastExplosionSoundAt=0,lastHitSoundAt=0;
   let lastLocalAudioBurst=null,audioBurstCounter=0,remoteAudioSeen={};
   const AUDIO_TAU=Math.PI*2;
@@ -557,13 +558,31 @@
         audioTone(68,36,.42,.034*intensity,'sine',{bus:'music',filterFreq:125,attack:.012,release:.34});
         audioNoise(.16,.012*intensity,{bus:'music',filterType:'lowpass',freq:210,endFreq:75,delay:.018});
       }
-      // A glassy synth/plucked-string melody plays spacious motifs with occasional octave lifts.
-      if(st%2===0){
-        const seq=[0,2,4,7,4,2,1,2,0,2,5,7,5,4,2,1,0,2,4,7,9,7,4,2,1,2,4,5,4,2,1,0];
-        const ix=(st/2+bar*5)%seq.length,degree=seq[ix],oct=(ix===7||ix===11||ix===20)?36:24;
-        const note=root+oct+sc[degree%sc.length];
-        musicTone(note,.67,.019*intensity,'triangle',{filterFreq:1950,attack:.018,release:.43,pan:Math.sin(st*.43)*.52,drift:.997});
-        musicTone(note+12,.42,.006*intensity,'sine',{filterFreq:3200,attack:.035,release:.31,pan:-Math.sin(st*.43)*.38});
+      // Every biome has a different lead motif AND rhythm, not merely a different backdrop.
+      // This is the most recognisable layer, so the shift should be audible as you cross the map.
+      const motifFamily=cfg.family||'forest';
+      const motifs={
+        safe:[0,4,7,9,7,4,2,4,0,2,4,7,11,9,7,4],
+        autumn:[0,2,4,7,4,2,0,2,0,4,5,7,9,7,4,2],
+        forest:[0,3,5,7,5,3,2,0,0,3,5,8,7,5,3,2],
+        cold:[0,4,7,12,9,7,4,2,0,7,12,16,12,9,7,4],
+        crimson:[0,3,6,7,6,3,1,0,0,3,6,10,8,6,3,1],
+        dead:[0,3,5,6,5,3,1,0,0,1,6,5,3,1,0,-2],
+        combat:[0,1,5,8,7,5,1,0,0,5,8,12,8,5,1,0],
+        adventure:[0,2,5,7,9,7,5,2,0,2,5,9,12,9,7,5]
+      };
+      const motif=motifs[motifFamily]||motifs.forest;
+      const motifStride=motifFamily==='cold'||motifFamily==='dead'?4:motifFamily==='autumn'?3:2;
+      if(st%motifStride===0){
+        const ix=(Math.floor(st/motifStride)+bar*(motifFamily==='safe'?3:motifFamily==='autumn'?2:5))%motif.length;
+        const degree=motif[ix],oct=motifFamily==='cold'?(ix%4===0?36:24):motifFamily==='dead'?12:motifFamily==='crimson'?24:motifFamily==='safe'?36:24;
+        const note=root+oct+degree;
+        const wave=motifFamily==='safe'?'sine':motifFamily==='autumn'?'triangle':motifFamily==='cold'?'sine':motifFamily==='crimson'?'sawtooth':motifFamily==='dead'?'triangle':'triangle';
+        const length=motifFamily==='dead'?1.15:motifFamily==='cold'?1.45:motifFamily==='autumn'?.82:.67;
+        const volume=motifFamily==='dead'?.010:motifFamily==='cold'?.012:motifFamily==='safe'?.022:motifFamily==='crimson'?.020:.017;
+        musicTone(note,length,volume*intensity,wave,{filterFreq:motifFamily==='cold'?4800:motifFamily==='safe'?3600:motifFamily==='dead'?1150:1900,attack:motifFamily==='dead'?.12:.018,release:motifFamily==='cold'?1.2:motifFamily==='dead'?.9:.43,pan:Math.sin(st*.43)*.52,drift:motifFamily==='crimson'?1.003:.998});
+        if(motifFamily==='crimson'&&st%4===0)musicTone(note+6,.26,.008*intensity,'sawtooth',{filterFreq:760,attack:.006,release:.22,pan:st%8?-.2:.2});
+        if(motifFamily==='safe'&&st%4===0)musicTone(note+12,.42,.008*intensity,'sine',{filterFreq:4200,attack:.025,release:.34,pan:-Math.sin(st*.43)*.3});
       }
       // High string/choir-like held notes add scale and atmosphere without crowding the mix.
       if(st%8===4){
@@ -571,30 +590,38 @@
         musicTone(lead,1.85,.013*intensity,'sawtooth',{filterFreq:1050,attack:.42,release:.74,pan:st%16?-.29:.29,drift:1.004});
         musicTone(lead+7,1.35,.006*intensity,'sine',{filterFreq:2200,attack:.38,release:.62,pan:st%16?.35:-.35});
       }
-      // Each biome has its own musical fingerprint layered over the shared soundtrack engine.
-      // Safer biomes use open major-key arpeggios; the hostile zones use tighter, darker minor voicings.
+      // Theme signatures use different timbres and rhythmic gestures, making every biome distinct.
       if(cfg.family==='safe'&&st%4===2){
-        const degree=[0,2,4,6][Math.floor(st/4)%4],note=root+36+sc[degree%sc.length];
-        musicTone(note,.92,.014*intensity,'sine',{filterFreq:3600,attack:.025,release:.7,pan:Math.sin(st*.3)*.42});
-        musicTone(note+7,.62,.0045*intensity,'triangle',{filterFreq:2100,attack:.06,release:.5,pan:-Math.sin(st*.3)*.38});
-      }else if(cfg.family==='autumn'&&st%8===6){
-        const note=root+24+sc[(bar*2+st/8)%sc.length];
-        musicTone(note,1.35,.013*intensity,'triangle',{filterFreq:1250,attack:.12,release:1.1,pan:st%16?-.28:.28,drift:.999});
-        musicTone(note+12,.8,.004*intensity,'sine',{filterFreq:2450,attack:.09,release:.65,pan:st%16?.25:-.25});
+        const note=root+36+sc[[0,2,4,6][Math.floor(st/4)%4]%sc.length];
+        musicTone(note,.92,.020*intensity,'sine',{filterFreq:3900,attack:.018,release:.72,pan:Math.sin(st*.3)*.48});
+        musicTone(note+7,.62,.007*intensity,'triangle',{filterFreq:2500,attack:.04,release:.48,pan:-Math.sin(st*.3)*.4});
+      }else if(cfg.family==='autumn'&&st%4===1){
+        const note=root+24+sc[(Math.floor(st/4)+bar*2)%sc.length];
+        musicTone(note,.36,.017*intensity,'triangle',{filterFreq:1750,attack:.008,release:.28,pan:st%8?-.32:.32});
+        musicTone(note+7,.65,.007*intensity,'sine',{filterFreq:3000,attack:.04,release:.54,pan:st%8?.28:-.28});
       }else if(cfg.family==='cold'&&st%8===2){
         const note=root+36+sc[(st/2+bar)%sc.length];
-        musicTone(note,1.75,.010*intensity,'sine',{filterFreq:5100,attack:.02,release:1.5,pan:Math.sin(st)*.5});
-        musicTone(note+19,1.25,.0035*intensity,'triangle',{filterFreq:6200,attack:.03,release:1.0,pan:-Math.sin(st)*.4});
-      }else if((cfg.family==='crimson'||cfg.family==='dead')&&st%8===0){
-        const low=root-12+(cfg.family==='dead'?-2:0);
-        musicTone(low,1.6,.023*intensity,'sawtooth',{filterFreq:185,attack:.08,release:1.1,drift:.994});
-        musicTone(low+6,1.1,.008*intensity,'triangle',{filterFreq:330,attack:.12,release:.8,pan:st%16?-.24:.24,drift:1.006});
-        audioNoise(.38,.006*intensity,{bus:'music',filterType:'bandpass',freq:330,endFreq:115,q:.5,delay:.02});
+        musicTone(note,1.75,.016*intensity,'sine',{filterFreq:5400,attack:.018,release:1.5,pan:Math.sin(st)*.55});
+        musicTone(note+19,1.25,.006*intensity,'triangle',{filterFreq:6500,attack:.025,release:1.0,pan:-Math.sin(st)*.44});
+      }else if(cfg.family==='crimson'&&st%4===0){
+        const low=root-12+(st%8===0?-2:0);
+        musicTone(low,1.35,.034*intensity,'sawtooth',{filterFreq:190,attack:.035,release:.95,drift:.992});
+        musicTone(low+6,.92,.012*intensity,'triangle',{filterFreq:360,attack:.06,release:.72,pan:st%16?-.28:.28,drift:1.008});
+        audioNoise(.46,.009*intensity,{bus:'music',filterType:'bandpass',freq:390,endFreq:105,q:.65,delay:.015});
+      }else if(cfg.family==='dead'&&st%8===0){
+        musicTone(root-24,2.45,.045*intensity,'sine',{filterFreq:90,attack:.35,release:1.8,drift:.989});
+        musicTone(root+6,1.05,.009*intensity,'sawtooth',{filterFreq:420,attack:.18,release:.9,pan:st%16?-.25:.25,drift:1.01});
+        audioNoise(.72,.009*intensity,{bus:'music',filterType:'bandpass',freq:250,endFreq:68,q:.4,delay:.025});
       }else if(cfg.family==='forest'&&st%8===4){
         const note=root+24+sc[(st/4+bar)%sc.length];
-        musicTone(note,1.25,.011*intensity,'triangle',{filterFreq:1050,attack:.24,release:1.0,pan:Math.sin(st*.22)*.35});
+        musicTone(note,1.35,.016*intensity,'triangle',{filterFreq:1200,attack:.28,release:1.0,pan:Math.sin(st*.22)*.38,drift:.995});
+        musicTone(note+3,.95,.004*intensity,'sawtooth',{filterFreq:470,attack:.38,release:.7,pan:-Math.sin(st*.22)*.3,drift:1.004});
       }else if(cfg.family==='combat'&&st%4===0){
-        musicTone(root-5,.22,.012*intensity,'sawtooth',{filterFreq:440,attack:.004,release:.18,pan:st%8?-.12:.12});
+        musicTone(root-5,.22,.016*intensity,'sawtooth',{filterFreq:500,attack:.004,release:.18,pan:st%8?-.12:.12});
+        audioNoise(.11,.008*intensity,{bus:'music',filterType:'lowpass',freq:170,endFreq:62,delay:.01});
+      }else if(cfg.family==='adventure'&&st%8===6){
+        const note=root+24+sc[(bar*3+st/2)%sc.length];
+        musicTone(note,.7,.014*intensity,'triangle',{filterFreq:2250,attack:.07,release:.55,pan:st%16?-.34:.34});
       }
       // Gentle high metallic chime at the phrase edge: adventure, not a UI beep.
       if(st%16===14){
@@ -622,6 +649,9 @@
     ambientThemeFrom=currentAmbientThemeConfig();ambientThemeTo=AMBIENT_THEMES[name];ambientThemeBlend=0;ambientThemeCurrentName=name;audioMood=name;
   }
   function baseBiomeMusicName(x,y){
+    // Pick the nearest biome's musical identity. The artwork uses overlapping organic
+    // colour fields, so paint-order hit testing makes later fields swallow neighbouring
+    // themes; nearest-centre selection guarantees each labelled region has its own track.
     const regions=[
       {key:'grasslands',cx:BASE_WORLD_W*.17,cy:BASE_WORLD_H*.60,rx:BASE_WORLD_W*.36,ry:BASE_WORLD_H*.43},
       {key:'autumn',cx:BASE_WORLD_W*.34,cy:BASE_WORLD_H*.20,rx:BASE_WORLD_W*.34,ry:BASE_WORLD_H*.35},
@@ -631,17 +661,25 @@
       {key:'deadlands',cx:BASE_WORLD_W*.90,cy:BASE_WORLD_H*.70,rx:BASE_WORLD_W*.18,ry:BASE_WORLD_H*.23}
     ];
     let best=Infinity,key='grasslands';
-    for(const r of regions){const dx=(x-r.cx)/r.rx,dy=(y-r.cy)/r.ry,d=dx*dx+dy*dy;if(d<best){best=d;key=r.key;}}
+    for(const r of regions){
+      // Normalize each axis by the region radius so the larger map dimensions don't bias selection.
+      const dx=(x-r.cx)/r.rx,dy=(y-r.cy)/r.ry,d=dx*dx+dy*dy;
+      if(d<best){best=d;key=r.key;}
+    }
     return key;
   }
   function resolveAmbientMusicTheme(mode){
     const m=mode||gameMode;
-    if(m==='base'||m==='ffa')return baseBiomeMusicName((p&&Number.isFinite(p.x))?p.x:BASE_WORLD_W*.17,(p&&Number.isFinite(p.y))?p.y:BASE_WORLD_H*.60);
+    if(m==='base'||m==='ffa')return baseBiomeMusicName((p&&Number.isFinite(p.x))?p.x:BASE_WORLD_W*.12,(p&&Number.isFinite(p.y))?p.y:BASE_WORLD_H*.48);
     if(m==='classic')return level>=4?'crimson':level===3?'blackwood':level===2?'autumn':'grasslands';
     if(m==='infinite')return 'infinite';
-    return m==='ffa'?'ffa':'classic';
+    return 'classic';
   }
-  function syncAmbientMusicToBiome(){if(!ambientMusicRunning)return;const desired=resolveAmbientMusicTheme(gameMode);if(desired!==ambientThemeCurrentName)setAmbientMusicTheme(desired);}
+  function syncAmbientMusicToBiome(force=false){
+    if(!ambientMusicRunning)return;
+    const desired=resolveAmbientMusicTheme(gameMode);
+    if(force||desired!==ambientThemeCurrentName){setAmbientMusicTheme(desired);if(audioStatus)audioStatus.textContent='Now playing: '+(AMBIENT_THEME_LABELS[desired]||desired)+' · '+(['safe','autumn','cold'].includes(AMBIENT_THEMES[desired]?.family)?'major-key exploration':(['crimson','dead','forest'].includes(AMBIENT_THEMES[desired]?.family)?'minor-key danger':'biome-specific survival score'))+'.';}
+  }
   function stopAmbientMusic(){ambientMusicRunning=false;clearInterval(ambientMusicTimer);ambientMusicTimer=null;updateAudioUI();}
   function activateAudioFromGesture(){if(ensureAudioContext()&&audioContext.state==='suspended')audioContext.resume().catch(()=>{});}
   if(audioToggleButton){audioToggleButton.addEventListener('click',()=>{const opening=!audioSettingsPanel.classList.contains('open');audioSettingsPanel.classList.toggle('open',opening);audioToggleButton.setAttribute('aria-expanded',String(opening));activateAudioFromGesture();audioUiTick();});}
@@ -1989,7 +2027,7 @@
   }
 
   function startLocalRun(){
-    activateAudioFromGesture();startAmbientMusic(gameMode);
+    activateAudioFromGesture();
     setHomeName();isPaused=false;
     if(gameMode==='classic'&&selectedClassicPartySize()>1&&!selectedLobbyCode()){classicLobbyCodeInput.value=makeLobbyCode();try{localStorage.setItem('zs_classic_lobby_code',classicLobbyCodeInput.value)}catch(_){};}
 
@@ -2010,6 +2048,7 @@
 
     dead=0;
     gameStarted=true;
+    startAmbientMusic(gameMode);syncAmbientMusicToBiome(true);
     homePage.classList.add('hidden');
     publishLeaderboardScore(gameMode,playerScore,true);watchLeaderboard(gameMode);refreshBuildMenuUI();
     returnBaseBtn.style.display='none';
@@ -4505,7 +4544,8 @@
     // keep the shared world running so teammates are not frozen by one player's pause.
     if(isPaused&&!activeSharedRun()){requestAnimationFrame(game);return;}
     fr++;
-    if(fr%45===0)syncAmbientMusicToBiome();
+    if(fr%12===0&&isBaseWorldMode())syncAmbientMusicToBiome();
+    else if(fr%45===0)syncAmbientMusicToBiome();
     if(isBaseWorldMode())updateBaseCamera();
     if(fr%12===0)refreshBuildMenuUI();
     g.save();
