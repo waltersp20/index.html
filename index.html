@@ -258,7 +258,7 @@
     blackHoleSuction=captureBlackHoleObjects();
     blackHoleCinematic=1;blackHoleKilled=false;
     blackHoleSeed=Number.isFinite(Number(seed))?Number(seed):Math.random()*10000;
-    blackHoleWorldLockUntil=Date.now()+10000;
+    blackHoleWorldLockUntil=Date.now()+14000;
     return true;
   }
   function triggerBlackHoleCinematic(){
@@ -303,61 +303,189 @@
     const t=blackHoleCinematic++,W=c.width,H=c.height,cx=W*.5,cy=H*.5;
     g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-over';
     const ease=(a,b,v)=>{const q=Math.max(0,Math.min(1,(v-a)/(b-a)));return q*q*(3-2*q)};
-    // Phase 1: blackout with a dim window around the player so the world remains readable.
-    if(t<125){
-      const dark=ease(1,78,t),scale=gameMode==='base'?Z*BASE_ZOOM:Z;
-      const px=Math.max(0,Math.min(W,(p.x-(gameMode==='base'?cameraX:0))*scale));
-      const py=Math.max(0,Math.min(H,(p.y-(gameMode==='base'?cameraY:0))*scale));
-      const shade=g.createRadialGradient(px,py,Math.min(W,H)*.025,px,py,Math.hypot(W,H)*.72);
-      shade.addColorStop(0,'rgba(0,0,0,'+(dark*.04)+')');
-      shade.addColorStop(.16,'rgba(0,0,0,'+(dark*.2)+')');
-      shade.addColorStop(.42,'rgba(0,0,0,'+(dark*.7)+')');
-      shade.addColorStop(1,'rgba(0,0,0,'+(dark*.985)+')');
+    const TAU=Math.PI*2,M=Math.min(W,H),seed=blackHoleSeed*.00031;
+    // Phase 1: the world dissolves gradually into a gathering, three-dimensional dark-matter vortex.
+    if(t<130){
+      const dark=ease(1,116,t),intro=ease(2,40,t)*(1-.18*ease(108,130,t));
+      const shade=g.createRadialGradient(cx,cy,M*.025,cx,cy,Math.hypot(W,H)*.78);
+      shade.addColorStop(0,'rgba(0,0,0,'+(.59*dark)+')');
+      shade.addColorStop(.18,'rgba(0,0,0,'+(.73*dark)+')');
+      shade.addColorStop(.46,'rgba(0,0,0,'+(.875*dark)+')');
+      shade.addColorStop(1,'rgba(0,0,0,'+(.985*dark)+')');
       g.fillStyle=shade;g.fillRect(0,0,W,H);
-      const pulse=.5+.5*Math.sin(t*.12),r=Math.max(18,Math.min(W,H)*(.16-.075*ease(35,120,t)));
-      const halo=g.createRadialGradient(cx,cy,Math.max(2,r*.35),cx,cy,r*1.6);
-      halo.addColorStop(0,'rgba(0,0,0,0)');halo.addColorStop(.65,'rgba(12,8,24,'+(.25*pulse)+')');halo.addColorStop(1,'rgba(0,0,0,0)');
-      g.fillStyle=halo;g.fillRect(cx-r*1.6,cy-r*1.6,r*3.2,r*3.2);
-      g.strokeStyle='rgba(180,150,255,'+(.07*(1-dark)+.035*pulse)+')';g.lineWidth=1.5;
-      for(let i=0;i<5;i++){g.beginPath();g.ellipse(cx,cy,Math.min(W,H)*(.08+i*.035+t*.0005),Math.min(W,H)*(.04+i*.02+t*.0003),t*.006,0,Math.PI*2);g.stroke();}
-    }else if(t<245){
-      // Phase 2: world objects spiral inward; kill the zombies just before the white flash.
-      const p=ease(125,245,t),maxR=Math.hypot(W,H)*.72*(1-p*.9);
-      g.fillStyle='rgba(0,0,0,'+(.78+p*.1)+')';g.fillRect(0,0,W,H);
-      g.save();g.translate(cx,cy);g.globalCompositeOperation='lighter';
-      for(let i=0;i<110;i++){
-        const a=i*2.399963+blackHoleSeed*.001+t*(.018+(i%7)*.001);
-        const rr=maxR*(.18+.82*((i*37%181)/181))*(1-p*.38),tail=18+70*p+(i%11)*2;
-        g.strokeStyle=i%4===0?'rgba(213,193,255,.8)':i%3===0?'rgba(104,66,160,.72)':'rgba(220,225,255,.36)';
-        g.lineWidth=(i%5===0?2.4:1)*(1-p*.35);g.beginPath();
-        g.moveTo(Math.cos(a)*rr,Math.sin(a)*rr*.72);
-        g.quadraticCurveTo(Math.cos(a-.4)*rr*.55,Math.sin(a-.4)*rr*.55,Math.cos(a-.9)*Math.max(2,rr-tail),Math.sin(a-.9)*Math.max(2,rr-tail)*.72);g.stroke();
+      const pulse=.5+.5*Math.sin(t*.095),vortexR=M*(.09+.64*ease(12,103,t));
+      g.save();g.translate(cx,cy);g.globalCompositeOperation='screen';
+      // Wide, overlapping nebula clouds build volume before the spiral becomes bright.
+      const fogR=M*(.16+.26*ease(5,100,t));
+      let nebula=g.createRadialGradient(0,0,M*.01,0,0,fogR*2.2);
+      nebula.addColorStop(0,'rgba(12,4,28,'+(.03+.05*pulse)*intro+')');
+      nebula.addColorStop(.25,'rgba(106,49,175,'+(.16*intro)+')');
+      nebula.addColorStop(.48,'rgba(207,76,255,'+(.085*intro)+')');
+      nebula.addColorStop(.68,'rgba(255,104,58,'+(.065*intro)+')');
+      nebula.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=nebula;g.beginPath();g.arc(0,0,fogR*2.2,0,TAU);g.fill();
+      for(let i=0;i<Math.round(30*VISUAL_DENSITY);i++){
+        const a=i*2.399963+seed+t*(.003+(i%7)*.0007),rr=vortexR*(.32+(i%9)*.075);
+        const x=Math.cos(a)*rr,y=Math.sin(a)*rr*.65,cloudR=M*(.025+(i%5)*.009);
+        const cloud=g.createRadialGradient(x,y,1,x,y,cloudR*2.8);
+        cloud.addColorStop(0,i%3===0?'rgba(255,191,244,'+(.18*intro)+')':i%3===1?'rgba(150,104,255,'+(.17*intro)+')':'rgba(255,112,76,'+(.13*intro)+')');
+        cloud.addColorStop(.45,'rgba(112,60,180,'+(.05*intro)+')');cloud.addColorStop(1,'rgba(0,0,0,0)');
+        g.fillStyle=cloud;g.beginPath();g.arc(x,y,cloudR*2.8,0,TAU);g.fill();
       }
-      // Captured entities spiral and shrink into the centre without changing map objects.
+      g.globalCompositeOperation='lighter';
+      // Fine radial tidal rays stretch out into the dark as the vortex opens.
+      for(let i=0;i<Math.round(128*VISUAL_DENSITY);i++){
+        const a=i*2.399963+seed+t*.0017,ri=vortexR*(.42+((i*17)%37)/95),ro=vortexR*(.82+((i*13)%29)/55);
+        const shimmer=.45+.55*Math.sin(t*.09+i*1.73),alpha=intro*(.035+(i%5)*.014)*shimmer;
+        g.strokeStyle=i%8===0?'rgba(255,221,255,'+alpha+')':i%3===0?'rgba(255,126,85,'+alpha+')':'rgba(155,126,255,'+alpha+')';
+        g.lineWidth=i%11===0?1.5:.65;g.beginPath();g.moveTo(Math.cos(a)*ri,Math.sin(a)*ri*.65);g.lineTo(Math.cos(a-.045)*ro,Math.sin(a-.045)*ro*.65);g.stroke();
+      }
+      // Twenty-two multi-strand spiral arms wind into the centre; offset contours add a braided, fluid look.
+      for(let arm=0;arm<Math.round(22*VISUAL_DENSITY);arm++){
+        const base=arm*TAU/22+seed+(arm%3)*.028;
+        for(let strand=0;strand<3;strand++){
+          g.beginPath();
+          for(let j=0;j<=92;j++){
+            const q=j/92,rr=vortexR*(.018+.982*q),ang=base+q*(8.3+strand*.68)-t*(.028+(arm%5)*.0014)+Math.sin(q*15+t*.035+arm)*.075;
+            const x=Math.cos(ang)*rr,y=Math.sin(ang)*rr*(.61+strand*.022)+Math.sin(q*10+t*.025+arm)*M*.002;
+            if(j===0)g.moveTo(x,y);else g.lineTo(x,y);
+          }
+          const alpha=intro*(.15+strand*.045)*(1-.16*ease(105,130,t));
+          g.strokeStyle=strand===0?'rgba(255,202,245,'+alpha+')':strand===1?'rgba(174,128,255,'+(alpha*.78)+')':'rgba(255,121,83,'+(alpha*.6)+')';
+          g.lineWidth=strand===0?1.35:strand===1?.8:.55;g.stroke();
+        }
+      }
+      // Short curved filaments peel off the main arms like magnetic field lines.
+      for(let i=0;i<Math.round(220*VISUAL_DENSITY);i++){
+        const a=i*2.399963+seed+t*(.004+(i%6)*.001),rr=vortexR*(.22+((i*47)%100)/132),len=M*(.012+(i%9)*.0024);
+        const x=Math.cos(a)*rr,y=Math.sin(a)*rr*.65,tw=.45+.55*Math.sin(t*.12+i*2.11);
+        g.strokeStyle=i%6===0?'rgba(255,222,250,'+(.23*intro*tw)+')':i%3===0?'rgba(255,144,95,'+(.16*intro*tw)+')':'rgba(163,127,255,'+(.18*intro*tw)+')';
+        g.lineWidth=i%13===0?1.25:.55;g.beginPath();g.moveTo(x,y);
+        g.bezierCurveTo(x+Math.cos(a-.4)*len,y+Math.sin(a-.4)*len*.65,x+Math.cos(a-.95)*len*1.7,y+Math.sin(a-.95)*len*.75,x+Math.cos(a-1.4)*len*2.2,y+Math.sin(a-1.4)*len*.7);g.stroke();
+      }
+      // Hundreds of stable dust motes move through curved orbits, with fine motion trails and twinkling cores.
+      for(let i=0;i<Math.round(420*VISUAL_DENSITY);i++){
+        const a=i*2.399963+seed+t*(.006+(i%11)*.00125),base=((i*73)%997)/997;
+        const rr=M*(.025+base*.78)*(1-.16*ease(92,130,t)),x=Math.cos(a)*rr,y=Math.sin(a)*rr*.68;
+        const tail=M*(.003+(i%7)*.00125),tw=.35+.65*Math.sin(t*.13+i*1.73),alpha=intro*(.11+(i%5)*.045)*tw;
+        g.strokeStyle=i%9===0?'rgba(255,225,255,'+(alpha*1.7)+')':i%3===0?'rgba(255,139,91,'+alpha+')':'rgba(174,143,255,'+alpha+')';
+        g.lineWidth=i%17===0?1.4:.65;g.beginPath();g.moveTo(x,y);
+        g.lineTo(x-Math.cos(a-.38)*tail,y-Math.sin(a-.38)*tail*.7);g.stroke();
+        if(i%3===0){g.fillStyle='rgba(255,239,255,'+(alpha*1.5)+')';g.beginPath();g.arc(x,y,i%13===0?1.7:.75,0,TAU);g.fill();}
+      }
+      // Nested, slightly warped orbital rings pulse while the central event horizon forms.
+      for(let i=0;i<15;i++){
+        const f=.075+i*.049,rr=M*f*(.7+.3*ease(4,90,t)),wobble=Math.sin(t*.045+i*.77)*.018;
+        g.strokeStyle=i%4===0?'rgba(255,209,255,'+(.13*intro)+')':i%3===0?'rgba(255,129,88,'+(.085*intro)+')':'rgba(170,134,255,'+(.10*intro)+')';
+        g.lineWidth=i%5===0?1.4:.7;g.beginPath();g.ellipse(0,0,rr,rr*(.49+wobble),t*.003+i*.14,0,TAU);g.stroke();
+      }
+      // Electrical hairlines snap inward and branch along the accretion flow.
+      for(let i=0;i<Math.round(54*VISUAL_DENSITY);i++){
+        const a=i*2.399963+seed+t*.012,rr=vortexR*(.72+((i*19)%31)/100),len=M*(.028+(i%6)*.009);
+        g.strokeStyle=i%4===0?'rgba(255,225,255,'+(.25*intro)+')':'rgba(175,126,255,'+(.16*intro)+')';g.lineWidth=i%7===0?1.15:.5;
+        g.beginPath();g.moveTo(Math.cos(a)*rr,Math.sin(a)*rr*.64);
+        g.lineTo(Math.cos(a-.16)*Math.max(2,rr-len*.35),Math.sin(a-.16)*Math.max(2,rr-len*.35)*.64);
+        g.lineTo(Math.cos(a-.32)*Math.max(1,rr-len),Math.sin(a-.32)*Math.max(1,rr-len)*.64);g.stroke();
+      }
+      // The centre is truly black, surrounded by a softly breathing violet plasma lens.
+      const coreR=M*(.025+.12*ease(24,105,t));
+      const core=g.createRadialGradient(-coreR*.16,-coreR*.18,1,0,0,coreR*2.15);
+      core.addColorStop(0,'rgba(0,0,0,1)');core.addColorStop(.38,'rgba(1,0,7,.99)');
+      core.addColorStop(.49,'rgba(15,3,28,.96)');core.addColorStop(.58,'rgba(163,79,255,'+(.46*intro)+')');
+      core.addColorStop(.73,'rgba(255,112,70,'+(.19*intro)+')');core.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=core;g.beginPath();g.arc(0,0,coreR*2.15,0,TAU);g.fill();
+      g.globalCompositeOperation='screen';
+      let lens=g.createRadialGradient(0,0,coreR*.65,0,0,coreR*2.8);
+      lens.addColorStop(0,'rgba(0,0,0,0)');lens.addColorStop(.42,'rgba(153,83,255,'+(.16*intro*pulse)+')');lens.addColorStop(.7,'rgba(255,111,72,'+(.09*intro)+')');lens.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=lens;g.beginPath();g.arc(0,0,coreR*2.8,0,TAU);g.fill();
+      g.restore();
+    }else if(t<245){
+      // Phase 2: the vortex deepens; the environment and its particles are pulled into the singularity.
+      const p=ease(125,245,t),maxR=Math.hypot(W,H)*.72*(1-p*.9),M2=Math.min(W,H);
+      const shade=g.createRadialGradient(cx,cy,M2*.025,cx,cy,Math.hypot(W,H)*.78);
+      shade.addColorStop(0,'rgba(0,0,0,'+(.59+.40*p)+')');
+      shade.addColorStop(.18,'rgba(0,0,0,'+(.73+.26*p)+')');
+      shade.addColorStop(.46,'rgba(0,0,0,'+(.875+.115*p)+')');
+      shade.addColorStop(1,'rgba(0,0,0,'+(.985+.014*p)+')');
+      g.fillStyle=shade;g.fillRect(0,0,W,H);
+      g.save();g.translate(cx,cy);g.globalCompositeOperation='lighter';
+      // A denser second spiral system braids several arms around the closing centre.
+      for(let arm=0;arm<Math.round(28*VISUAL_DENSITY);arm++){
+        const base=arm*TAU/28+seed+ t*(.018+(arm%5)*.002);
+        g.beginPath();
+        for(let j=0;j<=76;j++){
+          const q=j/76,rr=maxR*(.025+.975*q)*(1-p*.12),ang=base+q*(7.8+(arm%4)*.65)-t*.021+Math.sin(q*13+t*.04+arm)*.055;
+          const x=Math.cos(ang)*rr,y=Math.sin(ang)*rr*.72;
+          if(j===0)g.moveTo(x,y);else g.lineTo(x,y);
+        }
+        g.strokeStyle=arm%7===0?'rgba(255,226,255,'+(.50*(1-p*.28))+')':arm%3===0?'rgba(255,132,88,'+(.30*(1-p*.32))+')':'rgba(154,121,255,'+(.25*(1-p*.38))+')';
+        g.lineWidth=arm%6===0?1.65:.8;g.stroke();
+      }
+      // Thousands of tiny motion streaks are represented by a dense, deterministic particle field.
+      for(let i=0;i<Math.round(520*VISUAL_DENSITY);i++){
+        const a=i*2.399963+seed+t*(.017+(i%13)*.0018),base=((i*137)%997)/997;
+        const rr=maxR*(.055+base*.94)*(1-p*.16),x=Math.cos(a)*rr,y=Math.sin(a)*rr*.72;
+        const tail=(12+(i%13)*4)*(1-p*.25),tw=.38+.62*Math.sin(t*.13+i*1.91),alpha=(.09+(i%6)*.047)*tw*(1-p*.35);
+        g.strokeStyle=i%11===0?'rgba(255,241,255,'+(alpha*1.8)+')':i%4===0?'rgba(255,146,95,'+alpha+')':'rgba(181,153,255,'+alpha+')';
+        g.lineWidth=i%19===0?1.6:.65;g.beginPath();g.moveTo(x,y);
+        g.quadraticCurveTo(Math.cos(a-.23)*rr*.89,Math.sin(a-.23)*rr*.69,Math.cos(a-.47)*Math.max(1,rr-tail),Math.sin(a-.47)*Math.max(1,rr-tail)*.72);g.stroke();
+        if(i%4===0){g.fillStyle='rgba(255,235,255,'+(alpha*1.2)+')';g.beginPath();g.arc(x,y,i%23===0?1.5:.65,0,TAU);g.fill();}
+      }
+      // Broad energy ribbons flow across the lens, each built from multiple warped strands.
+      for(let i=0;i<Math.round(42*VISUAL_DENSITY);i++){
+        const a=i*TAU/42+t*(.009+(i%6)*.001),r=maxR*(.24+(i%9)*.07),len=maxR*(.22+(i%5)*.032);
+        g.strokeStyle=i%5===0?'rgba(255,226,255,.28)':i%3===0?'rgba(255,135,88,.19)':'rgba(153,122,255,.17)';g.lineWidth=i%4===0?1.7:.8;
+        g.beginPath();g.moveTo(Math.cos(a)*r,Math.sin(a)*r*.72);
+        g.bezierCurveTo(Math.cos(a-.55)*r*.74,Math.sin(a-.55)*r*.62,Math.cos(a-1.1)*(r-len*.45),Math.sin(a-1.1)*(r-len*.45)*.72,Math.cos(a-1.7)*Math.max(2,r-len),Math.sin(a-1.7)*Math.max(2,r-len)*.72);g.stroke();
+      }
+      // Keep the original world objects visibly corkscrewing into the centre without mutating their positions.
       for(const o of blackHoleSuction){
         const dx=o.x-cx,dy=o.y-cy,dist=Math.hypot(dx,dy),base=Math.atan2(dy,dx),turn=5.5*o.spin;
         const q0=Math.max(0,p-.055),a0=base+q0*turn,a1=base+p*turn;
         const r0=dist*Math.pow(1-q0,1.12),r1=dist*Math.pow(1-p,1.12);
         g.globalAlpha=(1-p)*.95;g.strokeStyle=o.color;g.lineWidth=Math.max(.7,o.size*(1-p)*.35);
         g.beginPath();g.moveTo(Math.cos(a0)*r0,Math.sin(a0)*r0);g.lineTo(Math.cos(a1)*r1,Math.sin(a1)*r1);g.stroke();
-        g.fillStyle=o.color;g.beginPath();g.arc(Math.cos(a1)*r1,Math.sin(a1)*r1,Math.max(.6,o.size*(1-p)),0,Math.PI*2);g.fill();
+        g.fillStyle=o.color;g.beginPath();g.arc(Math.cos(a1)*r1,Math.sin(a1)*r1,Math.max(.6,o.size*(1-p)),0,TAU);g.fill();
       }
       g.globalAlpha=1;
-      for(let i=0;i<8;i++){g.strokeStyle='rgba(186,159,255,'+(.14-i*.012)+')';g.lineWidth=1.5;g.beginPath();g.ellipse(0,0,maxR*(.25+i*.1),maxR*(.12+i*.045),t*.012+i*.2,0,Math.PI*2);g.stroke();}
+      for(let i=0;i<12;i++){
+        const rr=maxR*(.22+i*.076),alpha=(.11-i*.006)*(1-p*.25);
+        g.strokeStyle='rgba(186,159,255,'+alpha+')';g.lineWidth=i%3===0?1.8:1;g.beginPath();g.ellipse(0,0,rr,rr*(.47+i*.025),t*.012+i*.2,0,TAU);g.stroke();
+      }
       const core=g.createRadialGradient(0,0,1,0,0,Math.max(12,100*(1-p)));
       core.addColorStop(0,'#000');core.addColorStop(.45,'#08060d');core.addColorStop(.7,'rgba(75,45,115,.75)');core.addColorStop(1,'rgba(0,0,0,0)');
-      g.fillStyle=core;g.beginPath();g.arc(0,0,Math.max(12,100*(1-p)),0,Math.PI*2);g.fill();g.restore();
+      g.fillStyle=core;g.beginPath();g.arc(0,0,Math.max(12,100*(1-p)),0,TAU);g.fill();g.restore();
       if(t>=240)collapseAllZombies();
     }else if(t<280){
-      // Phase 3: an intense white-out.
-      const alpha=t<260?ease(245,260,t):1-ease(264,280,t);
-      g.fillStyle='rgba(255,255,255,'+Math.max(0,alpha)+')';g.fillRect(0,0,W,H);
-      if(t>250){g.strokeStyle='rgba(255,255,255,.9)';g.lineWidth=3;g.beginPath();g.arc(cx,cy,(t-250)*Math.min(W,H)*.045,0,Math.PI*2);g.stroke();}
+      // Phase 3: the collapse releases an expanding lens-flash; both the flash and its afterglow ease smoothly.
+      const alpha=t<260?ease(244,260,t):1-ease(260,280,t),M3=Math.min(W,H);
+      g.fillStyle='rgba(0,0,0,.99)';g.fillRect(0,0,W,H);
+      const flare=g.createRadialGradient(cx,cy,1,cx,cy,Math.max(20,M3*(.13+ease(245,263,t)*.72)));
+      flare.addColorStop(0,'rgba(255,255,255,'+(.72*alpha)+')');flare.addColorStop(.16,'rgba(231,211,255,'+(.52*alpha)+')');
+      flare.addColorStop(.44,'rgba(164,107,255,'+(.24*alpha)+')');flare.addColorStop(1,'rgba(0,0,0,0)');
+      g.globalCompositeOperation='screen';g.fillStyle=flare;g.fillRect(0,0,W,H);
+      g.globalCompositeOperation='source-over';g.fillStyle='rgba(255,255,255,'+Math.max(0,alpha)+')';g.fillRect(0,0,W,H);
+      g.globalCompositeOperation='lighter';
+      const shock=ease(246,258,t)*(1-ease(262,280,t));
+      for(let ring=0;ring<5;ring++){
+        const rr=M3*(.018+ease(247,268,t)*(.52+ring*.105));
+        g.strokeStyle=ring%2===0?'rgba(255,248,255,'+(.75*shock)+')':'rgba(178,132,255,'+(.46*shock)+')';
+        g.lineWidth=ring===0?2.5:1.15;g.beginPath();g.ellipse(cx,cy,rr,rr*(.68+ring*.025),t*.01+ring*.18,0,TAU);g.stroke();
+      }
+      // Dust and ionised fragments coast outward through the flash and linger into the fade.
+      for(let i=0;i<Math.round(190*VISUAL_DENSITY);i++){
+        const a=i*2.399963+seed,dist=M*(.02+((i*61)%997)/997*.72)*(0.4+ease(246,276,t)*1.15);
+        const x=cx+Math.cos(a)*dist,y=cy+Math.sin(a)*dist*.75,trail=M*(.006+(i%7)*.002)*shock;
+        const alpha=shock*(.09+(i%5)*.045);
+        g.strokeStyle=i%5===0?'rgba(255,246,255,'+alpha+')':'rgba(196,157,255,'+(alpha*.75)+')';g.lineWidth=i%17===0?1.5:.65;
+        g.beginPath();g.moveTo(x,y);g.lineTo(x+Math.cos(a)*trail,y+Math.sin(a)*trail);g.stroke();
+      }
+      g.globalCompositeOperation='source-over';
     }else if(t<465){
       // Phase 4: dense, layered accretion disk, turbulent plasma and volumetric haze.
       g.fillStyle='#020105';g.fillRect(0,0,W,H);
-      const reveal=ease(280,330,t),zoom=ease(395,465,t);
-      const scale=.05+reveal*.85+zoom*2.6,rx=Math.min(W,H)*.19*scale,ry=rx*.30,spin=t*.025;
+      const reveal=ease(276,334,t),zoom=ease(388,465,t);
+      const scale=.012+reveal*.90+zoom*2.6,rx=Math.min(W,H)*.19*scale,ry=rx*.30,spin=t*.025;
       // Broad atmospheric glow is drawn first so the finer details sit inside the haze.
       g.save();g.translate(cx,cy);g.globalCompositeOperation='screen';
       let haze=g.createRadialGradient(0,0,Math.max(1,rx*.12),0,0,Math.max(20,rx*2.8));
@@ -470,12 +598,44 @@
       // A stronger screen-wide atmospheric bloom gives the hole a hazy, cinematic presence.
       g.globalCompositeOperation='screen';
       const bloom=g.createRadialGradient(cx,cy,Math.max(1,rx*.2),cx,cy,Math.max(20,rx*2.1));
-      bloom.addColorStop(0,'rgba(255,113,55,.14)');bloom.addColorStop(.22,'rgba(132,81,190,.12)');bloom.addColorStop(.58,'rgba(82,42,132,.065)');bloom.addColorStop(1,'rgba(0,0,0,0)');
+      bloom.addColorStop(0,'rgba(255,113,55,.17)');bloom.addColorStop(.22,'rgba(132,81,190,.15)');bloom.addColorStop(.58,'rgba(82,42,132,.085)');bloom.addColorStop(1,'rgba(0,0,0,0)');
       g.fillStyle=bloom;g.fillRect(0,0,W,H);g.globalCompositeOperation='source-over';
-      if(t>420){g.fillStyle='rgba(0,0,0,'+ease(420,465,t)+')';g.fillRect(0,0,W,H);}
+      const diskFade=1-ease(420,465,t);
+      if(t>420){g.fillStyle='rgba(0,0,0,'+(1-diskFade)+')';g.fillRect(0,0,W,H);}
+      // Drifting embers, ionised dust and purple motes survive the start of the fade to black.
+      if(t>382){
+        g.save();g.globalCompositeOperation='screen';
+        const moteFade=ease(382,397,t)*(1-ease(438,465,t));
+        for(let i=0;i<Math.round(250*VISUAL_DENSITY);i++){
+          const a=i*2.399963+seed+t*(.003+(i%7)*.0009),rr=Math.min(W,H)*(.08+((i*83)%997)/997*.7)+(t-382)*(1+(i%5)*.45);
+          const x=cx+Math.cos(a)*rr,y=cy+Math.sin(a)*rr*.75+(t-382)*((i%9)-4)*.11,tail=3+(i%9)*1.7;
+          const tw=.4+.6*Math.sin(t*.1+i*1.8),alpha=moteFade*(.07+(i%5)*.035)*tw;
+          g.strokeStyle=i%6===0?'rgba(255,222,255,'+(alpha*1.9)+')':i%3===0?'rgba(255,142,88,'+alpha+')':'rgba(167,135,255,'+alpha+')';
+          g.lineWidth=i%23===0?1.3:.55;g.beginPath();g.moveTo(x,y);g.lineTo(x-Math.cos(a-.35)*tail,y-Math.sin(a-.35)*tail*.7);g.stroke();
+        }
+        g.restore();
+      }
     }else{
-      g.fillStyle='#000';g.fillRect(0,0,W,H);
-      if(t>510){blackHoleCinematic=0;blackHoleSuction=[];blackHoleKilled=false;blackHoleWorldLockUntil=0;}
+      // Phase 5: hold the void for a beat, then reveal gameplay through a long, atmospheric fade.
+      const revealWorld=ease(488,560,t),blackAlpha=1-revealWorld,fadeM=Math.min(W,H);
+      g.fillStyle='rgba(0,0,0,'+blackAlpha+')';g.fillRect(0,0,W,H);
+      // Residual star-dust floats across the screen while the world slowly returns beneath it.
+      g.save();g.globalCompositeOperation='screen';
+      const afterglow=ease(465,483,t)*(1-ease(542,561,t));
+      let ghost=g.createRadialGradient(cx,cy,1,cx,cy,fadeM*(.16+.08*Math.sin(t*.06)));
+      ghost.addColorStop(0,'rgba(138,85,255,'+(.10*afterglow)+')');ghost.addColorStop(.48,'rgba(86,47,146,'+(.07*afterglow)+')');ghost.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=ghost;g.fillRect(0,0,W,H);
+      for(let i=0;i<Math.round(310*VISUAL_DENSITY);i++){
+        const seedA=i*2.399963+seed,drift=t-465,baseR=fadeM*(.035+((i*97)%997)/997*.79);
+        const a=seedA+drift*(.006+(i%11)*.00125),rr=baseR+drift*(.38+(i%7)*.24);
+        const x=cx+Math.cos(a)*rr,y=cy+Math.sin(a)*rr*.72+drift*((i%9)-4)*.14,tail=fadeM*(.002+(i%6)*.0012);
+        const tw=.3+.7*Math.sin(t*.12+i*1.61),alpha=afterglow*(.075+(i%6)*.027)*tw;
+        g.strokeStyle=i%13===0?'rgba(255,244,255,'+(alpha*2.0)+')':i%4===0?'rgba(255,150,94,'+(alpha*1.15)+')':'rgba(165,137,255,'+alpha+')';
+        g.lineWidth=i%21===0?1.35:.6;g.beginPath();g.moveTo(x,y);g.lineTo(x-Math.cos(a-.4)*tail,y-Math.sin(a-.4)*tail*.72);g.stroke();
+        if(i%5===0){g.fillStyle='rgba(255,242,255,'+(alpha*1.35)+')';g.beginPath();g.arc(x,y,i%25===0?1.45:.65,0,TAU);g.fill();}
+      }
+      g.restore();
+      if(t>560){blackHoleCinematic=0;blackHoleSuction=[];blackHoleKilled=false;blackHoleWorldLockUntil=0;}
     }
     g.restore();
   }
