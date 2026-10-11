@@ -518,121 +518,107 @@
     if(!ensureAudioContext())return;
     if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
     ambientMusicRunning=true;clearInterval(ambientMusicTimer);ambientMusicStep=0;updateAudioUI();
-    // Procedural survival score: slow orchestral harmony over a warm synth pulse.
-    // Chords lean minor and spacious, while the melodic intervals and gentle bells
-    // aim for lonely exploration rather than horror-only drones.
+    // A deliberately beat-forward survival score: a four-bar phrase on a 16th-note grid
+    // at 120 BPM, with an audible kick/snare/hat groove, pulsing synth bass, plucked arps,
+    // and short orchestral stabs. All notes are generated locally with Web Audio.
     const scales=AMBIENT_THEMES;
     const midiHz=n=>440*Math.pow(2,(n-69)/12);
     const musicTone=(note,dur,vol,wave,opts={})=>audioTone(midiHz(note),midiHz(note)*(opts.drift||1),dur,vol,wave,{...opts,bus:'music'});
+    const safeFamilies=new Set(['safe','autumn','cold','adventure']);
+    const hits={
+      safe:[0,3,6,8,11,14],autumn:[0,4,7,8,12,14],forest:[0,3,6,8,11,14],
+      cold:[0,6,8,14],crimson:[0,3,4,7,8,10,12,15],dead:[0,6,8,11],
+      combat:[0,2,4,7,8,10,12,14],adventure:[0,3,6,8,11,14]
+    };
+    const motifs={
+      safe:[0,4,7,9,7,4,2,4,0,2,4,7,11,9,7,4],
+      autumn:[0,2,4,7,4,2,0,2,0,4,5,7,9,7,4,2],
+      forest:[0,3,5,7,5,3,2,0,0,3,5,8,7,5,3,2],
+      cold:[0,4,7,12,9,7,4,2,0,7,12,16,12,9,7,4],
+      crimson:[0,3,6,7,6,3,1,0,0,3,6,10,8,6,3,1],
+      dead:[0,3,5,6,5,3,1,0,0,1,6,5,3,1,0,-2],
+      combat:[0,1,5,8,7,5,1,0,0,5,8,12,8,5,1,0],
+      adventure:[0,2,5,7,9,7,5,2,0,2,5,9,12,9,7,5]
+    };
     const tick=()=>{
       if(!audioContext||audioContext.state==='closed'||!ambientMusicRunning)return;
+      const st=ambientMusicStep%64;
       if(audioMuted||audioMusicLevel<1){ambientMusicStep=(ambientMusicStep+1)%64;return;}
-      if(ambientThemeBlend<1)ambientThemeBlend=Math.min(1,ambientThemeBlend+.12);
+      if(ambientThemeBlend<1)ambientThemeBlend=Math.min(1,ambientThemeBlend+.055);
       const cfg=ambientThemeBlend<1?blendAmbientTheme(ambientThemeFrom,ambientThemeTo,ambientThemeBlend):(ambientThemeTo||scales[audioMood]||scales.classic);
-      const st=ambientMusicStep%64,root=cfg.root,sc=cfg.scale;
-      const bar=Math.floor(st/16)%cfg.progression.length,chord=cfg.progression[bar];
-      const intensity=cfg.pulse;
-      // Warm, detuned string section: soft saws behind the round sine fundamentals.
-      if(st%16===0){
-        const chordNotes=[root+chord,root+chord+7,root+chord+12,root+chord+15];
-        chordNotes.forEach((n,i)=>{
-          const pan=(i-1.5)*.36;
-          musicTone(n-12,5.8,.020*intensity,'triangle',{filterFreq:390+i*85,attack:1.35,release:1.4,pan,drift:.998});
-          musicTone(n,5.95,.018*intensity,'sawtooth',{filterFreq:540+i*115,attack:1.15,release:1.5,pan,drift:1.003});
-          if(i<3)musicTone(n+12,4.7,.008*intensity,'sine',{filterFreq:1700,attack:1.4,release:1.25,pan:-pan,drift:.999});
+      const root=Math.round(cfg.root),sc=cfg.scale,bar=Math.floor(st/16)%4,beatStep=st%16;
+      const chord=Math.round(cfg.progression[bar%cfg.progression.length]||0),family=cfg.family||'forest';
+      const intensity=cfg.pulse||.8,isMajor=safeFamilies.has(family);
+      const triad=isMajor?[0,4,7,12]:[0,3,7,12];
+      const phrase=motifs[family]||motifs.forest;
+
+      // Chord change at the bar line: short, layered string/synth chords, not an endless drone.
+      if(beatStep===0){
+        const chordRoot=root+chord;
+        triad.slice(0,3).forEach((interval,i)=>{
+          const n=chordRoot+interval+12;
+          musicTone(n,1.72,(.014-i*.0015)*intensity,'sawtooth',{filterFreq:family==='cold'?2100:family==='dead'?520:1450,attack:.055,release:.42,pan:(i-1)*.32,drift:i===1?1.001:.999});
+          musicTone(n+12,1.28,.0065*intensity,'triangle',{filterFreq:family==='cold'?4300:2600,attack:.07,release:.35,pan:(1-i)*.25});
         });
-        // Low brass-like swell gives each new bar a wide, rounded orchestral breath.
-        musicTone(root+chord-5,2.9,.027*intensity,'sawtooth',{filterFreq:270,attack:1.05,release:1.2,pan:-.12,drift:.996});
-        musicTone(root+chord+7,2.6,.012*intensity,'triangle',{filterFreq:650,attack:.85,release:1.1,pan:.18,drift:1.002});
-        // Quiet airy bed and reversed-cymbal-like filtered noise swell.
-        audioNoise(2.65,.008*intensity,{bus:'music',filterType:'lowpass',freq:540,endFreq:190,delay:.08});
+        // Brass-like low note marks the start of each bar; it has a clear attack and decay.
+        musicTone(chordRoot-12,chord===0?.46:.34,.033*intensity,'sawtooth',{filterFreq:isMajor?330:210,attack:.018,release:.22,drift:.997});
       }
-      // A pulsing synth-bass ostinato under the orchestral layer.
-      if(st%4===0){
-        const bass=root-12+((st%16===8)?chord:0);
-        musicTone(bass,1.05,.044*intensity,'sine',{filterFreq:155,attack:.10,release:.48,drift:.998});
-        musicTone(bass+12,.46,.012*intensity,'triangle',{filterFreq:320,attack:.03,release:.26,pan:st%8===0?-.16:.16});
+
+      // Drum groove: deep kick on beats 1 and 3, a crisp snare/tom on 2 and 4,
+      // and a quiet, regular eighth-note hat. This is the rhythmic backbone in every biome.
+      if(beatStep===0||beatStep===8){
+        musicTone(116,43,.145*intensity,'sine',{filterFreq:145,attack:.003,release:.095});
+        musicTone(58,36,.052*intensity,'triangle',{filterFreq:95,attack:.004,release:.13});
       }
-      // A soft heartbeat / low taiko-style pulse, strongest in FFA, barely there in Base.
-      if(st%8===0){
-        audioTone(68,36,.42,.034*intensity,'sine',{bus:'music',filterFreq:125,attack:.012,release:.34});
-        audioNoise(.16,.012*intensity,{bus:'music',filterType:'lowpass',freq:210,endFreq:75,delay:.018});
+      if(beatStep===4||beatStep===12){
+        audioNoise(.075,.027*intensity,{bus:'music',filterType:'highpass',freq:1450,endFreq:520,q:.8});
+        musicTone(205,112,.042*intensity,'triangle',{filterFreq:360,attack:.003,release:.075});
+        musicTone(1380,930,.012*intensity,'sine',{filterFreq:2200,attack:.003,release:.045,pan:.12});
       }
-      // Every biome has a different lead motif AND rhythm, not merely a different backdrop.
-      // This is the most recognisable layer, so the shift should be audible as you cross the map.
-      const motifFamily=cfg.family||'forest';
-      const motifs={
-        safe:[0,4,7,9,7,4,2,4,0,2,4,7,11,9,7,4],
-        autumn:[0,2,4,7,4,2,0,2,0,4,5,7,9,7,4,2],
-        forest:[0,3,5,7,5,3,2,0,0,3,5,8,7,5,3,2],
-        cold:[0,4,7,12,9,7,4,2,0,7,12,16,12,9,7,4],
-        crimson:[0,3,6,7,6,3,1,0,0,3,6,10,8,6,3,1],
-        dead:[0,3,5,6,5,3,1,0,0,1,6,5,3,1,0,-2],
-        combat:[0,1,5,8,7,5,1,0,0,5,8,12,8,5,1,0],
-        adventure:[0,2,5,7,9,7,5,2,0,2,5,9,12,9,7,5]
-      };
-      const motif=motifs[motifFamily]||motifs.forest;
-      const motifStride=motifFamily==='cold'||motifFamily==='dead'?4:motifFamily==='autumn'?3:2;
-      if(st%motifStride===0){
-        const ix=(Math.floor(st/motifStride)+bar*(motifFamily==='safe'?3:motifFamily==='autumn'?2:5))%motif.length;
-        const degree=motif[ix],oct=motifFamily==='cold'?(ix%4===0?36:24):motifFamily==='dead'?12:motifFamily==='crimson'?24:motifFamily==='safe'?36:24;
-        const note=root+oct+degree;
-        const wave=motifFamily==='safe'?'sine':motifFamily==='autumn'?'triangle':motifFamily==='cold'?'sine':motifFamily==='crimson'?'sawtooth':motifFamily==='dead'?'triangle':'triangle';
-        const length=motifFamily==='dead'?1.15:motifFamily==='cold'?1.45:motifFamily==='autumn'?.82:.67;
-        const volume=motifFamily==='dead'?.010:motifFamily==='cold'?.012:motifFamily==='safe'?.022:motifFamily==='crimson'?.020:.017;
-        musicTone(note,length,volume*intensity,wave,{filterFreq:motifFamily==='cold'?4800:motifFamily==='safe'?3600:motifFamily==='dead'?1150:1900,attack:motifFamily==='dead'?.12:.018,release:motifFamily==='cold'?1.2:motifFamily==='dead'?.9:.43,pan:Math.sin(st*.43)*.52,drift:motifFamily==='crimson'?1.003:.998});
-        if(motifFamily==='crimson'&&st%4===0)musicTone(note+6,.26,.008*intensity,'sawtooth',{filterFreq:760,attack:.006,release:.22,pan:st%8?-.2:.2});
-        if(motifFamily==='safe'&&st%4===0)musicTone(note+12,.42,.008*intensity,'sine',{filterFreq:4200,attack:.025,release:.34,pan:-Math.sin(st*.43)*.3});
+      if(beatStep%4===2){
+        audioNoise(.027,.0105*intensity,{bus:'music',filterType:'highpass',freq:5700,endFreq:3300,q:.65,pan:(st%8===2?-.28:.28)});
       }
-      // High string/choir-like held notes add scale and atmosphere without crowding the mix.
-      if(st%8===4){
-        const lead=root+24+sc[(bar*2+2)%sc.length];
-        musicTone(lead,1.85,.013*intensity,'sawtooth',{filterFreq:1050,attack:.42,release:.74,pan:st%16?-.29:.29,drift:1.004});
-        musicTone(lead+7,1.35,.006*intensity,'sine',{filterFreq:2200,attack:.38,release:.62,pan:st%16?.35:-.35});
+      // Bass locks to all quarter-note beats, with a stronger root/fifth pattern.
+      if(beatStep%4===0){
+        const bass=root-12+((beatStep===8||beatStep===12)?chord+7:chord);
+        musicTone(bass,bass<34?.28:.22,.052*intensity,'sawtooth',{filterFreq:family==='dead'?125:family==='crimson'?185:310,attack:.008,release:.13,drift:.999});
+        musicTone(bass+12,.125,.016*intensity,'triangle',{filterFreq:680,attack:.004,release:.075,pan:beatStep===8?.12:-.12});
       }
-      // Theme signatures use different timbres and rhythmic gestures, making every biome distinct.
-      if(cfg.family==='safe'&&st%4===2){
-        const note=root+36+sc[[0,2,4,6][Math.floor(st/4)%4]%sc.length];
-        musicTone(note,.92,.020*intensity,'sine',{filterFreq:3900,attack:.018,release:.72,pan:Math.sin(st*.3)*.48});
-        musicTone(note+7,.62,.007*intensity,'triangle',{filterFreq:2500,attack:.04,release:.48,pan:-Math.sin(st*.3)*.4});
-      }else if(cfg.family==='autumn'&&st%4===1){
-        const note=root+24+sc[(Math.floor(st/4)+bar*2)%sc.length];
-        musicTone(note,.36,.017*intensity,'triangle',{filterFreq:1750,attack:.008,release:.28,pan:st%8?-.32:.32});
-        musicTone(note+7,.65,.007*intensity,'sine',{filterFreq:3000,attack:.04,release:.54,pan:st%8?.28:-.28});
-      }else if(cfg.family==='cold'&&st%8===2){
-        const note=root+36+sc[(st/2+bar)%sc.length];
-        musicTone(note,1.75,.016*intensity,'sine',{filterFreq:5400,attack:.018,release:1.5,pan:Math.sin(st)*.55});
-        musicTone(note+19,1.25,.006*intensity,'triangle',{filterFreq:6500,attack:.025,release:1.0,pan:-Math.sin(st)*.44});
-      }else if(cfg.family==='crimson'&&st%4===0){
-        const low=root-12+(st%8===0?-2:0);
-        musicTone(low,1.35,.034*intensity,'sawtooth',{filterFreq:190,attack:.035,release:.95,drift:.992});
-        musicTone(low+6,.92,.012*intensity,'triangle',{filterFreq:360,attack:.06,release:.72,pan:st%16?-.28:.28,drift:1.008});
-        audioNoise(.46,.009*intensity,{bus:'music',filterType:'bandpass',freq:390,endFreq:105,q:.65,delay:.015});
-      }else if(cfg.family==='dead'&&st%8===0){
-        musicTone(root-24,2.45,.045*intensity,'sine',{filterFreq:90,attack:.35,release:1.8,drift:.989});
-        musicTone(root+6,1.05,.009*intensity,'sawtooth',{filterFreq:420,attack:.18,release:.9,pan:st%16?-.25:.25,drift:1.01});
-        audioNoise(.72,.009*intensity,{bus:'music',filterType:'bandpass',freq:250,endFreq:68,q:.4,delay:.025});
-      }else if(cfg.family==='forest'&&st%8===4){
-        const note=root+24+sc[(st/4+bar)%sc.length];
-        musicTone(note,1.35,.016*intensity,'triangle',{filterFreq:1200,attack:.28,release:1.0,pan:Math.sin(st*.22)*.38,drift:.995});
-        musicTone(note+3,.95,.004*intensity,'sawtooth',{filterFreq:470,attack:.38,release:.7,pan:-Math.sin(st*.22)*.3,drift:1.004});
-      }else if(cfg.family==='combat'&&st%4===0){
-        musicTone(root-5,.22,.016*intensity,'sawtooth',{filterFreq:500,attack:.004,release:.18,pan:st%8?-.12:.12});
-        audioNoise(.11,.008*intensity,{bus:'music',filterType:'lowpass',freq:170,endFreq:62,delay:.01});
-      }else if(cfg.family==='adventure'&&st%8===6){
-        const note=root+24+sc[(bar*3+st/2)%sc.length];
-        musicTone(note,.7,.014*intensity,'triangle',{filterFreq:2250,attack:.07,release:.55,pan:st%16?-.34:.34});
+      // Offbeat synth ostinato: tight 8th-note plucks keep the track moving.
+      if(beatStep%4===2){
+        const arpPattern=[0,2,1,2,0,2,3,2];
+        const arpDegree=arpPattern[(Math.floor(st/2)+bar)%arpPattern.length];
+        const arpNote=root+12+chord+sc[arpDegree%sc.length];
+        musicTone(arpNote,.115,(family==='dead'?.011:.022)*intensity,family==='cold'?'sine':family==='crimson'?'sawtooth':'triangle',{
+          filterFreq:family==='cold'?4200:family==='dead'?720:2900,attack:.004,release:.085,pan:(st%8===2?-.24:.24),drift:family==='crimson'?1.001:1
+        });
       }
-      // Gentle high metallic chime at the phrase edge: adventure, not a UI beep.
-      if(st%16===14){
-        const bell=root+36+sc[(bar+3)%sc.length];
-        musicTone(bell,1.8,.010*intensity,'sine',{filterFreq:4400,attack:.006,release:1.5,pan:bar%2?.5:-.5});
-        musicTone(bell+19,1.05,.0035*intensity,'triangle',{filterFreq:5000,attack:.012,release:.8,pan:bar%2?-.3:.3});
+      // Short melody phrases are quantised to the beat grid, with distinctive biome intervals.
+      if((hits[family]||hits.forest).includes(beatStep)){
+        const ix=(Math.floor(beatStep/2)+bar*3)%phrase.length;
+        const octave=family==='cold'?36:(family==='safe'||family==='autumn'?24:family==='dead'?12:24);
+        const note=root+octave+phrase[ix];
+        const wave=family==='safe'?'triangle':family==='autumn'?'triangle':family==='cold'?'sine':family==='crimson'?'sawtooth':family==='dead'?'triangle':'square';
+        const length=family==='cold'?.30:family==='dead'?.24:family==='autumn'?.21:.18;
+        const volume=(family==='dead'?.012:family==='safe'?.027:family==='cold'?.018:.022)*intensity;
+        musicTone(note,length,volume,wave,{filterFreq:family==='cold'?4500:family==='safe'?3100:family==='dead'?950:family==='crimson'?1650:2300,attack:.005,release:length*.72,pan:Math.sin(st*.52)*.38,drift:1});
+        if(family==='safe'&&beatStep%4===0)musicTone(note+12,length*.72,.008*intensity,'sine',{filterFreq:4600,attack:.007,release:length*.58,pan:-Math.sin(st*.52)*.3});
+        if(family==='crimson'&&(beatStep===4||beatStep===12))musicTone(note+6,.11,.009*intensity,'sawtooth',{filterFreq:1200,attack:.003,release:.085,pan:st%8?-.18:.18});
+      }
+      // Staccato orchestral string/brass accents give the synth groove a survival-score lift.
+      if(beatStep===0||beatStep===6||beatStep===10){
+        const interval=beatStep===0?0:(beatStep===6?7:(isMajor?4:3));
+        musicTone(root+chord+interval+12,.22,.0105*intensity,'sawtooth',{filterFreq:family==='dead'?440:family==='cold'?1550:920,attack:.022,release:.16,pan:beatStep===6?-.22:.22,drift:.999});
+      }
+      // A compact fill at the end of each four-bar phrase signals the loop naturally.
+      if(st===60||st===62){
+        const n=root+24+(st===60?7:11);
+        musicTone(n,.10,.015*intensity,'triangle',{filterFreq:2500,attack:.003,release:.08,pan:st===60?-.18:.18});
       }
       ambientMusicStep=(ambientMusicStep+1)%64;
     };
-    tick();ambientMusicTimer=setInterval(tick,350);
-    if(audioStatus)audioStatus.textContent='Playing original synth-orchestral survival music: exploration, pulse and cinematic strings.';
+    tick();ambientMusicTimer=setInterval(tick,125);
+    if(audioStatus)audioStatus.textContent='Playing on-beat synth-orchestral survival music with a steady drum groove and biome-specific melodies.';
   }
   function blendAmbientTheme(a,b,t){
     if(!a)return b||AMBIENT_THEMES.classic;if(!b)return a;
