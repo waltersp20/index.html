@@ -48,39 +48,56 @@
   @media(max-width:980px){body{overflow:auto}#homePage{align-items:flex-start;padding:104px 14px 104px}.home-layout{grid-template-columns:minmax(0,1fr)}.home-rail{display:flex;flex-direction:row;flex-wrap:wrap}.home-rail>*{flex:1 1 220px}.ad-card{min-height:280px}.hero{padding:22px}.home-content{grid-template-columns:minmax(0,1fr) minmax(230px,.8fr)}}
   @media(max-width:620px){.mode-grid{grid-template-columns:1fr}.mode-card{min-height:0}.edge-ad{min-height:64px;padding:3px 8px}.edge-ad .adsbygoogle{min-height:50px}#homePage{padding:24px 10px 74px}.home-content{grid-template-columns:1fr}.howto{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:19px}.panel{padding:15px}.home-layout{gap:12px}.home-rail{display:flex;flex-direction:column}.home-rail>*{flex:initial}.ad-card{min-height:280px}}
   </style>
-  <style id="homepage-purple-red-black-theme">
-  /* Final homepage theme overrides: deliberately scoped to the menu, not the game canvas. */
-  :root{color-scheme:dark;--lime:#c084fc;--lime2:#9333ea;--panel:#151019;--line:#48233f;--muted:#b7a9bc}
-  html,body{background:#08060b;color:#f7effb}
-  #homePage{background:radial-gradient(ellipse at 15% 0%,rgba(112,35,140,.42),transparent 48%),radial-gradient(ellipse at 95% 85%,rgba(190,18,60,.18),transparent 42%),linear-gradient(135deg,#070609,#100911 55%,#090609)!important;color:#f7effb}
-  #homePage .hero{background:linear-gradient(125deg,#24102e,#100b14 64%,#260b18)!important;border-color:#54244f!important}
-  #homePage .hero:after{border-color:#c084fc30;box-shadow:0 0 0 25px #a21caf12,0 0 0 55px #e11d4810}
-  #homePage .brand-mark{background:linear-gradient(135deg,#d8b4fe,#a21caf 58%,#be123c)!important;color:#fff!important;box-shadow:0 6px 24px #a21caf45}
-  #homePage .hero h1 span{color:#fb7185!important;text-shadow:0 0 26px #e11d4830}
-  #homePage .eyebrow,#homePage .panel h2,#homePage .auth-card h3,#homePage .side-info h3{color:#d8b4fe!important}
-  #homePage .panel{background:linear-gradient(145deg,#19121e,#0e0a11)!important;border-color:#48233f!important}
-  #homePage .field-label{color:#d2c2d7!important}
-  #homePage .name-row input{background:#09070b!important;border-color:#51344f!important;color:#fff}
-  #homePage .name-row input:focus{border-color:#c084fc!important}
-  #homePage .primary-btn{background:linear-gradient(120deg,#c084fc,#a855f7 52%,#e11d48)!important;color:#fff!important;box-shadow:0 7px 24px #a21caf35}
-  #homePage .char-option{border-color:#45243f!important;background:linear-gradient(180deg,#1b1120,#0b080d)!important;color:#f4eaf7!important}
-  #homePage .char-option:hover,#homePage .mode-card:hover{border-color:#fb7185!important}
-  #homePage .char-option.selected{border-color:#c084fc!important;background:linear-gradient(180deg,#a855f725,#0d080f)!important;box-shadow:inset 0 0 0 1px #c084fc35}
-  #homePage .mode-card{border-color:#48233f!important;background:#100b13!important;color:#f5edf8!important}
-  #homePage .mode-card.selected{border-color:#c084fc!important;background:linear-gradient(150deg,#a855f729,#e11d4810,#100b13)!important;box-shadow:inset 0 0 0 1px #c084fc30}
-  #homePage .mode-status{color:#d7c7dd!important;background:#0c080f!important;border-color:#39203a!important}
-  #homePage .coop-row input{accent-color:#c084fc}
-  #homePage .howto-item{border-color:#382039!important;background:#100b13!important}
-  #homePage .howto-item b{color:#fda4af!important}
-  #homePage .howto-item span,#homePage .lede,#homePage .hero-pills{color:#c4b5ca!important}
-  #homePage .ad-card{border-color:#48233f!important;background:linear-gradient(160deg,#151019,#09070b)!important}
-  #homePage .score-row:first-child{color:#fda4af;background:#e11d4810}
-  #homePage .side-info{border-color:#48233f!important;background:linear-gradient(160deg,#1c1121,#0c080f)!important}
-  #homePage .utility-panel{background:#110b15!important;border-color:#68406f!important;color:#f7effb!important}
-  #homePage .utility-panel h2{color:#d8b4fe!important}
-  #homePage .utility-panel input,#homePage .utility-panel select,#homePage .utility-panel textarea,#homePage .utility-panel .chat-log{background:#09070b!important;border-color:#48233f!important;color:#fff!important}
-  #homePage .utility-panel button{background:#38203f!important;border-color:#68406f!important;color:#f8effb!important}
-  .edge-ad{background:rgba(8,6,11,.97)!important;border-color:#48233f!important}
+  <style id="homepage-silver-glass-theme">
+  /* Refined monochrome glass UI, scoped to the homepage so the game world keeps its own palette. */
+  #homePage{color:#f5f7fb!important;background:
+    radial-gradient(ellipse at 15% 6%,rgba(226,232,240,.16),transparent 38%),
+    radial-gradient(ellipse at 88% 92%,rgba(148,163,184,.13),transparent 36%),
+    linear-gradient(135deg,#050608 0%,#111419 46%,#06070a 100%)!important;
+    isolation:isolate;backdrop-filter:blur(24px) saturate(125%)}
+  #homePage:before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.20;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 90%)}
+  #homePage .home-layout{filter:drop-shadow(0 28px 60px rgba(0,0,0,.42))}
+  #homePage .hero{background:linear-gradient(122deg,rgba(54,59,68,.80),rgba(22,25,31,.91) 48%,rgba(10,12,16,.94))!important;border:1px solid rgba(226,232,240,.40)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 24px 70px rgba(0,0,0,.48)!important;backdrop-filter:blur(22px) saturate(145%)}
+  #homePage .hero:after{border-color:rgba(241,245,249,.18)!important;box-shadow:0 0 0 25px rgba(203,213,225,.045),0 0 0 55px rgba(203,213,225,.025)!important}
+  #homePage .brand-mark{background:linear-gradient(145deg,#f8fafc,#aeb7c4 48%,#5c6470)!important;color:#111318!important;border:1px solid rgba(255,255,255,.72);box-shadow:inset 0 1px 2px #fff9,0 8px 25px #0008!important}
+  #homePage .eyebrow,#homePage .panel h2,#homePage .auth-card h3,#homePage .side-info h3{color:#e2e8f0!important}
+  #homePage .hero h1{color:#f8fafc!important;text-shadow:0 4px 30px rgba(0,0,0,.55)}
+  #homePage .hero h1 span{color:#cbd5e1!important;text-shadow:0 0 22px rgba(226,232,240,.20)!important}
+  #homePage .lede,#homePage .hero-pills{color:#cbd2dc!important}
+  #homePage .pill{color:#e2e8f0!important;border-color:rgba(203,213,225,.25)!important;background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.025))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+  #homePage .panel,#homePage .side-info{background:linear-gradient(145deg,rgba(42,46,54,.82),rgba(17,19,24,.93))!important;border:1px solid rgba(203,213,225,.26)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 16px 42px rgba(0,0,0,.24);backdrop-filter:blur(18px) saturate(130%)}
+  #homePage .field-label{color:#cbd5e1!important}
+  #homePage .name-row input,#homePage input,#homePage select{background:rgba(7,9,13,.76)!important;border:1px solid rgba(203,213,225,.30)!important;color:#f8fafc!important;box-shadow:inset 0 1px 3px rgba(0,0,0,.40)}
+  #homePage .name-row input:focus,#homePage input:focus,#homePage select:focus{outline:none;border-color:#e2e8f0!important;box-shadow:0 0 0 3px rgba(226,232,240,.12),inset 0 1px 3px #0006!important}
+  #homePage #saveHomeName,#homePage #newLobbyCodeBtn{background:linear-gradient(180deg,rgba(226,232,240,.22),rgba(148,163,184,.08))!important;border-color:rgba(226,232,240,.36)!important;color:#f8fafc!important}
+  #homePage .primary-btn{background:linear-gradient(135deg,#f8fafc,#cbd5e1 46%,#8b95a3)!important;color:#101216!important;border:1px solid rgba(255,255,255,.78)!important;box-shadow:inset 0 1px 0 #fff,0 10px 28px rgba(0,0,0,.34)!important;letter-spacing:1.35px}
+  #homePage .primary-btn:hover{filter:brightness(1.08)!important;box-shadow:inset 0 1px 0 #fff,0 12px 32px rgba(226,232,240,.13)!important}
+  #homePage .skin-gender-btn,#homePage .char-option,#homePage .mode-card{background:linear-gradient(150deg,rgba(61,66,76,.56),rgba(14,16,21,.90))!important;border-color:rgba(203,213,225,.24)!important;color:#eef2f7!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.07)}
+  #homePage .char-option:hover,#homePage .mode-card:hover,#homePage .skin-gender-btn:hover{border-color:rgba(241,245,249,.72)!important;filter:brightness(1.08)}
+  #homePage .char-option.selected,#homePage .mode-card.selected,#homePage .skin-gender-btn.selected{border-color:#e2e8f0!important;background:linear-gradient(150deg,rgba(226,232,240,.22),rgba(20,23,29,.88))!important;box-shadow:inset 0 0 0 1px rgba(248,250,252,.22),0 0 24px rgba(203,213,225,.06)!important}
+  #homePage .char-option .char-subtitle,#homePage .mode-card span:last-child,#homePage .skin-gender-note{color:#aeb7c4!important}
+  #homePage .mode-status{color:#dbe1e9!important;background:rgba(6,8,12,.56)!important;border-color:rgba(203,213,225,.22)!important}
+  #homePage .coop-row{color:#cbd5e1!important}
+  #homePage .coop-row input{accent-color:#e2e8f0}
+  #homePage .howto-item{background:linear-gradient(155deg,rgba(42,46,54,.72),rgba(12,14,18,.90))!important;border-color:rgba(203,213,225,.22)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.055)}
+  #homePage .howto-item b{color:#f1f5f9!important}
+  #homePage .howto-item span{color:#aeb7c4!important}
+  #homePage .auth-card,#homePage .ad-card{background:linear-gradient(155deg,rgba(44,48,57,.78),rgba(13,15,20,.93))!important;border:1px solid rgba(203,213,225,.27)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 15px 42px #0005;backdrop-filter:blur(16px)}
+  #homePage .auth-card p{color:#c1c9d3!important}
+  #homePage .auth-card button,#homePage .utility-panel button{background:linear-gradient(180deg,rgba(226,232,240,.22),rgba(148,163,184,.08))!important;border-color:rgba(203,213,225,.30)!important;color:#f1f5f9!important}
+  #homePage .score-row:first-child{color:#f8fafc!important;background:rgba(226,232,240,.08)!important}
+  #homePage .score-row{color:#cbd5e1!important}
+  #homePage .personal-best{border-color:rgba(203,213,225,.20)!important;color:#cbd5e1!important}
+  #homePage .personal-best strong{color:#f8fafc!important}
+  #homePage #resumeRunBtn{background:linear-gradient(145deg,rgba(226,232,240,.15),rgba(15,17,22,.88))!important;border-color:rgba(226,232,240,.40)!important;color:#f8fafc!important}
+  #homePage #openChatBtn{background:rgba(255,255,255,.07)!important;border-color:rgba(203,213,225,.30)!important;color:#e2e8f0!important}
+  #homePage .utility-panel{background:linear-gradient(145deg,rgba(45,49,58,.94),rgba(12,14,18,.97))!important;border-color:rgba(203,213,225,.34)!important;color:#f1f5f9!important;backdrop-filter:blur(22px)}
+  #homePage .utility-panel h2{color:#f1f5f9!important}
+  #homePage .utility-panel input,#homePage .utility-panel select,#homePage .utility-panel textarea,#homePage .utility-panel .chat-log{background:rgba(3,5,8,.84)!important;border-color:rgba(203,213,225,.25)!important;color:#f8fafc!important}
+  .edge-ad{background:rgba(5,7,10,.96)!important;border-color:rgba(203,213,225,.20)!important}
+  #audioToggleButton{background:linear-gradient(145deg,rgba(52,57,66,.94),rgba(13,15,20,.96))!important;border-color:rgba(203,213,225,.46)!important;color:#f1f5f9!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 9px 30px #0008!important;backdrop-filter:blur(18px)}
+  #audioSettingsPanel{background:linear-gradient(145deg,rgba(42,46,54,.96),rgba(10,12,16,.98))!important;border-color:rgba(203,213,225,.32)!important;color:#f1f5f9!important;backdrop-filter:blur(20px)}
+  @media(prefers-reduced-motion:no-preference){#homePage .hero,#homePage .panel,#homePage .side-info{animation:glassReveal .75s cubic-bezier(.2,.7,.2,1) both}@keyframes glassReveal{from{opacity:.1;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}}
   </style>
 
   <style id="mobile-controls-style">
@@ -256,6 +273,19 @@
   if(effectsVolumeInput)effectsVolumeInput.value=String(audioEffectsLevel);
   let audioContext=null,audioMaster=null,audioMusicBus=null,audioEffectsBus=null,audioReverbBus=null,audioCompressor=null,audioConvolver=null,audioNoiseBuffer=null;
   let ambientMusicTimer=null,ambientMusicStep=0,ambientMusicRunning=false,audioMood='classic';
+  let ambientThemeFrom=null,ambientThemeTo=null,ambientThemeBlend=1,ambientThemeCurrentName='';
+  const AMBIENT_THEMES={
+    classic:{root:38,scale:[0,3,5,7,10,12,15,19],progression:[0,8,3,10],pulse:.88,family:'forest'},
+    infinite:{root:35,scale:[0,2,5,7,9,12,14,17],progression:[0,7,9,5],pulse:1.02,family:'adventure'},
+    base:{root:40,scale:[0,2,4,5,7,9,11,12],progression:[0,5,7,4],pulse:.72,family:'safe'},
+    ffa:{root:36,scale:[0,1,5,7,8,12,13,19],progression:[0,8,1,7],pulse:1.16,family:'combat'},
+    grasslands:{root:40,scale:[0,2,4,5,7,9,11,12],progression:[0,5,7,4],pulse:.70,family:'safe'},
+    autumn:{root:38,scale:[0,2,4,7,9,12,14,16],progression:[0,5,3,7],pulse:.82,family:'autumn'},
+    blackwood:{root:36,scale:[0,2,3,5,7,9,10,12],progression:[0,7,3,10],pulse:.82,family:'forest'},
+    frostpeak:{root:41,scale:[0,2,4,7,9,12,14,16],progression:[0,7,5,9],pulse:.62,family:'cold'},
+    crimson:{root:33,scale:[0,2,3,5,7,8,11,12],progression:[0,8,6,11],pulse:1.08,family:'crimson'},
+    deadlands:{root:31,scale:[0,3,5,6,7,10,12,15],progression:[0,6,8,10],pulse:.94,family:'dead'}
+  };
   let lastGunSoundAt={},lastZombieSoundAt=0,lastExplosionSoundAt=0,lastHitSoundAt=0;
   let lastLocalAudioBurst=null,audioBurstCounter=0,remoteAudioSeen={};
   const AUDIO_TAU=Math.PI*2;
@@ -480,25 +510,25 @@
     });
   }
   function startAmbientMusic(mode){
-    audioMood=mode||gameMode;
+    audioMood=resolveAmbientMusicTheme(mode||gameMode);
+    ambientThemeCurrentName=audioMood;
+    ambientThemeFrom=AMBIENT_THEMES[audioMood]||AMBIENT_THEMES.classic;
+    ambientThemeTo=ambientThemeFrom;ambientThemeBlend=1;
     if(!ensureAudioContext())return;
     if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
     ambientMusicRunning=true;clearInterval(ambientMusicTimer);ambientMusicStep=0;updateAudioUI();
     // Procedural survival score: slow orchestral harmony over a warm synth pulse.
     // Chords lean minor and spacious, while the melodic intervals and gentle bells
     // aim for lonely exploration rather than horror-only drones.
-    const scales={
-      classic:{root:38,scale:[0,3,5,7,10,12,15,19],progression:[0,8,3,10],pulse:.92},
-      infinite:{root:33,scale:[0,2,5,7,9,12,14,17],progression:[0,7,9,5],pulse:1.03},
-      base:{root:35,scale:[0,3,5,7,10,12,15,19],progression:[0,8,10,3],pulse:.77},
-      ffa:{root:36,scale:[0,1,5,7,8,12,13,19],progression:[0,8,1,7],pulse:1.2}
-    };
+    const scales=AMBIENT_THEMES;
     const midiHz=n=>440*Math.pow(2,(n-69)/12);
     const musicTone=(note,dur,vol,wave,opts={})=>audioTone(midiHz(note),midiHz(note)*(opts.drift||1),dur,vol,wave,{...opts,bus:'music'});
     const tick=()=>{
       if(!audioContext||audioContext.state==='closed'||!ambientMusicRunning)return;
       if(audioMuted||audioMusicLevel<1){ambientMusicStep=(ambientMusicStep+1)%64;return;}
-      const cfg=scales[audioMood]||scales.classic,st=ambientMusicStep%64,root=cfg.root,sc=cfg.scale;
+      if(ambientThemeBlend<1)ambientThemeBlend=Math.min(1,ambientThemeBlend+.12);
+      const cfg=ambientThemeBlend<1?blendAmbientTheme(ambientThemeFrom,ambientThemeTo,ambientThemeBlend):(ambientThemeTo||scales[audioMood]||scales.classic);
+      const st=ambientMusicStep%64,root=cfg.root,sc=cfg.scale;
       const bar=Math.floor(st/16)%cfg.progression.length,chord=cfg.progression[bar];
       const intensity=cfg.pulse;
       // Warm, detuned string section: soft saws behind the round sine fundamentals.
@@ -541,6 +571,31 @@
         musicTone(lead,1.85,.013*intensity,'sawtooth',{filterFreq:1050,attack:.42,release:.74,pan:st%16?-.29:.29,drift:1.004});
         musicTone(lead+7,1.35,.006*intensity,'sine',{filterFreq:2200,attack:.38,release:.62,pan:st%16?.35:-.35});
       }
+      // Each biome has its own musical fingerprint layered over the shared soundtrack engine.
+      // Safer biomes use open major-key arpeggios; the hostile zones use tighter, darker minor voicings.
+      if(cfg.family==='safe'&&st%4===2){
+        const degree=[0,2,4,6][Math.floor(st/4)%4],note=root+36+sc[degree%sc.length];
+        musicTone(note,.92,.014*intensity,'sine',{filterFreq:3600,attack:.025,release:.7,pan:Math.sin(st*.3)*.42});
+        musicTone(note+7,.62,.0045*intensity,'triangle',{filterFreq:2100,attack:.06,release:.5,pan:-Math.sin(st*.3)*.38});
+      }else if(cfg.family==='autumn'&&st%8===6){
+        const note=root+24+sc[(bar*2+st/8)%sc.length];
+        musicTone(note,1.35,.013*intensity,'triangle',{filterFreq:1250,attack:.12,release:1.1,pan:st%16?-.28:.28,drift:.999});
+        musicTone(note+12,.8,.004*intensity,'sine',{filterFreq:2450,attack:.09,release:.65,pan:st%16?.25:-.25});
+      }else if(cfg.family==='cold'&&st%8===2){
+        const note=root+36+sc[(st/2+bar)%sc.length];
+        musicTone(note,1.75,.010*intensity,'sine',{filterFreq:5100,attack:.02,release:1.5,pan:Math.sin(st)*.5});
+        musicTone(note+19,1.25,.0035*intensity,'triangle',{filterFreq:6200,attack:.03,release:1.0,pan:-Math.sin(st)*.4});
+      }else if((cfg.family==='crimson'||cfg.family==='dead')&&st%8===0){
+        const low=root-12+(cfg.family==='dead'?-2:0);
+        musicTone(low,1.6,.023*intensity,'sawtooth',{filterFreq:185,attack:.08,release:1.1,drift:.994});
+        musicTone(low+6,1.1,.008*intensity,'triangle',{filterFreq:330,attack:.12,release:.8,pan:st%16?-.24:.24,drift:1.006});
+        audioNoise(.38,.006*intensity,{bus:'music',filterType:'bandpass',freq:330,endFreq:115,q:.5,delay:.02});
+      }else if(cfg.family==='forest'&&st%8===4){
+        const note=root+24+sc[(st/4+bar)%sc.length];
+        musicTone(note,1.25,.011*intensity,'triangle',{filterFreq:1050,attack:.24,release:1.0,pan:Math.sin(st*.22)*.35});
+      }else if(cfg.family==='combat'&&st%4===0){
+        musicTone(root-5,.22,.012*intensity,'sawtooth',{filterFreq:440,attack:.004,release:.18,pan:st%8?-.12:.12});
+      }
       // Gentle high metallic chime at the phrase edge: adventure, not a UI beep.
       if(st%16===14){
         const bell=root+36+sc[(bar+3)%sc.length];
@@ -552,6 +607,41 @@
     tick();ambientMusicTimer=setInterval(tick,350);
     if(audioStatus)audioStatus.textContent='Playing original synth-orchestral survival music: exploration, pulse and cinematic strings.';
   }
+  function blendAmbientTheme(a,b,t){
+    if(!a)return b||AMBIENT_THEMES.classic;if(!b)return a;
+    const mix=(x,y)=>x+(y-x)*t;
+    const len=Math.max(a.scale?.length||0,b.scale?.length||0,8),progLen=Math.max(a.progression?.length||0,b.progression?.length||0,4);
+    return {root:mix(a.root||36,b.root||36),pulse:mix(a.pulse||.8,b.pulse||.8),
+      scale:Array.from({length:len},(_,i)=>mix(a.scale?.[i%a.scale.length]??0,b.scale?.[i%b.scale.length]??0)),
+      progression:Array.from({length:progLen},(_,i)=>mix(a.progression?.[i%a.progression.length]??0,b.progression?.[i%b.progression.length]??0)),
+      family:t<.5?(a.family||'forest'):(b.family||'forest')};
+  }
+  function currentAmbientThemeConfig(){return ambientThemeBlend<1?blendAmbientTheme(ambientThemeFrom,ambientThemeTo,ambientThemeBlend):(ambientThemeTo||AMBIENT_THEMES[audioMood]||AMBIENT_THEMES.classic);}
+  function setAmbientMusicTheme(name){
+    name=AMBIENT_THEMES[name]?name:'classic';if(name===ambientThemeCurrentName)return;
+    ambientThemeFrom=currentAmbientThemeConfig();ambientThemeTo=AMBIENT_THEMES[name];ambientThemeBlend=0;ambientThemeCurrentName=name;audioMood=name;
+  }
+  function baseBiomeMusicName(x,y){
+    const regions=[
+      {key:'grasslands',cx:BASE_WORLD_W*.17,cy:BASE_WORLD_H*.60,rx:BASE_WORLD_W*.36,ry:BASE_WORLD_H*.43},
+      {key:'autumn',cx:BASE_WORLD_W*.34,cy:BASE_WORLD_H*.20,rx:BASE_WORLD_W*.34,ry:BASE_WORLD_H*.35},
+      {key:'blackwood',cx:BASE_WORLD_W*.51,cy:BASE_WORLD_H*.52,rx:BASE_WORLD_W*.34,ry:BASE_WORLD_H*.40},
+      {key:'frostpeak',cx:BASE_WORLD_W*.78,cy:BASE_WORLD_H*.27,rx:BASE_WORLD_W*.30,ry:BASE_WORLD_H*.38},
+      {key:'crimson',cx:BASE_WORLD_W*.80,cy:BASE_WORLD_H*.78,rx:BASE_WORLD_W*.31,ry:BASE_WORLD_H*.34},
+      {key:'deadlands',cx:BASE_WORLD_W*.90,cy:BASE_WORLD_H*.70,rx:BASE_WORLD_W*.18,ry:BASE_WORLD_H*.23}
+    ];
+    let best=Infinity,key='grasslands';
+    for(const r of regions){const dx=(x-r.cx)/r.rx,dy=(y-r.cy)/r.ry,d=dx*dx+dy*dy;if(d<best){best=d;key=r.key;}}
+    return key;
+  }
+  function resolveAmbientMusicTheme(mode){
+    const m=mode||gameMode;
+    if(m==='base'||m==='ffa')return baseBiomeMusicName((p&&Number.isFinite(p.x))?p.x:BASE_WORLD_W*.17,(p&&Number.isFinite(p.y))?p.y:BASE_WORLD_H*.60);
+    if(m==='classic')return level>=4?'crimson':level===3?'blackwood':level===2?'autumn':'grasslands';
+    if(m==='infinite')return 'infinite';
+    return m==='ffa'?'ffa':'classic';
+  }
+  function syncAmbientMusicToBiome(){if(!ambientMusicRunning)return;const desired=resolveAmbientMusicTheme(gameMode);if(desired!==ambientThemeCurrentName)setAmbientMusicTheme(desired);}
   function stopAmbientMusic(){ambientMusicRunning=false;clearInterval(ambientMusicTimer);ambientMusicTimer=null;updateAudioUI();}
   function activateAudioFromGesture(){if(ensureAudioContext()&&audioContext.state==='suspended')audioContext.resume().catch(()=>{});}
   if(audioToggleButton){audioToggleButton.addEventListener('click',()=>{const opening=!audioSettingsPanel.classList.contains('open');audioSettingsPanel.classList.toggle('open',opening);audioToggleButton.setAttribute('aria-expanded',String(opening));activateAudioFromGesture();audioUiTick();});}
@@ -1472,7 +1562,7 @@
   const modeStatus=document.getElementById('modeStatus');
   const modeDescriptions={classic:'Survive four levels, collect supplies and defeat the boss.',infinite:'Endless waves with gradually increasing difficulty. Gun upgrades are disabled.',base:'Explore a huge world with grasslands, autumn woods, snowy mountains, settlements and a dangerous central forest.',ffa:'A shared open world with base-building, persistent danger and player-versus-player combat.'};
   function chooseMode(mode){
-    gameMode=mode;audioMood=mode;
+    gameMode=mode;audioMood=mode;ambientThemeCurrentName='';
     document.querySelectorAll('.mode-card').forEach(btn=>{const yes=btn.dataset.mode===mode;btn.classList.toggle('selected',yes);btn.setAttribute('aria-pressed',String(yes));});
     modeStatus.textContent=modeDescriptions[mode];
     startGameBtn.textContent=mode==='classic'?'▶  START CLASSIC SURVIVAL':mode==='infinite'?'▶  START INFINITE SURVIVAL':mode==='ffa'?'⚔  ENTER FREE FOR ALL':'▶  ENTER BASE WORLD';
@@ -4210,12 +4300,24 @@
       if(o.dead||o.x<minX||o.x>maxX||o.y<minY||o.y>maxY)continue;
       const r=Math.max(14,Number(o.r)||20),seed=Math.floor(o.x*7.13+o.y*11.71+(o.t||0)*83);
       if(o.t===0){
-        // Canopy: leaf lobes with veins, varied silhouettes, branch junctions and light-catching tips.
+        // Draw the trunk and scaffold branches FIRST. The canopy is deliberately rendered last,
+        // so leaves overlap the upper trunk naturally instead of the trunk cutting across foliage.
         const fade=level===4?Math.max(0,Number(o.leafFade)||0):1;
-        g.save();g.globalAlpha=fade;
-        const lobes=[[-17,-8,19,13],[-6,-24,17,14],[11,-18,18,14],[19,-2,16,13],[4,7,17,12],[-15,5,16,12]];
+        const bark=isBaseWorldMode()?(o.x>BASE_WORLD_W*.78&&o.y>BASE_WORLD_H*.64?'#342126':o.x>BASE_WORLD_W*.72&&o.y<BASE_WORLD_H*.40?'#667a81':'#543b2a'):level===4?'#241719':level===3?'#292e27':level===2?'#604329':'#533722';
+        const barkLit=isBaseWorldMode()?(o.x>BASE_WORLD_W*.78&&o.y>BASE_WORLD_H*.64?'#74404a':o.x>BASE_WORLD_W*.72&&o.y<BASE_WORLD_H*.40?'#a6c1c8':'#936847'):level===4?'#5e2e29':level===3?'#56604d':level===2?'#a87843':'#8a5d36';
+        g.save();
+        // Grounding shadow and roots keep the trunk visually attached to the forest floor.
+        g.globalAlpha=.24;g.fillStyle='#000';g.beginPath();g.ellipse(o.x+5,o.y+19,r*.68,r*.19,-.05,0,Math.PI*2);g.fill();g.globalAlpha=1;
+        g.fillStyle=bark;g.beginPath();g.moveTo(o.x-5,o.y+23);g.lineTo(o.x-4,o.y+6);g.lineTo(o.x-5,o.y-9);g.lineTo(o.x-3,o.y-23);g.lineTo(o.x+4,o.y-24);g.lineTo(o.x+5,o.y-8);g.lineTo(o.x+7,o.y+9);g.lineTo(o.x+12,o.y+19);g.lineTo(o.x+4,o.y+17);g.lineTo(o.x,o.y+23);g.lineTo(o.x-4,o.y+17);g.lineTo(o.x-12,o.y+20);g.closePath();g.fill();
+        // Main branch structure disappears behind foliage rather than sitting on top of it.
+        g.strokeStyle=bark;g.lineCap='round';g.lineJoin='round';g.lineWidth=Math.max(3,r*.12);g.beginPath();g.moveTo(o.x,o.y-5);g.quadraticCurveTo(o.x-8,o.y-15,o.x-17,o.y-24);g.moveTo(o.x+1,o.y-10);g.quadraticCurveTo(o.x+8,o.y-18,o.x+18,o.y-23);g.moveTo(o.x-1,o.y+1);g.lineTo(o.x-12,o.y-8);g.stroke();
+        g.strokeStyle=barkLit;g.lineWidth=1.25;g.beginPath();g.moveTo(o.x-2,o.y+18);g.quadraticCurveTo(o.x-1,o.y+2,o.x+1,o.y-17);g.moveTo(o.x+4,o.y+11);g.lineTo(o.x+2,o.y-4);g.moveTo(o.x-7,o.y+15);g.lineTo(o.x-11,o.y+19);g.moveTo(o.x+5,o.y+14);g.lineTo(o.x+10,o.y+18);g.stroke();
+        // Bark fissures and knots: kept in the exposed lower trunk area.
+        for(let i=0;i<5;i++){const xx=o.x-3+seededNoise(seed+i*97)*7,yy=o.y-1+seededNoise(seed+i*101)*20;g.fillStyle='rgba(18,13,10,.48)';g.beginPath();g.ellipse(xx,yy,.9+seededNoise(seed+i*103)*.45,1.8+seededNoise(seed+i*107)*1.1,seededNoise(seed+i*109),0,Math.PI*2);g.fill();}
+        // Now layer the leafy crown over the branch tops. This is the key draw-order correction.
+        const lobes=[[-19,-9,18,13],[-8,-25,17,14],[10,-20,19,15],[23,-4,16,13],[7,5,18,13],[-15,5,16,12],[-2,-12,22,17]];
         let leafCols=level===4?['#241619','#3b1f24','#51272a','#71382e']:level===2?['#9a6b31','#bf8b3e','#d0a654','#6c6635']:['#365d2c','#4f7834','#648c3d','#83a451'];
-        if(isBaseWorldMode()) {
+        if(isBaseWorldMode()){
           const candidates=[
             {cx:BASE_WORLD_W*.34,cy:BASE_WORLD_H*.20,rx:BASE_WORLD_W*.34,ry:BASE_WORLD_H*.35,c:['#995b2f','#b87635','#c99742','#74633a']},
             {cx:BASE_WORLD_W*.78,cy:BASE_WORLD_H*.27,rx:BASE_WORLD_W*.30,ry:BASE_WORLD_H*.38,c:['#a8c4ce','#c9dde2','#edf5f5','#7899a4']},
@@ -4226,24 +4328,23 @@
           ];
           let nearest=Infinity;for(const rgn of candidates){const dd=((o.x-rgn.cx)/rgn.rx)**2+((o.y-rgn.cy)/rgn.ry)**2;if(dd<nearest){nearest=dd;leafCols=rgn.c;}}
         }
+        g.globalAlpha=fade;
+        // Layer darker underside shapes, then bright individual lobes for form and depth.
+        g.fillStyle=level===4?'#160f12':'rgba(8,16,9,.36)';g.beginPath();g.ellipse(o.x+4,o.y+2,31,20,.12,0,Math.PI*2);g.fill();
         for(let i=0;i<lobes.length;i++){
           const [dx,dy,rx,ry]=lobes[i],j=seededNoise(seed+i*13)-.5;
           g.fillStyle=leafCols[(i+Math.floor(seededNoise(seed+i*29)*leafCols.length))%leafCols.length];
           g.beginPath();g.ellipse(o.x+dx+j*5,o.y+dy+seededNoise(seed+i*37)*3,rx*(.8+seededNoise(seed+i*41)*.25),ry*(.8+seededNoise(seed+i*43)*.25),j*.55,0,Math.PI*2);g.fill();
-          g.strokeStyle='rgba(15,31,13,.36)';g.lineWidth=1.05;g.beginPath();g.moveTo(o.x+dx-rx*.55,o.y+dy+ry*.1);g.quadraticCurveTo(o.x+dx,o.y+dy-ry*.2,o.x+dx+rx*.55,o.y+dy-ry*.25);g.stroke();
+          g.strokeStyle=isBaseWorldMode()&&o.x>BASE_WORLD_W*.72&&o.y<BASE_WORLD_H*.40?'rgba(235,247,250,.22)':level===4?'rgba(14,4,7,.42)':'rgba(15,31,13,.36)';g.lineWidth=1.05;g.beginPath();g.moveTo(o.x+dx-rx*.55,o.y+dy+ry*.1);g.quadraticCurveTo(o.x+dx,o.y+dy-ry*.2,o.x+dx+rx*.55,o.y+dy-ry*.25);g.stroke();
         }
-        // Tiny separate leaves give the canopy a non-blob silhouette without heavy particle cost.
-        for(let i=0;i<20;i++){
-          const ang=seededNoise(seed+i*71)*Math.PI*2,rad=8+seededNoise(seed+i*79)*27,lx=o.x+Math.cos(ang)*rad+Math.sin(fr*.022+i*1.9)*.65,ly=o.y-13+Math.sin(ang)*rad*.72+Math.cos(fr*.019+i*1.7)*.4,rr=1.2+seededNoise(seed+i*83)*2.1;
-          g.fillStyle=leafCols[i%leafCols.length];g.globalAlpha=fade*(.56+seededNoise(seed+i*89)*.32);
-          g.beginPath();g.ellipse(lx,ly,rr*1.6,rr*.7,ang,0,Math.PI*2);g.fill();
+        // Small leaf tips break the silhouette and sway gently in the wind.
+        for(let i=0;i<24;i++){
+          const ang=seededNoise(seed+i*71)*Math.PI*2,rad=8+seededNoise(seed+i*79)*28,lx=o.x+Math.cos(ang)*rad+Math.sin(fr*.022+i*1.9)*.8,ly=o.y-13+Math.sin(ang)*rad*.72+Math.cos(fr*.019+i*1.7)*.5,rr=1.2+seededNoise(seed+i*83)*2.1;
+          g.fillStyle=leafCols[i%leafCols.length];g.globalAlpha=fade*(.55+seededNoise(seed+i*89)*.34);g.beginPath();g.ellipse(lx,ly,rr*1.6,rr*.7,ang,0,Math.PI*2);g.fill();
         }
         g.globalAlpha=fade;
-        // Bark exposed beneath the canopy, with grooves, knots and roots.
-        g.fillStyle=level===4?'#241719':level===3?'#292e27':'#533722';
-        g.beginPath();g.moveTo(o.x-7,o.y+13);g.lineTo(o.x-5,o.y-5);g.lineTo(o.x-2,o.y-17);g.lineTo(o.x+4,o.y-17);g.lineTo(o.x+6,o.y+12);g.lineTo(o.x+11,o.y+18);g.lineTo(o.x+3,o.y+16);g.lineTo(o.x-1,o.y+21);g.lineTo(o.x-3,o.y+16);g.lineTo(o.x-11,o.y+19);g.closePath();g.fill();
-        g.strokeStyle=level===4?'#5e2e29':'#8a5d36';g.lineWidth=1.25;g.beginPath();g.moveTo(o.x-3,o.y+13);g.quadraticCurveTo(o.x-1,o.y+2,o.x+1,o.y-8);g.moveTo(o.x+3,o.y+8);g.lineTo(o.x+2,o.y-3);g.moveTo(o.x-6,o.y+14);g.lineTo(o.x-10,o.y+18);g.moveTo(o.x+5,o.y+14);g.lineTo(o.x+10,o.y+18);g.stroke();
-        for(let i=0;i<4;i++){const lx=o.x-4+seededNoise(seed+i*97)*9,ly=o.y-1+seededNoise(seed+i*101)*14;g.fillStyle='rgba(20,14,9,.48)';g.beginPath();g.ellipse(lx,ly,1.1,2.2,seededNoise(seed+i*103),0,Math.PI*2);g.fill();}
+        // Tiny highlights on the crown catch ambient light; avoid painting the trunk over leaves again.
+        for(let i=0;i<9;i++){const hx=o.x+(seededNoise(seed+i*127)-.5)*37,hy=o.y-28+seededNoise(seed+i*131)*26;g.fillStyle=isBaseWorldMode()&&o.x>BASE_WORLD_W*.72&&o.y<BASE_WORLD_H*.4?'rgba(242,250,255,.34)':level===4?'rgba(216,92,79,.22)':'rgba(190,220,135,.25)';g.beginPath();g.ellipse(hx,hy,1.5,2.4,seededNoise(seed+i*137),0,Math.PI*2);g.fill();}
         g.restore();
       }else if(o.t===3){
         // Deadwood: split bark, sharp branch tips, broken snags and a few dangling fibres.
@@ -4404,6 +4505,7 @@
     // keep the shared world running so teammates are not frozen by one player's pause.
     if(isPaused&&!activeSharedRun()){requestAnimationFrame(game);return;}
     fr++;
+    if(fr%45===0)syncAmbientMusicToBiome();
     if(isBaseWorldMode())updateBaseCamera();
     if(fr%12===0)refreshBuildMenuUI();
     g.save();
