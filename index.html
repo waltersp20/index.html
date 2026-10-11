@@ -287,6 +287,7 @@ let multiplayerRoom='', multiplayerLastSent=0, lastSharedStateSent=0, lastPerson
 let multiplayerIsAuthority=false, multiplayerAuthorityKnown=false, roomFull=false;
 let lastAppliedSharedTs=0, hasPublishedSharedState=false, personalRestored=false, multiplayerInitialStateLoaded=false;
 let clientSessionId='', nextActionSeq=0, recentNetworkActions=[], processedActionSeq={};
+let sharedPvpEvents=[], sharedPvpHealth={}, seenPvpEventIds={};
 const chatLog=document.getElementById('chatLog');
 const chatConnection=document.getElementById('chatConnection');
 function selectedClassicPartySize(){const el=document.getElementById('classicPartySize');return Math.max(1,Math.min(4,Number(el&&el.value)||1));}
@@ -294,14 +295,14 @@ function multiplayerEnabledForCurrentMode(){return gameMode==='base'||(gameMode=
 function activeSharedRun(){return !!(gameStarted&&multiplayerRef&&firebaseUser&&multiplayerAuthorityKnown&&!roomFull&&multiplayerEnabledForCurrentMode());}
 function sharedWorldShouldRun(){if(!activeSharedRun())return !dead&&!isPaused;if(multiplayerIsAuthority)return !dead||Object.values(remotePlayers).some(v=>v.online!==false&&!v.dead);return false;}
 function newEntityId(prefix='e'){return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9);}
-function ensureSharedEntityIds(){e.forEach(z=>{if(!z.id)z.id=newEntityId('z');});apples.forEach(a=>{if(!a.id)a.id=newEntityId('a');});pears.forEach(a=>{if(!a.id)a.id=newEntityId('p');});upgrades.forEach(a=>{if(!a.id)a.id=newEntityId('upgrade');});AMMO.forEach(a=>{if(!a.id)a.id=newEntityId('m');});WPN.forEach(q=>{if(!q.id)q.id=newEntityId('guncrate');});BLD.forEach(w=>{if(!w.id)w.id=newEntityId('wall');});O.forEach(o=>{if(!o.id)o.id=newEntityId('obj');});}
+function ensureSharedEntityIds(){e.forEach(z=>{if(!z.id)z.id=newEntityId('z');});apples.forEach(a=>{if(!a.id)a.id=newEntityId('a');});pears.forEach(a=>{if(!a.id)a.id=newEntityId('p');});upgrades.forEach(a=>{if(!a.id)a.id=newEntityId('upgrade');});AMMO.forEach(a=>{if(!a.id)a.id=newEntityId('m');});WPN.forEach(a=>{if(!a.id)a.id=newEntityId('weapon_crate');});BLD.forEach(w=>{if(!w.id)w.id=newEntityId('wall');});O.forEach(o=>{if(!o.id)o.id=newEntityId('obj');});}
 function serializeArray(arr){return JSON.parse(JSON.stringify(arr||[]));}
 function createSharedSnapshot(){
   ensureSharedEntityIds();
   return {v:2,mode:gameMode,room:multiplayerRoom,ts:Date.now(),e:serializeArray(e),VORTEX:serializeArray(VORTEX),
     apples:apples.map(a=>({id:a.id,x:a.x,y:a.y,got:!!a.got})),pears:pears.map(a=>({id:a.id,x:a.x,y:a.y,got:!!a.got})),upgrades:serializeArray(upgrades),
     BLD:serializeArray(BLD),O:serializeArray(O),STATIC_WALLS:gameMode==='base'?serializeArray(STATIC_WALLS):[],DOORS:gameMode==='base'?serializeArray(DOORS):[],
-    firePatches:serializeArray(firePatches),AMMO:gameMode==='base'?serializeArray(AMMO):[],WPN:gameMode==='base'?serializeArray(WPN):[],
+    firePatches:serializeArray(firePatches),AMMO:gameMode==='base'?serializeArray(AMMO):[],WPN:gameMode==='base'?serializeArray(WPN):[],pvpEvents:serializeArray(sharedPvpEvents),pvpHealth:serializeArray(sharedPvpHealth),
     level,score,T,totalSpawned,level2Kills,bossSpawned,bossCutscene,level2Spawned,level2PostBossSpawned,level2PostBossKills,
     level3Spawned,level3Kills,level4Spawned,level4Kills,levelBanner,transitionFade,environmentFromLevel,environmentBlend,wallCharges,nextUpgrade,infiniteNextBossScore};
 }
@@ -315,35 +316,52 @@ function applySharedSnapshot(state){
     try{localStorage.setItem('zs_base_walls',JSON.stringify(BLD))}catch(_){}
   }
   firePatches=Array.isArray(state.firePatches)?serializeArray(state.firePatches):firePatches;
+  if(Array.isArray(state.pvpEvents))sharedPvpEvents=serializeArray(state.pvpEvents);
+  if(state.pvpHealth&&typeof state.pvpHealth==='object')sharedPvpHealth={...state.pvpHealth};
+  applyPvpEventsForLocalPlayer();
   const numeric=['level','score','T','totalSpawned','level2Kills','bossSpawned','bossCutscene','level2Spawned','level2PostBossSpawned','level2PostBossKills','level3Spawned','level3Kills','level4Spawned','level4Kills','levelBanner','transitionFade','environmentFromLevel','environmentBlend','wallCharges','nextUpgrade','infiniteNextBossScore'];
   numeric.forEach(key=>{if(Number.isFinite(Number(state[key]))) { if(key==='score'){score=Number(state[key]);H=Math.max(H,score);} else if(key==='level')level=Number(state[key]);else if(key==='T')T=Number(state[key]);else if(key==='totalSpawned')totalSpawned=Number(state[key]);else if(key==='level2Kills')level2Kills=Number(state[key]);else if(key==='bossSpawned')bossSpawned=Number(state[key]);else if(key==='bossCutscene')bossCutscene=Number(state[key]);else if(key==='level2Spawned')level2Spawned=Number(state[key]);else if(key==='level2PostBossSpawned')level2PostBossSpawned=Number(state[key]);else if(key==='level2PostBossKills')level2PostBossKills=Number(state[key]);else if(key==='level3Spawned')level3Spawned=Number(state[key]);else if(key==='level3Kills')level3Kills=Number(state[key]);else if(key==='level4Spawned')level4Spawned=Number(state[key]);else if(key==='level4Kills')level4Kills=Number(state[key]);else if(key==='levelBanner')levelBanner=Number(state[key]);else if(key==='transitionFade')transitionFade=Number(state[key]);else if(key==='environmentFromLevel')environmentFromLevel=Number(state[key]);else if(key==='environmentBlend')environmentBlend=Number(state[key]);else if(key==='wallCharges')wallCharges=Number(state[key]);else if(key==='nextUpgrade')nextUpgrade=Number(state[key]);else if(key==='infiniteNextBossScore')infiniteNextBossScore=Number(state[key]);}});
 }
-function playerPersonalSnapshot(){return {x:p.x,y:p.y,hp,own:own.slice(),wp,gunMult:gunMult.slice(),ammo,stone,appleCount,pearCount,buildMaterial,halfHealthBlastUsed:!!halfHealthBlastUsed,name:playerName,ci,gender:skinGender,rosieMode:!!rosieMode,inevitableMode:!!inevitableMode,updatedAt:Date.now()};}
+function playerPersonalSnapshot(){return {x:p.x,y:p.y,hp,own:own.slice(),wp,gunMult:gunMult.slice(),ammo,stone,appleCount,pearCount,buildMaterial,halfHealthBlastUsed:!!halfHealthBlastUsed,name:playerName,ci,gender:skinGender,rosieMode:!!rosieMode,inevitableMode:!!inevitableMode,killPlayerMode:!!killPlayerMode,updatedAt:Date.now()};}
 function restorePersonalProgress(record){
   if(!record||personalRestored)return;personalRestored=true;const v=record.personal||record;
   if(Number.isFinite(Number(v.x)))p.x=Math.max(20,Math.min(worldW()-20,Number(v.x)));if(Number.isFinite(Number(v.y)))p.y=Math.max(20,Math.min(worldH()-20,Number(v.y)));
   if(Number.isFinite(Number(v.hp)))hp=Math.max(1,Math.min(100,Number(v.hp)));if(Array.isArray(v.own)&&v.own.length===6)own=v.own.map(Boolean).map(Number);
-  if(Number.isFinite(Number(v.wp))&&Number(v.wp)>=0&&(Number(v.wp)<6||(Number(v.wp)===6&&(v.rosieMode||rosieMode))||(Number(v.wp)===7&&(v.inevitableMode||inevitableMode))))wp=Number(v.wp);if(Array.isArray(v.gunMult)&&v.gunMult.length===6)gunMult=v.gunMult.map(x=>Math.max(1,Number(x)||1));
+  if(Number.isFinite(Number(v.wp))&&Number(v.wp)>=0&&(Number(v.wp)<6||(Number(v.wp)===6&&(v.rosieMode||rosieMode))||(Number(v.wp)===7&&(v.inevitableMode||inevitableMode))||(Number(v.wp)===8&&(v.killPlayerMode||killPlayerMode))))wp=Number(v.wp);if(Array.isArray(v.gunMult)&&v.gunMult.length===6)gunMult=v.gunMult.map(x=>Math.max(1,Number(x)||1));
   if(Number.isFinite(Number(v.ammo)))ammo=Number(v.ammo);if(Number.isFinite(Number(v.stone)))stone=Number(v.stone);if(Number.isFinite(Number(v.appleCount)))appleCount=Number(v.appleCount);if(Number.isFinite(Number(v.pearCount)))pearCount=Number(v.pearCount);
-  if(v.buildMaterial==='stone'||v.buildMaterial==='wood')buildMaterial=v.buildMaterial;if(v.halfHealthBlastUsed!==undefined)halfHealthBlastUsed=!!v.halfHealthBlastUsed;if(Number.isFinite(Number(v.ci)))ci=Math.max(0,Math.min(CH.length-1,Number(v.ci)));if(v.gender)setSkinGender(v.gender,false);if(v.rosieMode!==undefined)rosieMode=!!v.rosieMode;if(v.inevitableMode!==undefined)inevitableMode=!!v.inevitableMode;cameraX=0;cameraY=0;
+  if(v.buildMaterial==='stone'||v.buildMaterial==='wood')buildMaterial=v.buildMaterial;if(v.halfHealthBlastUsed!==undefined)halfHealthBlastUsed=!!v.halfHealthBlastUsed;if(Number.isFinite(Number(v.ci)))ci=Math.max(0,Math.min(CH.length-1,Number(v.ci)));if(v.gender)setSkinGender(v.gender,false);if(v.rosieMode!==undefined)rosieMode=!!v.rosieMode;if(v.inevitableMode!==undefined)inevitableMode=!!v.inevitableMode;if(v.killPlayerMode!==undefined)killPlayerMode=!!v.killPlayerMode;cameraX=0;cameraY=0;
 }
 function queueMultiplayerAction(action){if(!activeSharedRun()||multiplayerIsAuthority)return;nextActionSeq++;recentNetworkActions.push({...action,seq:nextActionSeq,sessionId:clientSessionId,from:firebaseUser.uid,ts:Date.now()});if(recentNetworkActions.length>40)recentNetworkActions=recentNetworkActions.slice(-40);}
 function processMultiplayerAction(action){
   if(!action)return;
   if(action.type==='hit'){const z=e.find(q=>q.id===action.zombieId&&!q.dead);if(z&&Number(action.damage)>0)hit(z,Math.min(1000000,Number(action.damage)),true);}
   else if(action.type==='voidImpact'&&Number.isFinite(Number(action.x))&&Number.isFinite(Number(action.y))){createVoidVortex(Number(action.x),Number(action.y),Math.max(1,Number(action.damage)||12),true);}
-  else if(action.type==='inevitableBurst'&&Number.isFinite(Number(action.x))&&Number.isFinite(Number(action.y))){spawnInevitableRockets(Number(action.x),Number(action.y),false);}
   else if(action.type==='placeWall'&&action.wall){const wall=action.wall;if(!wall.id||BLD.some(w=>w.id===wall.id)||(!Number.isFinite(Number(wall.x)))||!Number.isFinite(Number(wall.y)))return;if(gameMode!=='base'&&wallCharges<=0)return;BLD.push({...wall});if(gameMode!=='base')wallCharges=Math.max(0,wallCharges-1);if(gameMode==='base')try{localStorage.setItem('zs_base_walls',JSON.stringify(BLD))}catch(_){};}
   else if(action.type==='collectFruit'){const arr=action.fruitType==='pear'?pears:apples;const item=arr.find(q=>q.id===action.fruitId);if(item)item.got=1;if(action.fruitType==='pear')pears=pears.filter(q=>!q.got);else apples=apples.filter(q=>!q.got);}
   else if(action.type==='collectUpgrade'){const item=upgrades.find(q=>q.id===action.upgradeId);if(item)item.got=1;upgrades=upgrades.filter(q=>!q.got&&!q.collected);}
   else if(action.type==='collectAmmo'&&gameMode==='base'){const item=AMMO.find(q=>q.id===action.itemId);if(item)item.got=1;AMMO=AMMO.filter(q=>!q.got);}
-  else if(action.type==='openGunCrate'&&gameMode==='base'){const item=WPN.find(q=>q.id===action.itemId&&!q.artifact&&Number(q.t)>=0&&Number(q.t)<=4);if(item){item.opened=1;item.got=1;}}
-  else if(action.type==='claimVoidRelic'&&gameMode==='base'){const item=WPN.find(q=>q.id===action.itemId&&q.artifact);if(item){item.opened=1;item.got=1;}}
+  else if(action.type==='collectWeaponItem'&&gameMode==='base'){const item=WPN.find(q=>q.id===action.itemId);if(item){item.got=1;item.opened=1;}WPN=WPN.filter(q=>!q.got);}
   else if(action.type==='mineRock'&&gameMode==='base'){const rock=O.find(q=>q.id===action.objectId);if(rock){rock.mineHits=(rock.mineHits||0)+1;if(rock.mineHits>=5)rock.dead=1;}}
+  else if(action.type==='pvpDamage'&&activeSharedRun()){
+    const targetUid=String(action.targetUid||''),sourceUid=String(action.from||'');
+    if(!targetUid||!sourceUid||targetUid===sourceUid||!multiplayerMembers[targetUid]||!multiplayerMembers[sourceUid])return;
+    const target=multiplayerMembers[targetUid],source=multiplayerMembers[sourceUid];
+    if(target.online===false||source.online===false||target.mode!==gameMode||source.mode!==gameMode||!Number.isFinite(Number(target.x))||!Number.isFinite(Number(target.y)))return;
+    if(gameMode==='base'&&(isInsideBaseSafeZone(Number(target.x),Number(target.y))||isInsideBaseSafeZone(Number(source.x),Number(source.y))))return;
+    const current=Number(sharedPvpHealth[targetUid]??target.pvpHp??(target.personal&&target.personal.hp)??100);
+    const next=Math.max(0,Math.min(100,current-Math.max(1,Math.min(35,Number(action.damage)||18))));
+    sharedPvpHealth[targetUid]=next;sharedPvpEvents.push({id:newEntityId('pvp'),targetUid,hp:next,from:sourceUid,ts:Date.now()});
+    if(sharedPvpEvents.length>160)sharedPvpEvents=sharedPvpEvents.slice(-160);
+  }
+}
+function submitMultiplayerAction(action){if(!activeSharedRun()||!firebaseUser)return;if(multiplayerIsAuthority)processMultiplayerAction({...action,from:firebaseUser.uid});else queueMultiplayerAction(action);}
+function applyPvpEventsForLocalPlayer(){
+  if(!firebaseUser||!Array.isArray(sharedPvpEvents))return;
+  for(const event of sharedPvpEvents){if(!event||event.targetUid!==firebaseUser.uid||!event.id||seenPvpEventIds[event.id]||(Number(event.ts)||0)<(Number(multiplayerJoinedAt)||0))continue;seenPvpEventIds[event.id]=1;hp=Math.max(0,Math.min(100,Number(event.hp)||0));if(hp<=0&&dead===0){dead=1;md=0;showRevivePopup();}}
 }
 function stopMultiplayer(markOffline=true){
   const oldRef=multiplayerRef,uid=firebaseUser&&firebaseUser.uid;if(oldRef){try{oldRef.off()}catch(_){}if(markOffline&&uid)oldRef.child(uid).update({online:false,dead:true}).catch(()=>{});}
-  multiplayerRef=null;multiplayerListener=null;remotePlayers={};multiplayerMembers={};multiplayerRoom='';multiplayerIsAuthority=false;multiplayerAuthorityKnown=false;roomFull=false;hasPublishedSharedState=false;personalRestored=false;multiplayerInitialStateLoaded=false;lastAppliedSharedTs=0;processedActionSeq={};remoteRosieSeen={};remoteInevitableSeen={};
+  multiplayerRef=null;multiplayerListener=null;remotePlayers={};multiplayerMembers={};multiplayerRoom='';multiplayerIsAuthority=false;multiplayerAuthorityKnown=false;roomFull=false;hasPublishedSharedState=false;personalRestored=false;multiplayerInitialStateLoaded=false;lastAppliedSharedTs=0;processedActionSeq={};remoteRosieSeen={};remoteInevitableSeen={};sharedPvpEvents=[];sharedPvpHealth={};seenPvpEventIds={};
 }
 function startMultiplayer(){
   if(!firebaseDb||!firebaseUser||!firebaseUser.uid||!multiplayerEnabledForCurrentMode())return;
@@ -353,7 +371,7 @@ function startMultiplayer(){
   clientSessionId=Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9);nextActionSeq=0;recentNetworkActions=[];processedActionSeq={};multiplayerJoinedAt=Date.now();
   multiplayerRef=firebaseDb.ref(multiplayerRoom+'/players');const selfRef=multiplayerRef.child(firebaseUser.uid);
   selfRef.onDisconnect().update({online:false,dead:true}).catch(err=>console.warn('Could not configure disconnect cleanup:',err));
-  selfRef.update({online:true,dead:false,joinedAt:multiplayerJoinedAt,sessionId:clientSessionId,name:playerName||'Player',ci:ci||0,gender:skinGender,rosieMode:!!rosieMode,rosieSelected:!!(rosieMode&&wp===6),inevitableMode:!!inevitableMode,inevitableSelected:!!(inevitableMode&&wp===7),wp,mode:gameMode,partySize:gameMode==='classic'?selectedClassicPartySize():0,roomCode:code||'BASE',x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),updatedAt:Date.now()}).catch(err=>console.warn('Could not join multiplayer room:',err));
+  selfRef.update({online:true,dead:false,joinedAt:multiplayerJoinedAt,sessionId:clientSessionId,name:playerName||'Player',ci:ci||0,gender:skinGender,rosieMode:!!rosieMode,rosieSelected:!!(rosieMode&&wp===6),wp,mode:gameMode,partySize:gameMode==='classic'?selectedClassicPartySize():0,roomCode:code||'BASE',x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),updatedAt:Date.now()}).catch(err=>console.warn('Could not join multiplayer room:',err));
   multiplayerListener=snap=>{
     const all={};snap.forEach(child=>{all[child.key]=child.val()||{};});multiplayerMembers=all;
     const activeEntries=Object.entries(all).filter(([uid,v])=>v.online!==false&&v.sessionId&&v.mode===gameMode);
@@ -363,12 +381,8 @@ function startMultiplayer(){
     if(gameMode==='classic'&&activeEntries.length>cap&&myRank>=cap&&!roomFull){roomFull=true;selfRef.update({online:false,dead:true}).catch(()=>{});if(chatConnection)chatConnection.textContent='That lobby is full. Generate a new code or join another lobby.';if(modeStatus)modeStatus.textContent='That lobby is full. Use a different code to start another co-op run.';return;}
     if(roomFull)return;
     const next={};for(const [uid,v] of Object.entries(all)){if(uid!==firebaseUser.uid&&v.online!==false&&v.sessionId&&v.mode===gameMode&&Number.isFinite(Number(v.x))&&Number.isFinite(Number(v.y)))next[uid]={...v,uid};}remotePlayers=next;
-    for(const [uid,v] of Object.entries(next)){
-      const burst=v.rosieBurst;const ts=Number(burst&&burst.ts)||0;
-      if(ts>(remoteRosieSeen[uid]||0)){remoteRosieSeen[uid]=ts;if(Date.now()-ts<5000&&typeof spawnRosieBurstBullets==='function')spawnRosieBurstBullets(Number(burst.x)||0,Number(burst.y)||0,true);}
-      const inevitableBurst=v.inevitableBurst;const its=Number(inevitableBurst&&inevitableBurst.ts)||0;
-      if(its>(remoteInevitableSeen[uid]||0)){remoteInevitableSeen[uid]=its;if(!multiplayerIsAuthority&&Date.now()-its<5000&&typeof spawnInevitableRockets==='function')spawnInevitableRockets(Number(inevitableBurst.x)||0,Number(inevitableBurst.y)||0,true);}
-    }
+    for(const [uid,v] of Object.entries(next)){const burst=v.rosieBurst;const ts=Number(burst&&burst.ts)||0;if(ts>(remoteRosieSeen[uid]||0)){remoteRosieSeen[uid]=ts;if(Date.now()-ts<5000&&typeof spawnRosieBurstBullets==='function')spawnRosieBurstBullets(Number(burst.x)||0,Number(burst.y)||0,true);}}
+    for(const [uid,v] of Object.entries(next)){const burst=v.inevitableBurst;const ts=Number(burst&&burst.ts)||0;if(ts>(remoteInevitableSeen[uid]||0)){remoteInevitableSeen[uid]=ts;if(Date.now()-ts<5000&&typeof spawnInevitableRockets==='function')spawnInevitableRockets(Number(burst.x)||0,Number(burst.y)||0,true);}}
     const elected=activeEntries.length?activeEntries[0][0]:firebaseUser.uid;
     multiplayerIsAuthority=elected===firebaseUser.uid;multiplayerAuthorityKnown=true;
     const self=all[firebaseUser.uid]||{};if(!personalRestored&&self.personal)restorePersonalProgress(self);
@@ -384,12 +398,12 @@ function startMultiplayer(){
 }
 function syncMultiplayer(force=false){
   if(!multiplayerRef||!firebaseUser||roomFull)return;const now=performance.now();if(!force&&now-multiplayerLastSent<100)return;multiplayerLastSent=now;const selfRef=multiplayerRef.child(firebaseUser.uid);
-  const update={x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),ci:ci||0,gender:skinGender,rosieMode:!!rosieMode,rosieSelected:!!(rosieMode&&wp===6),inevitableMode:!!inevitableMode,inevitableSelected:!!(inevitableMode&&wp===7),wp,rosieBurst:lastRosieBurst||null,inevitableBurst:lastInevitableBurst||null,name:playerName||'Player',mode:gameMode,dead:dead!==0,online:true,sessionId:clientSessionId,joinedAt:multiplayerJoinedAt,roomCode:gameMode==='classic'?selectedLobbyCode():'BASE',ts:firebase.database.ServerValue.TIMESTAMP,actions:recentNetworkActions};
+  const update={x:p.x,y:p.y,a:Math.atan2(m.y-p.y,m.x-p.x),ci:ci||0,gender:skinGender,rosieMode:!!rosieMode,inevitableMode:!!inevitableMode,killPlayerMode:!!killPlayerMode,rosieSelected:!!(rosieMode&&wp===6),wp,rosieBurst:lastRosieBurst||null,inevitableBurst:lastInevitableBurst||null,name:playerName||'Player',mode:gameMode,dead:dead!==0,online:true,sessionId:clientSessionId,joinedAt:multiplayerJoinedAt,roomCode:gameMode==='classic'?selectedLobbyCode():'BASE',ts:firebase.database.ServerValue.TIMESTAMP,actions:recentNetworkActions};
   if(now-lastPersonalSent>550||force){update.personal=playerPersonalSnapshot();lastPersonalSent=now;}
   if(multiplayerIsAuthority&&multiplayerInitialStateLoaded&&(force||now-lastSharedStateSent>500)&&dead!==2){const state=createSharedSnapshot();update.state=state;lastSharedStateSent=now;hasPublishedSharedState=true;lastAppliedSharedTs=state.ts;}
   selfRef.update(update).catch(err=>{console.warn('Multiplayer write failed:',err);if(chatConnection)chatConnection.textContent='Multiplayer write blocked: check Realtime Database Rules.';});
 }
-function drawRemotePlayers(){Object.values(remotePlayers).forEach(v=>{if(v.dead)return;const idx=Math.max(0,Math.min(CH.length-1,Number(v.ci)||0));human(Number(v.x)||0,Number(v.y)||0,Number(v.a)||0,skinForPlayer(idx,v.gender||'male'),0,.95,0,0,!!v.rosieSelected);if(v.inevitableMode)drawInevitableRing(Number(v.x)||0,Number(v.y)||0);g.save();g.fillStyle='rgba(8,12,9,.8)';g.font='bold 11px Arial';g.textAlign='center';g.fillText(String(v.name||'Player').slice(0,16),v.x,v.y-28);g.restore();});}
+function drawRemotePlayers(){Object.values(remotePlayers).forEach(v=>{if(v.dead)return;const idx=Math.max(0,Math.min(CH.length-1,Number(v.ci)||0));human(Number(v.x)||0,Number(v.y)||0,Number(v.a)||0,skinForPlayer(idx,v.gender||'male'),0,.95,0,0,!!v.rosieSelected,!!v.inevitableMode);g.save();g.fillStyle='rgba(8,12,9,.8)';g.font='bold 11px Arial';g.textAlign='center';g.fillText(String(v.name||'Player').slice(0,16),v.x,v.y-28);g.restore();});}
 
 function safeChatText(v){return String(v||'').replace(/[<>]/g,'').trim().slice(0,240)}
 function appendChatMessage(msg){
@@ -437,14 +451,20 @@ document.getElementById('chatForm').addEventListener('submit',async ev=>{
   if(!text)return;
   if(text.toUpperCase()==='FORROSIE321'){
     rosieMode=true;wp=6;cd=0;WN[6]='ROSIE CANNON';input.value='';
-    appendChatMessage({name:'SYSTEM',text:'Rosie Cannon unlocked and selected. Click to fire a 50-shot radial burst.'});
-    if(firebaseDb&&firebaseUser&&multiplayerRef)multiplayerRef.child(firebaseUser.uid).update({rosieMode:true,wp:6,rosieSelected:true}).catch(()=>{});
+    appendChatMessage({name:'SYSTEM',text:'Rosie Cannon unlocked and selected. Click to fire a 150-shot radial burst.'});
+    if(firebaseDb&&firebaseUser&&multiplayerRef)multiplayerRef.child(firebaseUser.uid).update({rosieMode:true,wp:6,rosieSelected:true,personal:playerPersonalSnapshot()}).catch(()=>{});
     return;
   }
-  if(text.toUpperCase().replace(/[\s_-]/g,'')==='CHANGEISINEVITABLE'){
-    inevitableMode=true;wp=7;cd=0;lastInevitableClickAt=0;input.value='';
-    appendChatMessage({name:'SYSTEM',text:'Inevitable Ring unlocked and selected. Click to launch 20 rockets in a circle.'});
-    if(firebaseDb&&firebaseUser&&multiplayerRef)multiplayerRef.child(firebaseUser.uid).update({inevitableMode:true,wp:7,inevitableSelected:true}).catch(()=>{});
+  if(text.toUpperCase()==='CHANGEISINEVITABLE'){
+    inevitableMode=true;wp=7;cd=0;input.value='';
+    appendChatMessage({name:'SYSTEM',text:'Inevitable Ring unlocked and selected. It fires 20 rockets in a ring; rockets explode on impact or after their fuse.'});
+    if(firebaseDb&&firebaseUser&&multiplayerRef)multiplayerRef.child(firebaseUser.uid).update({inevitableMode:true,wp:7,inevitableBurst:null,personal:playerPersonalSnapshot()}).catch(()=>{});
+    return;
+  }
+  if(text.toUpperCase()==='KILLPLAYERHAHA'){
+    killPlayerMode=true;wp=8;cd=0;input.value='';
+    appendChatMessage({name:'SYSTEM',text:'Player Pistol unlocked. It can hit other players in the same co-op lobby, outside the Base World safe zone.'});
+    if(firebaseDb&&firebaseUser&&multiplayerRef)multiplayerRef.child(firebaseUser.uid).update({killPlayerMode:true,wp:8,personal:playerPersonalSnapshot()}).catch(()=>{});
     return;
   }
   if(!firebaseDb||!firebaseUser){chatConnection.textContent='Chat needs a signed-in guest or account. Please use the sign-in buttons first.';return;}
@@ -731,13 +751,13 @@ watchAdBtn.onclick=()=>{
 };
 skipAdBtn.onclick=()=>{hideRevivePopup();save()};
 const Z=.8;
-const WN=['PISTOL','SHOTGUN','ROCKET LAUNCHER','SMG','HOMING GUN','VOID ORB','ROSIE CANNON','INEVITABLE RING'];
+const WN=['PISTOL','SHOTGUN','ROCKET LAUNCHER','SMG','HOMING GUN','VOID ORB','ROSIE CANNON','INEVITABLE RING','PLAYER PISTOL'];
 let w=0,h=0,p={x:0,y:0},e=[],b=[],k={},score=0,H=0,dead=2,R=[],X=[],VORTEX=[],P=[],F=[],D=[],S=0,rc=0,L=0,T=0,fl=0,wk=0,fr=0,ci=0,md=0,m={x:0,y:0},wp=0,cd=0,BLD=[],WPN=[],AMMO=[],ammo=0,own=[1,0,0,0,0,0],SC=[],po=0,O=[],G=[],hp=100,ih=0,apples=[],appleCount=0,pears=[],pearCount=0,AEX=[],buildHeld=0,buildPreview=null,gunMult=[1,1,1,1,1,1],upgrades=[],nextUpgrade=20,level=1,levelBanner=0,transitionFade=0,environmentBlend=1,environmentFromLevel=1,totalSpawned=0,level2Kills=0,bossSpawned=0,bossCutscene=0,level2Spawned=0,level2PostBossSpawned=0,level2PostBossKills=0,level3Spawned=0,level3Kills=0,level4Spawned=0,level4Kills=0,firePatches=[],fireHitCooldown=0,halfHealthBlastUsed=false,reviveUsed=false,reviveTimer=0,scoreSaved=false,wallCharges=5,stone=0,pickaxe=true,miningCooldown=0,miningAnim=0,buildMaterial='wood';
 const CH=[
 {n:'SOLDIER',shirt:'#4b5a32',vest:'#3a4526',pants:'#3b4028',helm:'#3d4a2a',skin:'#e0ac82',boot:'#1a1a1a'},
 {n:'SURVIVOR',shirt:'#8e2b2b',pants:'#2f4a6b',hair:'#5a3a1e',skin:'#f0c39a',pack:'#5d4a2f',boot:'#3b2a1a'},
 {n:'SWAT',shirt:'#1f2a3a',vest:'#0e141b',pants:'#141a22',helm:'#0d1117',skin:'#c68e62',boot:'#000'}];
-let skinGender='male', rosieMode=false, inevitableMode=false, lastRosieBurst=null, lastInevitableBurst=null, remoteRosieSeen={}, remoteInevitableSeen={};
+let skinGender='male', rosieMode=false, inevitableMode=false, killPlayerMode=false, lastRosieBurst=null, lastInevitableBurst=null, remoteRosieSeen={}, remoteInevitableSeen={};
 try{skinGender=localStorage.getItem('zs_skin_gender')==='female'?'female':'male'}catch(_){}
 setSkinGender(skinGender,false);
 function skinForPlayer(index,gender='male'){
@@ -983,51 +1003,54 @@ function gen(){
   spawnLevelFruit(0);
   for(let i=0;i<(gameMode==='base'?6500:300);i++)G.push({x:Math.random()*ow,y:Math.random()*oh,a:Math.random()*.8-.4,l:Math.random()<.4});
 }
+function buildingInteriorPoint(st,clearance=54){
+  // Coordinates are sampled well inside the structure outline, with collision checks
+  // against generated walls, props, other crates and the safe spawn region.
+  for(let n=0;n<160;n++){
+    const x=st.x+(Math.random()-.5)*st.w*.56;
+    const y=st.y+(Math.random()-.5)*st.h*.54;
+    if(x<clearance||y<clearance||x>BASE_WORLD_W-clearance||y>BASE_WORLD_H-clearance)continue;
+    if(STATIC_WALLS.some(q=>(q.structureId===st.id)&&pointWallDist(x,y,q)<clearance))continue;
+    if(DOORS.some(q=>q.structureId===st.id&&!q.open&&pointWallDist(x,y,q)<clearance))continue;
+    if(O.some(o=>!o.dead&&Math.hypot(o.x-x,o.y-y)<o.r+clearance*.55))continue;
+    if(WPN.some(q=>!q.got&&Math.hypot(q.x-x,q.y-y)<100))continue;
+    if(AMMO.some(q=>!q.got&&Math.hypot(q.x-x,q.y-y)<70))continue;
+    return {x,y};
+  }
+  return {x:st.x-st.w*.12,y:st.y-st.h*.15};
+}
 function spawnBaseFortressContent(){
   if(gameMode!=='base')return;
   const fortress=BASE_STRUCTURES.find(st=>st.id==='dark-fortress');
   if(!fortress)return;
-  const voidX=fortress.x, voidY=fortress.y-fortress.h*.18;
-  WPN.push({id:newEntityId('void-relic'),x:voidX,y:voidY,t:5,structureId:fortress.id,got:0,opened:0,ground:1,artifact:1});
-  // Three bosses guard the Void Orb inside the Dark Fortress.
+  // Void Orb is a ground pickup inside the fortress, not a crate. It is the only gun excluded from crates.
+  const spot=buildingInteriorPoint(fortress,70);
+  WPN.push({id:newEntityId('void_orb'),x:spot.x,y:spot.y,t:5,structureId:fortress.id,got:0,opened:0,ground:1});
   if(!e.some(z=>z.boss)){
     const spots=[[-170,80],[0,-80],[170,80]];
-    spots.forEach(([ox,oy])=>e.push({x:fortress.x+ox,y:fortress.y+oy,ty:3,hp:240,mh:240,ar:90,wk:0,sv:.70,sh:'#3d2930',sk:'#c39a78',boss:1,fortressBoss:1}));
+    spots.forEach(([ox,oy])=>e.push({id:newEntityId('z'),x:fortress.x+ox,y:fortress.y+oy,ty:3,hp:240,mh:240,ar:90,wk:0,sv:.70,sh:'#3d2930',sk:'#c39a78',boss:1,fortressBoss:1}));
   }
 }
 function spawnW(){
   WPN=[];
   if(gameMode==='base'){
-    // Ordinary gun crates live inside named landmark buildings, never in the safe-spawn clearing.
-    // Types 0-4 are available from crates; the Void Orb (type 5) remains a separate fortress relic.
-    const cratePlan=[
-      [0,'old-town'],[1,'outpost'],[2,'village'],[3,'ruins'],[4,'harbor'],
-      [1,'lakeside'],[2,'quarry'],[3,'watchtower'],[4,'factory'],
-      [0,'rivergate'],[1,'sunken-city'],[2,'deadlands-station'],[3,'east-camp'],[4,'red-mesa'],
-      [1,'old-town-east'],[2,'outpost-garage'],[3,'village-store'],[4,'deadlands-station-bunker'],
-      [0,'east-camp-hut'],[2,'red-mesa-house']
-    ];
-    cratePlan.forEach(([t,id],i)=>{
-      const st=BASE_STRUCTURES.find(q=>q.id===id);
-      if(!st)return;
-      // Place the crate just inside the lower half of the building, clear of the exterior wall,
-      // doors and centre partitions. Avoid the farm by the safe-spawn area entirely.
-      const x=st.x+Math.sin(i*1.73)*Math.min(18,st.w*.025);
-      const y=st.y+st.h*.18+Math.cos(i*1.19)*Math.min(10,st.h*.02);
-      WPN.push({id:newEntityId('guncrate'),x,y,t:Number(t),structureId:st.id,buildingCrate:1,got:0,opened:0,ground:0,artifact:0});
+    const list=[['old-town',0],['outpost',1],['village',2],['factory',3],['harbor',4]];
+    list.forEach(([id,t])=>{
+      const structure=BASE_STRUCTURES.find(st=>st.id===id);
+      if(!structure)return;
+      const spot=buildingInteriorPoint(structure,54);
+      WPN.push({id:newEntityId('weapon_crate'),x:spot.x,y:spot.y,t,structureId:structure.id,got:0,opened:0,ground:0});
     });
-    spawnBaseAmmoCrates();
-    spawnBaseFortressContent();
+    spawnBaseAmmoCrates();spawnBaseFortressContent();
     return;
   }
-  [1,2,3,4].forEach(t=>{
+  [1,2,3].forEach(t=>{
     for(let n=0;n<300;n++){
       const x=80+Math.random()*(worldW()-160),y=80+Math.random()*(worldH()-160);
-      if(Math.hypot(x-w/2,y-h/2)>120&&O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+45)&&WPN.every(q=>Math.hypot(q.x-x,q.y-y)>150)){WPN.push({x,y,t});break;}
+      if(Math.hypot(x-w/2,y-h/2)>120&&O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+45)&&WPN.every(q=>Math.hypot(q.x-x,q.y-y)>150)){WPN.push({id:newEntityId('weapon'),x,y,t,ground:1});break}
     }
   });
 }
-
 
 function spawnUpgrade(){
   const owned=[];
@@ -1188,30 +1211,17 @@ function spawnAmmoDrop(z){
 function spawnBaseAmmoCrates(reset=true){
   if(gameMode!=='base')return;
   if(reset)AMMO=[];
-  const picks=[['old-town',28],['outpost',32],['village',30],['lakeside',28],['quarry',36],['watchtower',26],['harbor',30],['factory',38],['dark-fortress',48],['rivergate',30],['sunken-city',34],['deadlands-station',42],['east-camp',28],['red-mesa',32]];
-  picks.forEach(([id,amount],i)=>{
-    const st=BASE_STRUCTURES.find(q=>q.id===id)||BASE_STRUCTURES[i%BASE_STRUCTURES.length];
-    // Keep supplies in the lower central room so they are inside the building and away
-    // from horizontal room partitions, the exterior shell, and the safe-spawn clearing.
-    const x=st.x+Math.sin(i*1.31)*Math.min(16,st.w*.025);
-    const y=st.y+st.h*.2+Math.cos(i*1.73)*Math.min(8,st.h*.02);
-    AMMO.push({id:newEntityId('ammo-crate'),x,y,amount,crate:1,buildingCrate:1,buildingId:st.id,got:0,life:0});
+  const picks=[['old-town',28],['outpost',32],['village',30],['lakeside',28],['quarry',36],['watchtower',26],['harbor',30],['factory',38],['rivergate',30],['sunken-city',34],['deadlands-station',42],['east-camp',28],['red-mesa',32]];
+  picks.forEach(([id,amount])=>{
+    const st=BASE_STRUCTURES.find(q=>q.id===id)||BASE_STRUCTURES[0];
+    const spot=buildingInteriorPoint(st,52);
+    AMMO.push({id:newEntityId('ammo_crate'),x:spot.x,y:spot.y,amount,crate:1,buildingCrate:1,buildingId:st.id,got:0,life:0});
   });
 }
 function spawnTreeSupplyCrates(){
   if(gameMode!=='base')return;
-  // Timed resupply crates are placed inside main POI buildings, not around arbitrary trees
-  // or in Greenhaven's safe-spawn clearing.
-  const locations=BASE_STRUCTURES.filter(st=>st.id!=='farm'&&(st.primary||st.rooms>=3)&&st.id!=='old-town-house');
-  if(!locations.length)return;
-  const shuffled=locations.slice().sort(()=>Math.random()-.5);
-  let spawned=0;
-  for(const st of shuffled){
-    if(spawned>=4)break;
-    if(AMMO.some(q=>!q.got&&q.buildingId===st.id&&q.buildingCrate))continue;
-    AMMO.push({id:newEntityId('supplycrate'),x:st.x,y:st.y+st.h*.2,amount:18+Math.floor(Math.random()*21),crate:1,buildingCrate:1,buildingId:st.id,got:0,life:0});
-    spawned++;
-  }
+  const trees=O.filter(o=>o.t===0&&!o.dead); const used=[]; const count=Math.min(8,Math.max(4,Math.floor(trees.length/90)));
+  for(let i=0;i<count;i++){let tree=null;for(let n=0;n<80;n++){const c=trees[Math.random()*trees.length|0];if(c&&!used.some(t=>Math.hypot(t.x-c.x,t.y-c.y)<180)){tree=c;break;}}if(!tree)continue;used.push(tree);AMMO.push({x:tree.x+(Math.random()-.5)*24,y:tree.y+tree.r*.65,amount:18+Math.floor(Math.random()*21),crate:1,got:0,life:0,treeDrop:1});}
 }
 /* ---------- shooting ---------- */
 function muzzle(a,n){
@@ -1255,12 +1265,13 @@ function voidOrb(){
 }
 
 function spawnRosieBurstBullets(x,y,visualOnly=false){
-  const count=150; // Three times the original 50-bullet burst.
   const speed=23,life=Math.ceil(Math.max(worldW(),worldH())/speed)+4;
-  for(let i=0;i<count;i++){
-    const a=(Math.PI*2*i)/count;
-    b.push({x:x+Math.cos(a)*18,y:y+Math.sin(a)*18,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life,t:0,rosieBullet:1,visualOnly:!!visualOnly,dmg:999999});
+  let spawned=0;
+  for(let i=0;i<150&&b.length<850;i++){
+    const a=(Math.PI*2*i)/150;
+    b.push({x:x+Math.cos(a)*18,y:y+Math.sin(a)*18,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,life,t:0,rosieBullet:1,visualOnly:!!visualOnly,dmg:999999});spawned++;
   }
+  if(!visualOnly&&spawned<150)console.warn('Rosie Cannon projectile cap reached; fire again when the screen clears.');
 }
 function shootRosieBurst(){
   lastRosieBurst={x:p.x,y:p.y,ts:Date.now()};
@@ -1268,30 +1279,17 @@ function shootRosieBurst(){
   for(let i=0;i<28;i++){const a=Math.random()*Math.PI*2,sp=2+Math.random()*5;pt(p.x,p.y,Math.cos(a)*sp,Math.sin(a)*sp,18,'#e38cff',2+Math.random()*2,0);}
 }
 function spawnInevitableRockets(x,y,visualOnly=false){
-  const count=20,speed=7.2,reach=Math.max(420,Math.min(950,Math.max(worldW(),worldH())*.4));
-  for(let i=0;i<count;i++){
-    const a=(Math.PI*2*i)/count;
-    const tx=Math.max(12,Math.min(worldW()-12,x+Math.cos(a)*reach));
-    const ty=Math.max(12,Math.min(worldH()-12,y+Math.sin(a)*reach));
-    R.push({x:x+Math.cos(a)*30,y:y+Math.sin(a)*30,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,tx,ty,life:100,dmg:5*Math.max(1,gunMult[2]||1),rocket:1,inevitableRocket:1,visualOnly:!!visualOnly});
-  }
-  for(let i=0;i<30;i++){const a=Math.random()*Math.PI*2,sp=2+Math.random()*5;pt(x,y,Math.cos(a)*sp,Math.sin(a)*sp,20,'#ff233e',2+Math.random()*3,0);}
+  const speed=7.4,reach=Math.max(worldW(),worldH())*1.3;
+  for(let i=0;i<20;i++){const a=Math.PI*2*i/20,ux=Math.cos(a),uy=Math.sin(a);R.push({x:x+ux*23,y:y+uy*23,vx:ux*speed,vy:uy*speed,tx:x+ux*reach,ty:y+uy*reach,dmg:18,rocket:1,inevitableRocket:1,visualOnly:!!visualOnly,fuse:52});}
 }
-function shootInevitableRing(){
-  const x=p.x,y=p.y,ts=Date.now();
-  lastInevitableBurst={x,y,ts};
-  if(activeSharedRun()&&!multiplayerIsAuthority){
-    queueMultiplayerAction({type:'inevitableBurst',x,y,burstId:ts});
-    spawnInevitableRockets(x,y,true);
-  }else spawnInevitableRockets(x,y,false);
-}
-let lastRosieClickAt=0,lastInevitableClickAt=0;
-function fireRosieClick(){
+function shootInevitableCircle(){lastInevitableBurst={x:p.x,y:p.y,ts:Date.now()};spawnInevitableRockets(p.x,p.y,false);for(let i=0;i<24;i++){const a=Math.random()*Math.PI*2,sp=2+Math.random()*5;pt(p.x,p.y,Math.cos(a)*sp,Math.sin(a)*sp,18,'#ff2a45',2+Math.random()*2,0);}}
+function shootPvpPistol(){const a=Math.atan2(m.y-p.y,m.x-p.x);b.push({x:p.x+Math.cos(a)*43,y:p.y+Math.sin(a)*43,vx:Math.cos(a)*14,vy:Math.sin(a)*14,life:999,t:1,dmg:gunMult[0]||1,pvpBullet:1,pvpDamage:18});fl=3;muzzle(a,5);}
+let lastRosieClickAt=0;
+function fireSpecialClick(){
+  if(wp!==6||!rosieMode){if(wp!==7||!inevitableMode)return false;}
   const now=performance.now();
-  // Pointer Events and legacy mouse events can both fire for one physical click.
-  if(wp===6&&rosieMode){if(now-lastRosieClickAt<45)return true;lastRosieClickAt=now;shootRosieBurst();cd=1000000;md=0;return true;}
-  if(wp===7&&inevitableMode){if(now-lastInevitableClickAt<45)return true;lastInevitableClickAt=now;shootInevitableRing();cd=0;md=0;return true;}
-  return false;
+  if(now-lastRosieClickAt<45)return true;
+  lastRosieClickAt=now;if(wp===6)shootRosieBurst();else shootInevitableCircle();cd=1000000;md=0;return true;
 }
 function blast(){
   const a0=Math.atan2(m.y-p.y,m.x-p.x);
@@ -1335,7 +1333,7 @@ c.addEventListener('pointerdown',q=>{
   if(gameMode==='base'&&vehicleMode==='gunner'){const v=BASE_VEHICLES.find(v=>v.id===vehicleId);if(v&&v.gunner){q.preventDefault();updateMouseWorld(q);fireVehicleGun(v);return;}}
   q.preventDefault();
   updateMouseWorld(q);
-  if(fireRosieClick())return;
+  if(fireSpecialClick())return;
   md=1;
   // Keep receiving release events if the pointer leaves the canvas while firing.
   try{c.setPointerCapture(q.pointerId)}catch(_){ }
@@ -1346,7 +1344,7 @@ c.addEventListener('pointercancel',stopFiring);
 c.addEventListener('lostpointercapture',stopFiring);
 // Mouse fallbacks support browsers/extensions that do not dispatch Pointer Events reliably.
 c.addEventListener('mousemove',updateMouseWorld);
-c.addEventListener('mousedown',q=>{if(!dead&&q.button===0){updateMouseWorld(q);if(fireRosieClick())return;md=1;}});
+c.addEventListener('mousedown',q=>{if(!dead&&q.button===0){updateMouseWorld(q);if(fireSpecialClick())return;md=1;}});
 window.addEventListener('mouseup',stopFiring);
 window.addEventListener('blur',()=>{md=0;k={}});
 
@@ -1404,7 +1402,7 @@ function mobileAim(ev){
 }
 function releaseMobileFire(ev){if(mobileFirePointer!==ev.pointerId)return;mobileFirePointer=null;md=0;if(wp===6&&rosieMode)cd=0;try{if(mobileFire)mobileFire.releasePointerCapture(ev.pointerId)}catch(_){ }}
 if(mobileFire){
-  mobileFire.addEventListener('pointerdown',ev=>{if(!isMobileDevice()||dead)return;ev.preventDefault();mobileFirePointer=ev.pointerId;try{mobileFire.setPointerCapture(ev.pointerId)}catch(_){ }mobileAim(ev);if(!fireRosieClick())md=1;});
+  mobileFire.addEventListener('pointerdown',ev=>{if(!isMobileDevice()||dead)return;ev.preventDefault();mobileFirePointer=ev.pointerId;try{mobileFire.setPointerCapture(ev.pointerId)}catch(_){ }mobileAim(ev);if(!fireSpecialClick())md=1;});
   mobileFire.addEventListener('pointermove',ev=>{if(mobileFirePointer===ev.pointerId)mobileAim(ev)});
   mobileFire.addEventListener('pointerup',releaseMobileFire);mobileFire.addEventListener('pointercancel',releaseMobileFire);
 }
@@ -1419,49 +1417,41 @@ const originalStartGameHandler=()=>setTimeout(updateMobileUI,120);
 startGameBtn.addEventListener('click',originalStartGameHandler);
 updateMobileUI();
 
-function openBaseGunCrate(crate){
-  if(gameMode!=='base'||!crate||crate.artifact||crate.got||crate.opened)return false;
-  const t=Number(crate.t);
-  if(!Number.isInteger(t)||t<0||t>4){
-    console.warn('Ignored invalid Base World gun crate:',crate);
-    return false;
-  }
+function openBaseWeaponCrate(crate){
   try{
-    if(!Array.isArray(own))throw new Error('Weapon inventory is unavailable');
-    if(!crate.id)crate.id=newEntityId('guncrate');
-    // Apply the pickup as one small transaction, after validating the crate's gun type.
-    own[t]=1;wp=t;fl=0;cd=0;
-    ammo=Math.max(0,Number(ammo)||0)+10+Math.floor(Math.random()*16);
-    crate.opened=1;crate.got=1;
+    if(gameMode!=='base'||!crate||crate.got||crate.opened||crate.ground)return false;
+    const type=Number(crate.t);
+    if(!Number.isInteger(type)||type<0||type>4||!WN[type]){console.warn('Skipping invalid weapon crate',crate);return false;}
+    if(!crate.id)crate.id=newEntityId('weapon_crate');
+    crate.opened=1;crate.got=1;own[type]=1;wp=type;fl=0;cd=0;rc=0;
+    ammo+=10+Math.floor(Math.random()*16);
+    if(activeSharedRun()&&!multiplayerIsAuthority)queueMultiplayerAction({type:'collectWeaponItem',itemId:crate.id});
     for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(crate.x,crate.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#ffd36b',2+Math.random()*2,0);}
-    if(activeSharedRun()&&!multiplayerIsAuthority)queueMultiplayerAction({type:'openGunCrate',itemId:crate.id});
-    if(modeStatus)modeStatus.textContent='Collected '+(WN[t]||'gun')+' from '+(crate.structureId||'the building')+'.';
     return true;
-  }catch(err){
-    crate.opened=0;crate.got=0;
-    console.error('Could not open gun crate; game state was left recoverable:',err);
-    if(modeStatus)modeStatus.textContent='Crate pickup failed safely. Try again or check the browser console.';
-    return false;
-  }
+  }catch(err){console.error('Weapon crate interaction failed safely:',err);return false;}
 }
-function claimBaseVoidRelic(relic){
-  if(gameMode!=='base'||!relic||!relic.artifact||relic.got)return false;
-  try{
-    if(!Array.isArray(own))throw new Error('Weapon inventory is unavailable');
-    own[5]=1;wp=5;cd=0;relic.got=1;relic.opened=1;
-    if(activeSharedRun()&&!multiplayerIsAuthority)queueMultiplayerAction({type:'claimVoidRelic',itemId:relic.id});
-    if(modeStatus)modeStatus.textContent='Void Orb relic claimed from the Dark Fortress.';
-    return true;
-  }catch(err){
-    relic.got=0;relic.opened=0;console.error('Could not claim Void Orb relic:',err);return false;
-  }
+function collectBaseGroundGun(item){
+  try{if(gameMode!=='base'||!item||item.got||!item.ground||Number(item.t)!==5)return false;item.got=1;own[5]=1;wp=5;cd=0;if(activeSharedRun()&&!multiplayerIsAuthority)queueMultiplayerAction({type:'collectWeaponItem',itemId:item.id});for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(item.x,item.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#b58ad6',2+Math.random()*2,0);}return true;}catch(err){console.error('Ground weapon pickup failed safely:',err);return false;}
 }
-
+function availableWeaponSlots(){const slots=[];for(let i=0;i<6;i++)if(own[i])slots.push(i);if(rosieMode)slots.push(6);if(inevitableMode)slots.push(7);if(killPlayerMode)slots.push(8);if(!slots.includes(0))slots.unshift(0);return slots;}
+function cycleWeapon(){const slots=availableWeaponSlots(),idx=slots.indexOf(wp);wp=slots[(idx+1+slots.length)%slots.length];cd=0;}
+function isInsideBaseSafeZone(x,y){
+  if(gameMode!=='base')return false;
+  const cx=BASE_WORLD_W*.17,cy=BASE_WORLD_H*.60,rx=BASE_WORLD_W*.36,ry=BASE_WORLD_H*.43;
+  const dx=(x-cx)/rx,dy=(y-cy)/ry,angle=Math.atan2(dy,dx);
+  const wobble=1+0.105*Math.sin(angle*3+2)+0.075*Math.sin(angle*5+2*1.7)+0.045*Math.sin(angle*9+2*.7);
+  return Math.hypot(dx,dy)<=wobble;
+}
+function sendPvpDamage(targetUid,damage=18){
+  if(!activeSharedRun()||!firebaseUser||!targetUid)return false;
+  if(isInsideBaseSafeZone(p.x,p.y))return false;
+  submitMultiplayerAction({type:'pvpDamage',targetUid:String(targetUid),damage:Math.max(1,Math.min(35,Number(damage)||18))});return true;
+}
 onkeydown=q=>{
   const n=q.key.toLowerCase();
   if(isPaused)return;
   if(n.indexOf('arrow')==0||n==' ')q.preventDefault();
-  if(n==='d'&&!q.repeat&&gameMode==='base'&&!dead&&toggleNearbyDoor()){q.preventDefault();return;}
+  if(n==='q'&&!q.repeat&&gameMode==='base'&&!dead&&toggleNearbyDoor()){q.preventDefault();return;}
   k[n]=1;
   if(n=='b'&&!q.repeat&&!dead){buildHeld=1;}
   if(dead){
@@ -1492,16 +1482,6 @@ onkeydown=q=>{
         p.x=v.x+Math.cos(v.angle+Math.PI/2)*65;p.y=v.y+Math.sin(v.angle+Math.PI/2)*65;return;
       }
     }
-    if(gameMode==='base'){
-      const closeWeaponPickup=WPN.filter(v=>!v.got&&!v.opened&&Math.hypot(v.x-p.x,v.y-p.y)<78)
-        .sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
-      if(closeWeaponPickup){
-        q.preventDefault();
-        if(closeWeaponPickup.artifact)claimBaseVoidRelic(closeWeaponPickup);
-        else openBaseGunCrate(closeWeaponPickup);
-        return;
-      }
-    }
     const rock=gameMode==='base'?O.filter(o=>o.t===1).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
     if(rock&&Math.hypot(rock.x-p.x,rock.y-p.y)<68){
       if(miningCooldown<=0){
@@ -1517,16 +1497,15 @@ onkeydown=q=>{
         if(activeSharedRun()&&!multiplayerIsAuthority)queueMultiplayerAction({type:'collectAmmo',itemId:ammoPack.id});
         for(let i=0;i<18;i++){const aa=Math.random()*Math.PI*2,ss=1+Math.random()*4;pt(ammoPack.x,ammoPack.y,Math.cos(aa)*ss,Math.sin(aa)*ss,20,'#8ed6ff',2+Math.random()*2,0)}
       }else{
-        const groundGun=gameMode!=='base'?WPN.filter(v=>!v.got&&!v.collected).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
+        const groundGun=WPN.filter(v=>!v.got&&!v.collected&&(gameMode!=='base'||v.ground)).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
         if(groundGun&&Math.hypot(groundGun.x-p.x,groundGun.y-p.y)<78){
-          groundGun.collected=1;groundGun.got=1;own[groundGun.t]=1;wp=groundGun.t;fl=0;
+          if(gameMode==='base')collectBaseGroundGun(groundGun);
+          else {groundGun.collected=1;groundGun.got=1;own[groundGun.t]=1;wp=groundGun.t;fl=0;}
+          q.preventDefault?.();
         }else{
-          const crate=gameMode==='base'?WPN.filter(v=>!v.artifact&&!v.got&&!v.opened&&Number.isInteger(Number(v.t))&&Number(v.t)>=0&&Number(v.t)<=4).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
-          if(crate&&Math.hypot(crate.x-p.x,crate.y-p.y)<78){
-            openBaseGunCrate(crate);
-          }else{
-            for(let i=1;i<=8;i++){const t=(wp+i)%8;if((t===6&&rosieMode)||(t===7&&inevitableMode)||(t<6&&own[t])){wp=t;break}}
-          }
+          const crate=gameMode==='base'?WPN.filter(v=>!v.got&&!v.opened&&!v.ground).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]:null;
+          if(crate&&Math.hypot(crate.x-p.x,crate.y-p.y)<78){openBaseWeaponCrate(crate);q.preventDefault?.();}
+          else cycleWeapon();
         }
       }
     }
@@ -1560,7 +1539,7 @@ setInterval(()=>{
   if(bossCutscene>0)return;
   if(activeSharedRun()&&!multiplayerIsAuthority)return;
   if(!sharedWorldShouldRun())return;
-  if(gameMode==='base'&&Math.random()<0.97)return; // Very rare ambient spawns in the open world.
+  if(gameMode==='base'&&Math.random()<0.92)return; // A little more frequent, but still uncommon in the open world.
   // Hard cap on simultaneously living zombies; level-specific total spawn limits remain below.
   if(e.reduce((count,z)=>count+(!z.dead?1:0),0)>=30)return;
   if(gameMode==='infinite'&&score>=infiniteNextBossScore&&!e.some(z=>z.boss&&!z.dead)){spawnBoss();return;}
@@ -1661,15 +1640,9 @@ function gun(t){
     g.fillStyle='#00d9ff';g.fillRect(-5,5,7,10);
   }else{g.fillStyle='#222';g.fillRect(-18,-3,34,6);g.fillStyle='#111';g.fillRect(16,-1.5,10,3);g.fillStyle='#333';g.fillRect(-4,3,7,14);g.fillRect(-16,3,5,5)}
 }
-function drawInevitableRing(x,y,phase=fr){
-  const r=32+Math.sin(phase*.12)*2.2;
-  g.save();g.strokeStyle='rgba(255,35,58,.95)';g.fillStyle='rgba(255,20,48,.10)';g.lineWidth=3;g.shadowColor='#ff173c';g.shadowBlur=14;
-  g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();g.stroke();
-  g.shadowBlur=0;g.lineWidth=1.5;g.strokeStyle='rgba(255,125,135,.8)';g.beginPath();g.arc(x,y,r+5,-phase*.025,Math.PI*1.2-phase*.025);g.stroke();g.restore();
-}
-
-function human(x,y,a,ch,wk,s,L,fl,rosie=false){
+function human(x,y,a,ch,wk,s,L,fl,rosie=false,inevitable=false){
   g.save();g.translate(x,y);g.scale(s,s);
+  if(inevitable){g.save();g.strokeStyle='rgba(255,24,45,.92)';g.lineWidth=3;g.shadowColor='#ff132d';g.shadowBlur=13;g.beginPath();g.ellipse(0,0,29+Math.sin(fr*.13)*1.5,25+Math.cos(fr*.13)*1.2,0,0,Math.PI*2);g.stroke();g.strokeStyle='rgba(255,80,90,.65)';g.lineWidth=1.3;g.beginPath();g.ellipse(0,0,34,28,0,0,Math.PI*2);g.stroke();g.restore();}
   el(2,3,20,17,'rgba(0,0,0,.42)');
   g.rotate(a);
   g.shadowColor='rgba(0,0,0,.28)';g.shadowBlur=ULTRA_VISUALS?7:3;
@@ -2244,16 +2217,7 @@ function drawUltraHUDFrame(){
   [[8,8,1,1],[328,8,-1,1],[8,gameMode==='base'?204:190,1,-1],[328,gameMode==='base'?204:190,-1,-1]].forEach(([x,y,sx,sy])=>{g.beginPath();g.moveTo(x,y);g.lineTo(x+sx*18,y);g.moveTo(x,y);g.lineTo(x,y+sy*18);g.stroke();});
   g.restore();
 }
-function renderGameFrame(){
-  // Sanitize world item arrays before drawing. A malformed/stale Firebase crate record
-  // must not abort this frame and leave the HUD or animation loop frozen.
-  if(!Array.isArray(WPN))WPN=[];
-  WPN=WPN.filter(q=>q&&Number.isFinite(Number(q.x))&&Number.isFinite(Number(q.y))&&Number.isInteger(Number(q.t)));
-  if(!Array.isArray(AMMO))AMMO=[];
-  AMMO=AMMO.filter(q=>q&&Number.isFinite(Number(q.x))&&Number.isFinite(Number(q.y)));
-  if(!Array.isArray(R))R=[];
-  if(!Array.isArray(b))b=[];
-  if(!Array.isArray(e))e=[];
+function game(){
   // Freeze every simulation and animation update during a solo pause. In multiplayer,
   // keep the shared world running so teammates are not frozen by one player's pause.
   if(isPaused&&!activeSharedRun()){requestAnimationFrame(game);return;}
@@ -2353,19 +2317,15 @@ function renderGameFrame(){
     g.restore();
   });
 
-  // Base World weapon crates are in landmark buildings. Classic/Infinite use simple ground pickups.
+  // Base World crates sit inside settlement buildings; the Void Orb is a separate ground pickup.
   let nearbyCrate=null,nearbyCrateDist=Infinity,nearbyGroundGun=null,nearbyGroundGunDist=Infinity;
   WPN.forEach(q=>{
     if(q.got||q.collected)return;
     const bob=Math.sin(fr*.055+q.x*.01)*1.5;
     el(q.x+3,q.y+17,35,10,'rgba(0,0,0,.35)');
     g.save();g.translate(q.x,q.y+bob);
-    if(gameMode==='base'&&q.artifact){
-      // The Void Orb is a unique relic at the fortress, not a standard gun crate.
-      g.shadowColor='#8f4bb8';g.shadowBlur=18;g.fillStyle='rgba(38,9,55,.85)';g.beginPath();g.arc(0,0,17,0,Math.PI*2);g.fill();
-      g.strokeStyle='#bf8be5';g.lineWidth=2;g.beginPath();g.ellipse(0,0,22,8,fr*.035,0,Math.PI*1.75);g.stroke();
-      g.strokeStyle='#8d57b6';g.lineWidth=1.7;g.beginPath();g.ellipse(0,0,18,6,-fr*.04,Math.PI*.1,Math.PI*1.85);g.stroke();
-      g.fillStyle='#020104';g.beginPath();g.arc(0,0,7,0,Math.PI*2);g.fill();g.shadowBlur=0;
+    if(gameMode==='base'&&q.ground){
+      g.shadowColor='#7b4b9d';g.shadowBlur=16;g.fillStyle='#17121d';g.beginPath();g.arc(0,0,14,0,Math.PI*2);g.fill();g.shadowBlur=0;g.strokeStyle='#a877c9';g.lineWidth=2;g.beginPath();g.ellipse(0,0,17,6,fr*.06,0,Math.PI*2);g.stroke();g.strokeStyle='#d8b0f2';g.beginPath();g.ellipse(0,0,10,4,-fr*.05,.3,5.2);g.stroke();
     }else if(gameMode==='base'){
       g.fillStyle='#3c2818';g.fillRect(-19,-15,38,30);
       g.fillStyle='#75502b';g.fillRect(-16,-12,32,24);
@@ -2384,15 +2344,15 @@ function renderGameFrame(){
     }
     g.restore();
     g.fillStyle=gameMode==='base'?'#ffd36b':'#e5e5e5';g.font='bold 11px Arial';g.textAlign='center';
-    g.fillText(gameMode==='base'?(q.artifact?'VOID ORB RELIC':'GUN CRATE'):'PICKUP '+WN[q.t],q.x,q.y-27);
+    g.fillText(gameMode==='base'?(q.ground?'VOID ORB':'WEAPON CRATE • '+(WN[q.t]||'WEAPON')):'PICKUP '+WN[q.t],q.x,q.y-27);
     const dist=Math.hypot(p.x-q.x,p.y-q.y);
     if(!dead){
-      if(gameMode==='base'&&dist<nearbyCrateDist){nearbyCrate=q;nearbyCrateDist=dist;}
-      if(gameMode!=='base'&&dist<nearbyGroundGunDist){nearbyGroundGun=q;nearbyGroundGunDist=dist;}
+      if(gameMode==='base'&&!q.ground&&dist<nearbyCrateDist){nearbyCrate=q;nearbyCrateDist=dist;}
+      if((gameMode!=='base'||q.ground)&&dist<nearbyGroundGunDist){nearbyGroundGun=q;nearbyGroundGunDist=dist;}
     }
   });
   if(nearbyCrate&&nearbyCrateDist<78){
-    g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-112,c.height-86,224,30);g.strokeStyle='#c6a76c';g.strokeRect(c.width/2-112,c.height-86,224,30);g.fillStyle='#fff0c4';g.font='bold 14px Arial';g.textAlign='center';g.fillText(nearbyCrate.artifact?'PRESS E TO CLAIM VOID ORB':'PRESS E TO OPEN GUN CRATE',c.width/2,c.height-66);g.restore();
+    g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-112,c.height-86,224,30);g.strokeStyle='#c6a76c';g.strokeRect(c.width/2-112,c.height-86,224,30);g.fillStyle='#fff0c4';g.font='bold 14px Arial';g.textAlign='center';g.fillText('PRESS E TO OPEN '+(WN[nearbyCrate.t]||'WEAPON')+' CRATE',c.width/2,c.height-66);g.restore();
   }
   if(nearbyGroundGun&&nearbyGroundGunDist<78){
     g.save();g.fillStyle='rgba(8,10,8,.82)';g.fillRect(c.width/2-150,c.height-86,300,30);g.strokeStyle='#9cc08e';g.strokeRect(c.width/2-150,c.height-86,300,30);g.fillStyle='#f1f7ed';g.font='bold 14px Arial';g.textAlign='center';g.fillText('PRESS E TO PICK UP '+WN[nearbyGroundGun.t],c.width/2,c.height-66);g.restore();
@@ -2472,7 +2432,8 @@ function renderGameFrame(){
     if(!isPaused&&!dead&&md&&cd<=0&&vehicleMode!=='driver'){
       // The unlocked Rosie Cannon overrides normal fire with a radial burst.
       if(wp===6&&rosieMode){shootRosieBurst();cd=1000000;}
-      else if(wp===7&&inevitableMode){shootInevitableRing();cd=90;}
+      else if(wp===7&&inevitableMode){shootInevitableCircle();cd=1000000;}
+      else if(wp===8&&killPlayerMode&&activeSharedRun()){shootPvpPistol();cd=12;}
       // Weapon firing is permitted everywhere, except while driving.
       else if(wp==0&&trySpendAmmo(0)){shoot();cd=12}
       else if(wp==1&&trySpendAmmo(1)){blast();cd=40}
@@ -2508,8 +2469,7 @@ function renderGameFrame(){
   }
 
   if(gameMode==='base'){BASE_VEHICLES.forEach(v=>{if(vehicleMode==='gunner'&&vehicleId===v.id)v.turretAngle=Math.atan2(m.y-v.y,m.x-v.x);drawMilitaryVehicle(v);});}
-  if(!isPaused&&!(gameMode==='base'&&vehicleMode)) human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),skinForPlayer(ci,skinGender),wk,0.95,wp==2?1:0,fl,!!(rosieMode&&wp===6));
-  if(inevitableMode&&!isPaused)drawInevitableRing(p.x,p.y);
+  if(!isPaused&&!(gameMode==='base'&&vehicleMode)) human(p.x,p.y,Math.atan2(m.y-p.y,m.x-p.x),skinForPlayer(ci,skinGender),wk,0.95,wp==2?1:0,fl,!!(rosieMode&&wp===6),!!inevitableMode);
   drawRemotePlayers();
   syncMultiplayer();
   if(gameMode==='base'&&miningAnim>0){const aa=Math.atan2(m.y-p.y,m.x-p.x),swing=(1-miningAnim/10)*1.4;g.save();g.translate(p.x+Math.cos(aa)*20,p.y+Math.sin(aa)*20);g.rotate(aa+swing);g.strokeStyle='#5a4635';g.lineWidth=4;g.beginPath();g.moveTo(-5,18);g.lineTo(-5,-8);g.stroke();g.strokeStyle='#aeb4b0';g.lineWidth=5;g.beginPath();g.moveTo(-13,-9);g.lineTo(3,-9);g.stroke();g.restore();}
@@ -2585,6 +2545,12 @@ function renderGameFrame(){
     const prevX=q.x,prevY=q.y;
     q.x+=q.vx;q.y+=q.vy;q.life--;
 
+    // Special pistol rounds can hit live players in the same co-op room, outside the Base safe zone.
+    if(!q.dead&&q.pvpBullet&&activeSharedRun()&&!q.visualOnly){
+      const dx=q.x-prevX,dy=q.y-prevY,den=dx*dx+dy*dy;let target=null,bestU=Infinity;
+      for(const v of Object.values(remotePlayers)){if(!v||v.dead||v.online===false||!v.uid||v.uid===firebaseUser?.uid)continue;const vx=Number(v.x)||0,vy=Number(v.y)||0;if(gameMode==='base'&&isInsideBaseSafeZone(vx,vy))continue;const u=den?Math.max(0,Math.min(1,((vx-prevX)*dx+(vy-prevY)*dy)/den)):0;const bx=prevX+u*dx,by=prevY+u*dy;if(Math.hypot(vx-bx,vy-by)<20&&u<bestU){target=v;bestU=u;}}
+      if(target){q.dead=1;sendPvpDamage(target.uid,q.pvpDamage||18);for(let i=0;i<5;i++)pt(q.x,q.y,(Math.random()-.5)*4,(Math.random()-.5)*4,12,'#ff6a6a',2,0);}
+    }
     // Segment-based hits stop ordinary fast shots tunnelling through zombies.
     // Void Orbs ignore zombie collision until their aimed landing point; the Rosie Cannon pierces every obstacle.
     if(!q.dead&&!q.orb&&!q.visualOnly){
@@ -2818,34 +2784,18 @@ function renderGameFrame(){
   g.globalAlpha=1;
   P=P.filter(q=>q.life>0);
 
-  // Rockets. Inevitable Ring rockets have a hard lifetime so they always detonate,
-  // even if they never hit a zombie or obstacle. Visual copies use the same timer.
+  // rockets
   R.forEach(q=>{
-    q.x+=q.vx;q.y+=q.vy;
-    if(q.inevitableRocket)q.life=(Number.isFinite(Number(q.life))?Number(q.life):100)-1;
+    q.x+=q.vx;q.y+=q.vy;if(Number.isFinite(q.fuse))q.fuse--;
     const boundW=worldW(),boundH=worldH();
-    const reachedTarget=Math.hypot(q.tx-q.x,q.ty-q.y)<10;
-    const outOfBounds=q.x<0||q.x>boundW||q.y<0||q.y>boundH;
-    const hitZombie=e.some(z=>!z.dead&&Math.hypot(z.x-q.x,z.y-q.y)<30);
-    const hitObject=O.some(o=>Math.hypot(q.x-o.x,q.y-o.y)<o.r)||BLD.some(o=>pointWallDist(q.x,q.y,o)<o.th/2+3)||STATIC_WALLS.some(o=>pointWallDist(q.x,q.y,o)<o.th/2+3);
-    const timedOut=!!q.inevitableRocket&&q.life<=0;
-    if(q.visualOnly){
-      const visualBoom=reachedTarget||outOfBounds||hitZombie||hitObject||timedOut;
-      if(visualBoom){
-        q.dead=1;X.push({x:q.x,y:q.y,t:0});
-        for(let i=0;i<18;i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*5;pt(q.x,q.y,Math.cos(a)*sp,Math.sin(a)*sp,12+Math.random()*15|0,['#ff3d00','#ff9d00','#ffe066'][i%3],2+Math.random()*3,0);}
-      }else{
-        g.save();g.translate(q.x,q.y);g.rotate(Math.atan2(q.vy,q.vx));g.globalAlpha=.72;g.fillStyle='#ddd';g.fillRect(-8,-3,14,6);g.fillStyle='#c0392b';g.beginPath();g.moveTo(6,-3);g.lineTo(13,0);g.lineTo(6,3);g.fill();g.fillRect(-9,-6,4,3);g.fillRect(-9,3,4,3);g.restore();
-      }
-      return;
-    }
-    const boom=reachedTarget||outOfBounds||hitZombie||hitObject||timedOut;
+    const hitStructure=gameMode==='base'&&(STATIC_WALLS.some(o=>pointWallDist(q.x,q.y,o)<o.th/2+4)||DOORS.some(o=>!o.open&&pointWallDist(q.x,q.y,o)<o.th/2+4)||BLD.some(o=>pointWallDist(q.x,q.y,o)<o.th/2+4));
+    const boom=Math.hypot(q.tx-q.x,q.ty-q.y)<10||q.x<0||q.x>boundW||q.y<0||q.y>boundH||e.some(z=>!z.dead&&Math.hypot(z.x-q.x,z.y-q.y)<30)||O.some(o=>Math.hypot(q.x-o.x,q.y-o.y)<o.r)||hitStructure||(Number.isFinite(q.fuse)&&q.fuse<=0);
     if(boom){
       q.dead=1;S=16;X.push({x:q.x,y:q.y,t:0});
       const cols=['#ff3d00','#ff9d00','#ffe066','#ffffff'];
       for(let i=0;i<50;i++){const a=Math.random()*6.283,s=1+Math.random()*7;pt(q.x,q.y,Math.cos(a)*s,Math.sin(a)*s,20+Math.random()*25|0,cols[Math.random()*4|0],3+Math.random()*5,0)}
       for(let i=0;i<22;i++){const a=Math.random()*6.283,s=Math.random()*3;pt(q.x,q.y,Math.cos(a)*s,Math.sin(a)*s,40+Math.random()*30|0,'#555',8+Math.random()*6,1)}
-      e.forEach(z=>{if(!z.dead&&Math.hypot(z.x-q.x,z.y-q.y)<120)hit(z,q.dmg||5)});
+      if(!q.visualOnly)e.forEach(z=>{if(!z.dead&&Math.hypot(z.x-q.x,z.y-q.y)<120)hit(z,q.dmg||5)});
     }else{
       pt(q.x-q.vx,q.y-q.vy,(Math.random()-.5)*.8,(Math.random()-.5)*.8,40,'#777',5,1);
       pt(q.x-q.vx*.5,q.y-q.vy*.5,(Math.random()-.5)*.6,(Math.random()-.5)*.6,18,Math.random()<.5?'#ff9d00':'#ffe066',5,0);
@@ -2856,6 +2806,7 @@ function renderGameFrame(){
       g.restore();
     }
   });
+  R=R.filter(q=>!q.dead);
 
   // explosions
   X.forEach(q=>{
@@ -2981,13 +2932,13 @@ function renderGameFrame(){
   g.fillStyle='#d8c0a0';g.font='14px Arial';g.fillText('WALLS: '+(gameMode==='base'?'WOOD / STONE (V)':wallCharges),15,98);
   if(gameMode==='base'){g.fillStyle='#8ed6ff';g.font='bold 16px Arial';g.fillText('AMMO: '+ammo+'  •  COST/SHOT: '+ammoCostForWeapon(wp),15,116);const nv=nearbyVehicle();if(nv&&!vehicleMode){g.fillStyle='#d8e7d2';g.font='bold 13px Arial';g.fillText('E = DRIVE  •  G = TURRET',15,180);}else if(vehicleMode){g.fillStyle='#d8e7d2';g.font='bold 13px Arial';g.fillText(vehicleMode==='driver'?'DRIVER • G = TURRET • E = EXIT':'TURRET • CLICK = FIRE • G = DRIVER • E = EXIT',15,180);}}
   if(gameMode==='base'){g.fillStyle='#aeb4b0';g.font='14px Arial';g.fillText('STONE: '+stone+'   PICKAXE: READY   BUILDING: '+buildMaterial.toUpperCase(),15,156);}
-  g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+(WN[wp]||'PISTOL')+(own.filter(x=>x).length>1||rosieMode||inevitableMode?'  [E]':'')+(wp===6&&rosieMode?'  • ZERO RELOAD':wp===7&&inevitableMode?'  • 20-ROCKET SALVO':'  DMG x'+(gunMult[wp]||1)),15,gameMode==='base'?136:119);
+  g.fillStyle='white';g.font='bold 18px Arial';g.fillText('WEAPON: '+(WN[wp]||'PISTOL')+(availableWeaponSlots().length>1?'  [E]':'')+(((wp===6&&rosieMode)||(wp===7&&inevitableMode)||(wp===8&&killPlayerMode))?'  • SPECIAL':'  DMG x'+(gunMult[wp]||1)),15,gameMode==='base'?136:119);
   g.font='18px Arial';
   g.fillStyle=!own[2]?'#888':rc>0?'#e74c3c':'#2ecc71';
   g.fillText(!own[2]?'ROCKET: NOT FOUND':rc>0?'ROCKET: RELOADING':'ROCKET: READY',15,gameMode==='base'?176:145);
   if(po>0){g.fillStyle='#7ccf4a';g.fillText('POISONED (slowed) '+(po/60).toFixed(1)+'s',15,155)}
   g.fillStyle='white';g.font='18px Arial';
-  g.fillText('WASD = MOVE | D = OPEN DOOR | E = INTERACT / EXIT VEHICLE | CLICK = FIRE | HOLD B + RELEASE = BUILD | V = WOOD/STONE | F = EAT APPLE | P = EAT PEAR | G = VEHICLE SEAT',15,c.height-15);
+  g.fillText('WASD = MOVE | Q = OPEN DOOR | E = INTERACT / EXIT VEHICLE | CLICK = FIRE | HOLD B + RELEASE = BUILD | V = WOOD/STONE | F = EAT APPLE | P = EAT PEAR | G = VEHICLE SEAT',15,c.height-15);
   g.fillStyle='#ffd66b';g.font='bold 16px Arial';g.fillText('APPLES: '+appleCount+'   PEARS: '+pearCount+'   HP: '+Math.ceil(hp)+'%',15,164);
   if((level==2||level===3||level===4)&&!dead){
     g.fillStyle=level===4?'rgba(38,4,10,.88)':level===3?'rgba(5,12,9,.82)':'rgba(70,40,20,.7)';
@@ -3019,24 +2970,6 @@ function renderGameFrame(){
   updatePauseUI();
 
   requestAnimationFrame(game);
-}
-let lastRecoveredFrameError='';
-function game(){
-  try{renderGameFrame();}
-  catch(err){
-    const message=String(err&&err.message||err||'unknown rendering error');
-    if(message!==lastRecoveredFrameError){console.error('Game frame error recovered; HUD/render loop will retry:',err);lastRecoveredFrameError=message;}
-    // Canvas context stacks can be left unbalanced by an exception in a draw helper.
-    // Reset the backing store, show a useful diagnostic for one frame, then retry.
-    try{
-      const width=c.width,height=c.height;c.width=width;c.height=height;
-      g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.shadowBlur=0;g.textAlign='left';
-      g.fillStyle='#130b0d';g.fillRect(0,0,width,height);
-      g.fillStyle='#ffd8dc';g.font='bold 18px Arial';g.fillText('A drawing error was recovered; retrying the game frame.',20,34);
-      g.fillStyle='#f1b8bd';g.font='13px Arial';g.fillText('Open the browser console for the error details.',20,57);
-    }catch(_){ }
-    requestAnimationFrame(game);
-  }
 }
 game();
 // Render homepage only after every game-state variable and handler exists.
