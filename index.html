@@ -7812,37 +7812,64 @@ h1 span {
         if (!firebase.auth().currentUser)
             await firebase.auth().signInAnonymously();
     }
+    function googleAuthErrorText(err) {
+        const code = String(err && err.code || 'unknown');
+        if (code === 'auth/operation-not-allowed')
+            return 'Google sign-in is disabled. In Firebase Console, open Authentication → Sign-in method and enable Google.';
+        if (code === 'auth/unauthorized-domain')
+            return 'This website domain is not authorised. In Firebase Console, open Authentication → Settings → Authorized domains and add your site domain.';
+        if (code === 'auth/popup-closed-by-user')
+            return 'The Google sign-in window was closed before sign-in finished.';
+        if (code === 'auth/account-exists-with-different-credential')
+            return 'This email already uses a different sign-in method. Sign in using that method first.';
+        return 'Google sign-in failed (' + code + '): ' + String(err && err.message || 'Unknown error');
+    }
+    function isGooglePopupEnvironmentError(err) {
+        return ['auth/popup-blocked', 'auth/popup-cancelled-by-user', 'auth/operation-not-supported-in-this-environment', 'auth/web-storage-unsupported'].includes(String(err && err.code || ''));
+    }
     async function googleSignIn() {
         const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
         const current = firebase.auth().currentUser;
-        if (current && current.isAnonymous) {
+        try {
+            let result;
             try {
-                const result = await current.linkWithPopup(provider);
+                result = current && current.isAnonymous
+                    ? await current.linkWithPopup(provider)
+                    : await firebase.auth().signInWithPopup(provider);
                 showAuthUser(result.user);
-                authStatus.textContent = 'Google linked. Your existing guest identity is preserved.';
+                authStatus.textContent = current && current.isAnonymous
+                    ? 'Google linked. Your existing guest identity is preserved.'
+                    : 'Google account connected.';
+                return;
             }
             catch (err) {
-                if (err.code === 'auth/credential-already-in-use') {
-                    authStatus.textContent = 'That Google account already has a game account. Sign out, then sign in with Google to use it.';
+                // If this Google account already belongs to a game account, sign into that account
+                // rather than giving an unhelpful dead-end after the guest-link attempt.
+                if (err.code === 'auth/credential-already-in-use' && current && current.isAnonymous) {
+                    const credential = err.credential || firebase.auth.GoogleAuthProvider.credentialFromError(err);
+                    if (credential) {
+                        result = await firebase.auth().signInWithCredential(credential);
+                        showAuthUser(result.user);
+                        authStatus.textContent = 'Signed in to your existing Google game account. Progress tied only to the previous guest account may not transfer automatically.';
+                        return;
+                    }
                 }
-                else if (err.code === 'auth/popup-closed-by-user') {
-                    authStatus.textContent = 'Sign-in window closed before completion.';
+                // A redirect can work in browsers which block authentication popups.
+                if (isGooglePopupEnvironmentError(err)) {
+                    authStatus.textContent = 'Opening Google sign-in…';
+                    if (current && current.isAnonymous)
+                        await current.linkWithRedirect(provider);
+                    else
+                        await firebase.auth().signInWithRedirect(provider);
+                    return;
                 }
-                else {
-                    authStatus.textContent = '';
-                }
+                throw err;
             }
         }
-        else {
-            try {
-                const result = await firebase.auth().signInWithPopup(provider);
-                showAuthUser(result.user);
-            }
-            catch (err) {
-                authStatus.textContent = err.code === 'auth/popup-closed-by-user'
-                    ? 'Sign-in window closed before completion.'
-                    : 'Google sign-in failed (' + (err.code || 'unknown') + '): ' + err.message + '. Check that Google sign-in is enabled and this domain is authorised in Firebase Authentication settings.';
-            }
+        catch (err) {
+            console.error('Google sign-in failed:', err);
+            authStatus.textContent = googleAuthErrorText(err);
         }
     }
     if (googleSignInBtn)
@@ -7902,6 +7929,17 @@ h1 span {
     if (FIREBASE_CONFIG && FIREBASE_CONFIG.databaseURL) {
         try {
             firebase.initializeApp(FIREBASE_CONFIG);
+            firebase.auth().getRedirectResult().then(result => {
+                if (result && result.user) {
+                    showAuthUser(result.user);
+                    if (authStatus)
+                        authStatus.textContent = result.user.isAnonymous ? 'Guest account active.' : 'Google account connected.';
+                }
+            }).catch(err => {
+                console.warn('Google redirect sign-in failed:', err);
+                if (authStatus)
+                    authStatus.textContent = googleAuthErrorText(err);
+            });
             firebaseDb = firebase.database();
             setupAdminRealtimeFeatures();
             // The leaderboard subscription starts below, after its state variables and saved
@@ -8037,14 +8075,30 @@ h1 span {
     function renderHomeLeaderboard() {
         const localRows = localScoresForMode(leaderboardMode);
         const cloudRows = leaderboardCache[leaderboardMode] || [];
-        // Always show historical local runs. Avoid duplicating the exact same name/score if it
-        // has already been synchronised to the shared cloud table, but keep repeated local runs.
-        const localKeys = new Set(localRows.map(r => String(r.name).toLowerCase() + '|' + r.score));
-        const rows = [...localRows, ...cloudRows.filter(r => !localKeys.has(String(r.name).toLowerCase() + '|' + r.score)).map(r => ({ ...r, localEntry: false }))];
-        rows.sort((a, b) => b.score - a.score || (b.updatedAt - a.updatedAt));
-        const cloudBest = Math.max(0, ...cloudRows.map(r => Number(r.score) || 0));
-        const localBest = Math.max(0, ...localRows.map(r => Number(r.score) || 0));
-        homeBest.textContent = String(Math.max(localBest, cloudBest, leaderboardLastBest[leaderboardMode] || 0));
+        // Collapse multiple local runs for the same displayed player to their best result,
+        // merge cloud records, then show only the ten highest-scoring players.
+        const bestByPlayer = new Map();
+        [...localRows, ...cloudRows.map(row => ({ ...row, localEntry: false }))].forEach(row => {
+            const name = String(row.name || 'Player').trim().slice(0, 16) || 'Player';
+            const key = name.toLocaleLowerCase();
+            const score = Math.max(0, Number(row.score) || 0);
+            const existing = bestByPlayer.get(key);
+            if (!existing || score > existing.score || (score === existing.score && Number(row.updatedAt) > Number(existing.updatedAt))) {
+                bestByPlayer.set(key, { ...row, name, score });
+            }
+            else if (existing && row.localEntry) {
+                // Retain the local marker if this player's best is still represented by local history.
+                existing.localEntry = true;
+            }
+        });
+        const rows = [...bestByPlayer.values()]
+            .sort((a, b) => b.score - a.score || (Number(b.updatedAt) - Number(a.updatedAt)))
+            .slice(0, 10);
+        const currentUid = firebaseUser && firebaseUser.uid;
+        const personalCloudBest = Math.max(0, ...cloudRows.filter(row => currentUid && row.uid === currentUid).map(row => Number(row.score) || 0));
+        const currentName = String(playerName || 'Player').trim().toLocaleLowerCase();
+        const personalLocalBest = Math.max(0, ...localRows.filter(row => String(row.name || 'Player').trim().toLocaleLowerCase() === currentName).map(row => Number(row.score) || 0));
+        homeBest.textContent = String(Math.max(personalLocalBest, personalCloudBest, leaderboardLastBest[leaderboardMode] || 0, leaderboardLastSubmitted[leaderboardMode] || 0));
         homeScoreList.innerHTML = '';
         if (!rows.length) {
             homeScoreList.innerHTML = '<div class="empty-score">No scores recorded for ' + (leaderboardMode === 'ffa' ? 'Free For All' : leaderboardMode === 'base' ? 'Base World' : leaderboardMode === 'infinite' ? 'Infinite' : 'Classic') + ' yet.</div>';
@@ -8080,7 +8134,7 @@ h1 span {
             status.textContent = error + ' • ' + localCount + ' locally saved run' + (localCount === 1 ? '' : 's') + ' retained on this device';
             return;
         }
-        status.textContent = 'Shared ' + modeLabel + ': ' + sharedCount + ' online player entr' + (sharedCount === 1 ? 'y' : 'ies') + (localCount ? ' • ' + localCount + ' locally saved run' + (localCount === 1 ? '' : 's') + ' included' : '');
+        status.textContent = 'Shared ' + modeLabel + ': showing top 10 of ' + sharedCount + ' online player entr' + (sharedCount === 1 ? 'y' : 'ies') + (localCount ? ' • local scores included' : '');
     }
     function stopLeaderboardWatch() {
         if (leaderboardWatchRef && leaderboardWatchHandler)
@@ -11093,8 +11147,24 @@ let w = 0
     const originalStartGameHandler = () => setTimeout(updateMobileUI, 120);
     startGameBtn.addEventListener('click', originalStartGameHandler);
     updateMobileUI();
+    // Chat/form typing must not trigger gameplay hotkeys (especially U, which opens the build menu).
+    // Mouse aiming and mouse firing remain available while the chat input has focus.
+    const chatMessageInputForControls = document.getElementById('chatMessage');
+    function clearKeyboardMovement() {
+        ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].forEach(key => { k[key] = 0; });
+    }
+    if (chatMessageInputForControls) {
+        chatMessageInputForControls.addEventListener('focus', clearKeyboardMovement);
+        chatMessageInputForControls.addEventListener('pointerdown', clearKeyboardMovement);
+    }
     onkeydown = q => {
         const n = q.key.toLowerCase();
+        const focused = document.activeElement;
+        if (focused && (focused.matches('input, textarea, select') || focused.isContentEditable)) {
+            // Do not capture typed letters or space/arrow keys while entering text in chat or another form field.
+            clearKeyboardMovement();
+            return;
+        }
         if (isPaused)
             return;
         if (n.indexOf('arrow') == 0 || n == ' ')
@@ -13722,6 +13792,43 @@ let w = 0
         }
         return color;
     }
+    // Low-resolution map placeholders are made from the same world-space biome shapes as
+    // detailed tiles. This prevents a solid green/tan square flashing across the screen while
+    // detailed terrain tiles are being baked during travel between biomes.
+    const BASE_GROUND_FALLBACK_RATIO = .25;
+    const BASE_GROUND_FALLBACK_CACHE_LIMIT = 24;
+    const baseGroundFallbackTileCache = new Map();
+    function getBaseGroundFallbackTile(tx, ty) {
+        const wx = tx * BASE_GROUND_TILE, wy = ty * BASE_GROUND_TILE;
+        const cacheKey = [tx, ty, Math.round(VISUAL_DENSITY * 100)].join(':');
+        const cached = baseGroundFallbackTileCache.get(cacheKey);
+        if (cached) {
+            baseGroundFallbackTileCache.delete(cacheKey);
+            baseGroundFallbackTileCache.set(cacheKey, cached);
+            return cached;
+        }
+        const ratio = BASE_GROUND_FALLBACK_RATIO;
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(BASE_GROUND_TILE * ratio));
+        canvas.height = Math.max(1, Math.round(BASE_GROUND_TILE * ratio));
+        const ctx = canvas.getContext('2d', { alpha: true });
+        if (!ctx) return null;
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        ctx.translate(-wx, -wy);
+        const bounds = { left: wx, top: wy, right: wx + BASE_GROUND_TILE, bottom: wy + BASE_GROUND_TILE };
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(wx, wy, BASE_GROUND_TILE, BASE_GROUND_TILE);
+        ctx.clip();
+        drawWorldBiomes(ctx, bounds);
+        ctx.restore();
+        const tile = { canvas, wx, wy, key: cacheKey, ratio };
+        baseGroundFallbackTileCache.set(cacheKey, tile);
+        while (baseGroundFallbackTileCache.size > BASE_GROUND_FALLBACK_CACHE_LIMIT) {
+            baseGroundFallbackTileCache.delete(baseGroundFallbackTileCache.keys().next().value);
+        }
+        return tile;
+    }
     function getBaseGroundTile(tx, ty) {
         const ratio = baseGroundPixelRatio(), wx = tx * BASE_GROUND_TILE, wy = ty * BASE_GROUND_TILE;
         const key = [tx, ty, Math.round(VISUAL_DENSITY * 100), Math.round(ratio * 100), level, ULTRA_VISUALS ? 1 : 0].join(':');
@@ -13908,11 +14015,16 @@ let w = 0
                 baseGroundTileCache.set(key, tile);
                 g.drawImage(tile.canvas, tile.wx, tile.wy, BASE_GROUND_TILE, BASE_GROUND_TILE);
             }
-            else { // Cheap temporary base-colour fallback while the detailed tile is baked.
-                // Re-running the full six-biome polygon renderer for every missing tile on every
-                // frame caused large CPU spikes whenever the camera moved into a new area.
-                g.fillStyle = baseGroundFallbackColour(q.wx + BASE_GROUND_TILE * .5, q.wy + BASE_GROUND_TILE * .5);
-                g.fillRect(q.wx, q.wy, BASE_GROUND_TILE, BASE_GROUND_TILE);
+            else {
+                // Draw a cached low-resolution version of the real biome shapes instead of a solid
+                // colour rectangle; only build each placeholder once, not on every animation frame.
+                const fallback = getBaseGroundFallbackTile(q.tx, q.ty);
+                if (fallback)
+                    g.drawImage(fallback.canvas, fallback.wx, fallback.wy, BASE_GROUND_TILE, BASE_GROUND_TILE);
+                else {
+                    g.fillStyle = baseGroundFallbackColour(q.wx + BASE_GROUND_TILE * .5, q.wy + BASE_GROUND_TILE * .5);
+                    g.fillRect(q.wx, q.wy, BASE_GROUND_TILE, BASE_GROUND_TILE);
+                }
             }
         }
     }
@@ -16870,4 +16982,3 @@ let w = 0
 </script>
 </body>
 </html>
- <!DOCTYPE html>
