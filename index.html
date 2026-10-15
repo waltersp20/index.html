@@ -862,10 +862,6 @@ h1 span {
   display: none !important;
 }
 
-.auth-card {
-  display: none !important;
-}
-
 /*Admin panel is hidden by default; the access button is visible and protected by server-verified PIN login.*/
 
 #adminOpenButton {
@@ -1966,6 +1962,20 @@ h1 span {
 </section>
       </div>
       <aside class="home-rail" aria-label="Game information">
+      <section class="auth-card" aria-label="Account and sign-in">
+        <h3>Account &amp; Save Progress</h3>
+        <p>Connect Google to keep access to your game account and scores across devices. You can also play as a guest.</p>
+        <div id="authSignedOut">
+          <button id="googleSignInBtn" class="google" type="button">Continue with Google</button>
+          <button id="guestSignInBtn" type="button">Play as guest</button>
+        </div>
+        <div id="authSignedIn" hidden>
+          <p id="authUserLabel" aria-live="polite">Checking account…</p>
+          <button id="linkGoogleBtn" class="google" type="button" hidden>Connect Google &amp; Save Progress</button>
+          <button id="signOutBtn" type="button">Sign out</button>
+        </div>
+        <p id="authStatus" class="auth-status" role="status" aria-live="polite">Connecting to Firebase…</p>
+      </section>
       <div class="ad-card" aria-label="Advertisement"><span class="ad-label">Advertisement</span><ins class="adsbygoogle"
       style="display:block;width:100%;min-height:250px"
       data-ad-client="ca-pub-5823089544936874"
@@ -6036,6 +6046,7 @@ h1 span {
         { key: 'TIMESPEED', title: 'TIMESPEED', desc: 'Toggle local time-speed mode' },
         { key: 'UDAINGAJAVEERA', title: 'UDAINGAJAVEERA', desc: 'Unlock the face projectile launcher' },
         { key: 'BAILSSS', title: 'BAILSSS', desc: 'Unlock the grit-bag launcher and five-shot burst' },
+        { key: 'OWENTHEDESTROYER', title: 'OWENTHEDESTROYER', desc: 'Unlock the burger launcher with UWU trail and oversized explosions' },
         { key: 'ADMIN_CLEAR', title: '/clear or !clear', desc: 'Clear the current chat channel (admin only)' },
         { key: 'ADMIN_REMOVE', title: '/remove or !remove', desc: 'Remove a visible chat message by number or message key (admin only)' },
         { key: 'ADMIN_JUMPSCARE', title: '/jumpscare or !jumpscare', desc: 'Broadcast the two-second jumpscare to all connected clients (admin only)' }
@@ -7681,6 +7692,22 @@ h1 span {
                 multiplayerPersonalRef.child(firebaseUser.uid).update({ udaingaJaveeraMode: true, wp: 9, updatedAt: Date.now() }).catch(() => { });
             return;
         }
+        if (command === 'OWENTHEDESTROYER') {
+            input.value = '';
+            if (!isCommandEnabled(command)) {
+                chatConnection.textContent = 'That secret command is currently disabled by the administrator.';
+                return;
+            }
+            owenTheDestroyerMode = true;
+            wp = 11;
+            cd = 0;
+            md = 0;
+            if (firebaseDb && firebaseUser && multiplayerRef)
+                multiplayerRef.child(firebaseUser.uid).update({ owenTheDestroyerMode: true, wp: 11 }).catch(() => { });
+            if (firebaseDb && firebaseUser && multiplayerPersonalRef)
+                multiplayerPersonalRef.child(firebaseUser.uid).update({ owenTheDestroyerMode: true, wp: 11, updatedAt: Date.now() }).catch(() => { });
+            return;
+        }
         if (command === 'BAILSSS') {
             input.value = '';
             if (!isCommandEnabled(command)) {
@@ -7782,10 +7809,14 @@ h1 span {
                 authSignedIn.hidden = false;
                 const label = user.displayName || (user.isAnonymous ? 'Guest player' : 'Google account');
                 authUserLabel.textContent = 'Signed in as ' + label;
-                if (linkGoogleBtn)
+                if (linkGoogleBtn) {
                     linkGoogleBtn.hidden = !user.isAnonymous;
+                    linkGoogleBtn.textContent = user.isAnonymous
+                        ? 'Connect Google & Save Progress'
+                        : 'Link Google Account';
+                }
                 authStatus.textContent = user.isAnonymous
-                    ? 'Guest account active. Link Google to protect this identity from anonymous-account cleanup.'
+                    ? 'You are playing as a guest. Connect Google to keep access to this account across devices.'
                     : 'Google account connected.';
             }
         }
@@ -8484,7 +8515,7 @@ h1 span {
         save();
     };
     const Z = .8;
-    const WN = ['PISTOL', 'SHOTGUN', 'ROCKET LAUNCHER', 'SMG', 'HOMING GUN', 'VOID ORB', 'ROSIE CANNON', 'INEVITABLE RING', 'ETERNAL DARKNESS', 'UDAINGAJAVEERA', 'BAILSSS'];
+    const WN = ['PISTOL', 'SHOTGUN', 'ROCKET LAUNCHER', 'SMG', 'HOMING GUN', 'VOID ORB', 'ROSIE CANNON', 'INEVITABLE RING', 'ETERNAL DARKNESS', 'UDAINGAJAVEERA', 'BAILSSS', 'OWEN THE DESTROYER'];
 let w = 0
         h = 0
         p = { x: 0, y: 0 }
@@ -8574,7 +8605,7 @@ let w = 0
     let skinGender = 'male', rosieMode = false, lastRosieBurst = null, remoteRosieSeen = {};
     let inevitableMode = false, lastInevitableBurst = null, remoteInevitableSeen = {};
     let mustafaMissileMode = false;
-    let udaingaJaveeraMode = false, bailsBagMode = false, lastSpecialWeaponBurst = null, remoteSpecialWeaponSeen = {}, gritBinScenery = [];
+    let udaingaJaveeraMode = false, bailsBagMode = false, owenTheDestroyerMode = false, uwuTrail = [], lastSpecialWeaponBurst = null, remoteSpecialWeaponSeen = {}, gritBinScenery = [];
     function maxPlayerHp() {
         return mustafaMissileMode ? 200 : 100;
     }
@@ -10722,6 +10753,18 @@ let w = 0
         muzzle(a, 4);
         playWeaponSound(13);
         S = Math.max(S, 1.8);
+    }
+    function shootOwenBurger() {
+        const a = Math.atan2(m.y - p.y, m.x - p.x);
+        const speed = 7;
+        R.push({ x: p.x + Math.cos(a) * 43, y: p.y + Math.sin(a) * 43,
+            vx: Math.cos(a) * speed, vy: Math.sin(a) * speed,
+            tx: m.x, ty: m.y, life: 100, dmg: 10 * (gunMult[2] || 1), burgerRocket: 1 });
+        uwuTrail.push({ x: p.x + Math.cos(a) * 35, y: p.y + Math.sin(a) * 35, life: 50, age: 0, text: 'UWU' });
+        fl = 6; muzzle(a, 8); cd = 48;
+        if (window.speechSynthesis && typeof SpeechSynthesisUtterance !== 'undefined') {
+            try { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance('UWU'); u.rate = 1.25; u.pitch = 1.7; u.volume = 0.65; window.speechSynthesis.speak(u); } catch (_) {}
+        }
     }
     function shoot() {
         const a = Math.atan2(m.y - p.y, m.x - p.x);
@@ -15650,7 +15693,10 @@ let w = 0
                 cd--;
             if (!isPaused && !blackHoleWorldLocked() && !dead && md && cd <= 0 && vehicleMode !== 'driver') {
                 // Secret special weapons are selected by their private chat unlocks.
-                if (wp === 9 && udaingaJaveeraMode && trySpendAmmo(9)) {
+                if (wp === 11 && owenTheDestroyerMode) {
+                    shootOwenBurger();
+                }
+                else                 if (wp === 9 && udaingaJaveeraMode && trySpendAmmo(9)) {
                     shootUdaingaJaveera();
                     cd = 24;
                 }
@@ -16171,6 +16217,16 @@ let w = 0
                 g.arc(3, 0, 3.2, 0, Math.PI * 2);
                 g.fill();
             }
+            else if (q.burgerRocket) {
+                // Oversized cartoon burger projectile.
+                g.shadowColor = '#ffb52e'; g.shadowBlur = 10;
+                g.fillStyle = '#6f351b'; g.beginPath(); g.ellipse(0, 0, 19, 13, 0, 0, Math.PI * 2); g.fill();
+                g.fillStyle = '#e9a83b'; g.beginPath(); g.ellipse(0, -3, 19, 11, 0, Math.PI, Math.PI * 2); g.fill();
+                g.fillStyle = '#5ca832'; g.beginPath(); g.ellipse(0, 1, 18, 4, 0, 0, Math.PI * 2); g.fill();
+                g.fillStyle = '#d43b2f'; g.fillRect(-16, 2, 32, 4);
+                g.fillStyle = '#ffd875'; g.beginPath(); g.ellipse(0, 7, 18, 7, 0, 0, Math.PI); g.fill();
+                g.shadowBlur = 0;
+            }
             else if (q.rocket) {
                 g.strokeStyle = 'rgba(255,105,35,.65)';
                 g.lineWidth = 5;
@@ -16565,11 +16621,22 @@ let w = 0
         });
         g.globalAlpha = 1;
         P = P.filter(q => q.life > 0);
+        // Floating UWU text trail for Owen's burger launcher.
+        uwuTrail = uwuTrail.filter(q => q.life > 0);
+        uwuTrail.forEach(q => {
+            q.life--; q.age++;
+            g.save(); g.globalAlpha = Math.min(1, q.life / 18) * .9;
+            g.fillStyle = '#ff8edb'; g.strokeStyle = '#65204f'; g.lineWidth = 3;
+            g.font = 'bold 15px Arial'; g.textAlign = 'center'; g.lineJoin = 'round';
+            g.strokeText(q.text, q.x, q.y - q.age * .45); g.fillText(q.text, q.x, q.y - q.age * .45);
+            g.restore();
+        });
         // rockets
         R.forEach(q => {
             q.x += q.vx;
             q.y += q.vy;
             q.life = (Number(q.life) || 360) - 1;
+            if (q.burgerRocket && fr % 5 === 0) uwuTrail.push({ x: q.x, y: q.y, life: 55, age: 0, text: 'UWU' });
             if (gameMode === 'ffa' && activeSharedRun() && !q.visualOnly) {
                 const victim = Object.entries(remotePlayers).find(([uid, v]) => v.online !== false && !v.dead && Math.hypot((Number(v.x) || 0) - q.x, (Number(v.y) || 0) - q.y) < (v.mustafaMissileMode ? 48 : 28));
                 if (victim) {
@@ -16591,15 +16658,15 @@ let w = 0
                 if (!hitZombie && Math.hypot(z.x - q.x, z.y - q.y) < 30) hitZombie = true;
             });
             const hitObject = !q.visualOnly && O.some(o => !o.dead && Math.hypot(q.x - o.x, q.y - o.y) < o.r);
-            const boom = Math.hypot(q.tx - q.x, q.ty - q.y) < 10 || q.life <= 0 || q.x < 0 || q.x > boundW || q.y < 0 || q.y > boundH || hitZombie || hitObject;
+            const boom = (q.burgerRocket ? (Math.hypot(q.tx - q.x, q.ty - q.y) < 16) : Math.hypot(q.tx - q.x, q.ty - q.y) < 10) || q.life <= 0 || q.x < 0 || q.x > boundW || q.y < 0 || q.y > boundH || hitZombie || hitObject;
             if (boom) {
                 q.dead = 1;
                 if (!q.visualOnly)
                     playGameSound('explosion');
                 S = 16;
-                X.push({ x: q.x, y: q.y, t: 0 });
-                const cols = ['#ff3d00', '#ff9d00', '#ffe066', '#ffffff'];
-                for (let i = 0; i < 50; i++) {
+                X.push({ x: q.x, y: q.y, t: 0, burger: !!q.burgerRocket });
+                const cols = q.burgerRocket ? ['#ffcf5c', '#f08a24', '#8bc34a', '#fff1b8'] : ['#ff3d00', '#ff9d00', '#ffe066', '#ffffff'];
+                for (let i = 0; i < (q.burgerRocket ? 100 : 50); i++) {
                     const a = Math.random() * 6.283, s = 1 + Math.random() * 7;
                     pt(q.x, q.y, Math.cos(a) * s, Math.sin(a) * s, 20 + Math.random() * 25 | 0, cols[Math.random() * 4 | 0], 3 + Math.random() * 5, 0);
                 }
@@ -16608,8 +16675,8 @@ let w = 0
                     pt(q.x, q.y, Math.cos(a) * s, Math.sin(a) * s, 40 + Math.random() * 30 | 0, '#555', 8 + Math.random() * 6, 1);
                 }
                 if (!q.visualOnly)
-                    visitNearbyZombies(q.x, q.y, 125, z => {
-                        if (Math.hypot(z.x - q.x, z.y - q.y) < 120) hit(z, q.dmg || 5);
+                    visitNearbyZombies(q.x, q.y, q.burgerRocket ? 240 : 125, z => {
+                        if (Math.hypot(z.x - q.x, z.y - q.y) < (q.burgerRocket ? 240 : 120)) hit(z, q.burgerRocket ? (q.dmg || 10) * 2 : (q.dmg || 5));
                     });
             }
             else {
@@ -16618,6 +16685,15 @@ let w = 0
                 g.save();
                 g.translate(q.x, q.y);
                 g.rotate(Math.atan2(q.vy, q.vx));
+                if (q.burgerRocket) {
+                    g.shadowColor = '#ffb52e'; g.shadowBlur = 10;
+                    g.fillStyle = '#6f351b'; g.beginPath(); g.ellipse(0, 0, 19, 13, 0, 0, Math.PI * 2); g.fill();
+                    g.fillStyle = '#e9a83b'; g.beginPath(); g.ellipse(0, -3, 19, 11, 0, Math.PI, Math.PI * 2); g.fill();
+                    g.fillStyle = '#5ca832'; g.beginPath(); g.ellipse(0, 1, 18, 4, 0, 0, Math.PI * 2); g.fill();
+                    g.fillStyle = '#d43b2f'; g.fillRect(-16, 2, 32, 4);
+                    g.fillStyle = '#ffd875'; g.beginPath(); g.ellipse(0, 7, 18, 7, 0, 0, Math.PI); g.fill();
+                    g.shadowBlur = 0;
+                } else {
                 g.fillStyle = '#ddd';
                 g.fillRect(-8, -3, 14, 6);
                 g.fillStyle = '#c0392b';
@@ -16628,13 +16704,14 @@ let w = 0
                 g.fill();
                 g.fillRect(-9, -6, 4, 3);
                 g.fillRect(-9, 3, 4, 3);
+                }
                 g.restore();
             }
         });
         // explosions
         X.forEach(q => {
             q.t++;
-            const f = q.t / 30, r = Math.max(1, 120 * Math.min(1, f * 2));
+            const f = q.t / 30, r = Math.max(1, (q.burger ? 240 : 120) * Math.min(1, f * 2));
             g.globalAlpha = Math.max(0, 1 - f);
             const gr = g.createRadialGradient(q.x, q.y, 0, q.x, q.y, r);
             gr.addColorStop(0, q.purple ? '#fff' : '#fff');
