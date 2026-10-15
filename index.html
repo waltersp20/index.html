@@ -866,8 +866,13 @@ h1 span {
   display: none !important;
 }
 
-/*Admin panel is hidden by default, but must be allowed to open through its secret shortcut.*/
+/*Admin panel is hidden by default; the access button is visible and protected by server-verified PIN login.*/
 
+#adminOpenButton {
+  top: auto;
+  bottom: 14px;
+  right: 14px;
+}
 #adminPanel {
   display: none;
 }
@@ -2017,7 +2022,7 @@ h1 span {
 <p class="small-note">Tip: gather wood from trees with E and stone from rocks with E. Press Escape to cancel placement.</p>
 </section>
 
-  <button id="adminOpenButton" class="admin-open-ingame" type="button" hidden>ADMIN TOOLS · CTRL+SHIFT+A</button>
+  <button id="adminOpenButton" class="admin-open-ingame" type="button" aria-label="Open admin tools; access code required">ADMIN ACCESS · CODE REQUIRED</button>
   <div id="adminPanel" class="utility-panel" aria-label="Secret administrator tools">
     <button class="panel-close" data-close="adminPanel" aria-label="Close admin panel">×</button>
     <h2>Admin · Control Centre</h2>
@@ -2063,17 +2068,21 @@ h1 span {
   </div>
   <div id="zsJumpscareOverlay" aria-hidden="true"><img alt="A sudden horror face fills the screen">
 </div>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script><script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js"></script>
+<script>
 (() => {
     const c = document.createElement('canvas');
     // Render gameplay in logical CSS pixels with a native-resolution backing buffer.
     // Adaptive quality now trims transient effects rather than making the full game blurry.
     let logicalCanvasW = Math.max(1, window.innerWidth || 1), logicalCanvasH = Math.max(1, window.innerHeight || 1);
     function scaleForViewport(w, h) {
-        // Keep the canvas at native CSS-pixel resolution so the whole game stays sharp.
-        // Use a modest HiDPI boost where available, capped to protect laptop performance.
-        const deviceScale = Number(window.devicePixelRatio) || 1;
-        return Math.min(1.25, Math.max(1, deviceScale));
+        // The canvas is laid out in CSS pixels, so a 1:1 backing buffer stays crisp without
+        // oversampling every frame. A 1.25x backing buffer costs 56% more pixel fill on laptops.
+        // DOM UI text remains fully device-resolution and the vector game art remains sharp at 1:1.
+        return 1;
     }
     let baseRenderScale = scaleForViewport(logicalCanvasW, logicalCanvasH), renderScale = baseRenderScale, adaptiveQualityLevel = 0;
     let adaptiveLastFrameAt = 0, adaptiveSlowFrames = 0, adaptiveGoodFrames = 0;
@@ -2936,11 +2945,12 @@ h1 span {
                 adaptiveSlowFrames = Math.max(0, adaptiveSlowFrames - 1);
                 adaptiveGoodFrames = 0;
             }
-            if (adaptiveSlowFrames >= 5 && adaptiveQualityLevel < 5) {
+            if (adaptiveSlowFrames >= 2 && adaptiveQualityLevel < 5) {
                 adaptiveSlowFrames = 0;
-                applyAdaptiveQuality(adaptiveQualityLevel + (gap > 120 ? 2 : 1));
+                applyAdaptiveQuality(adaptiveQualityLevel + (gap > 90 ? 2 : 1));
             }
-            else if (adaptiveGoodFrames >= 1800 && adaptiveQualityLevel > 0) {
+            else if (adaptiveGoodFrames >= 900 && adaptiveQualityLevel > 0) {
+                // Recover more quickly after sustained smooth frames, without oscillating every second.
                 adaptiveGoodFrames = 0;
                 applyAdaptiveQuality(adaptiveQualityLevel - 1);
             }
@@ -4834,34 +4844,58 @@ h1 span {
             stopChatWatch();
     }));
     document.getElementById('chatForm').addEventListener('submit', ev => ev.preventDefault());
-    // Secret admin shortcut. The panel can be opened by anyone. Admin permission is
-    // granted to this exact authenticated UID or to accounts with a server-set admin claim.
-    // Realtime Database rules must independently enforce the same UID/claim check.
-    const ZS_ADMIN_UID = 'zo10fEWivHUXiRBqw4GW7vA5Ito2';
-    // Convenience PIN gate only. Because this is a public client-side game, this PIN is
-    // visible to anyone inspecting the HTML and must never replace Firebase authorization.
-    const ZS_ADMIN_PANEL_PIN = '684291735026';
-    let zsAdminPinAccepted = false;
+    // Cross-device admin login: the PIN is verified only by a callable Cloud Function.
+    // Never embed the PIN in this public HTML. A successful login grants an expiring claim
+    // to the currently signed-in Firebase account on this device.
     async function requestAdminPanelOpen(forceRefresh = false) {
         const panel = document.getElementById('adminPanel');
         if (panel.classList.contains('open')) {
             panel.classList.remove('open');
             return;
         }
-        if (!zsAdminPinAccepted) {
-            const entered = window.prompt('Enter the 12-digit admin panel PIN:');
-            if (entered === null)
-                return;
-            if (String(entered).trim() !== ZS_ADMIN_PANEL_PIN) {
-                window.alert('Incorrect admin PIN.');
-                return;
-            }
-            zsAdminPinAccepted = true;
+        const status = document.getElementById('adminConnection');
+        if (!window.firebase || !firebase.auth || !firebase.functions || !firebaseDb) {
+            if (status) status.textContent = 'Admin login service unavailable. Deploy the Firebase adminLogin function first.';
+            panel.classList.add('open');
+            return;
         }
-        panel.classList.add('open');
-        const ok = await verifyAdminAccess(forceRefresh);
-        if (ok)
-            loadAdminLeaderboardEntries();
+        let user = firebase.auth().currentUser;
+        try {
+            if (!user) {
+                const credential = await firebase.auth().signInAnonymously();
+                user = credential.user || firebase.auth().currentUser;
+            }
+            if (!user) throw new Error('Firebase sign-in did not return a user.');
+            let result = await user.getIdTokenResult(false);
+            const activeClaim = result && result.claims && result.claims.admin === true && Number(result.claims.adminUntil) > Date.now();
+            if (!activeClaim) {
+                const entered = window.prompt('Enter the numeric admin access code:');
+                if (entered === null) return;
+                if (!/^\d{8,24}$/.test(String(entered).trim())) {
+                    window.alert('The admin code must contain 8–24 digits.');
+                    return;
+                }
+                if (status) status.textContent = 'Verifying admin code securely…';
+                try {
+                    const login = firebase.functions('europe-west1').httpsCallable('adminLogin');
+                    await login({ pin: String(entered).trim() });
+                    await user.getIdToken(true);
+                } catch (loginError) {
+                    console.error('Admin login failed:', loginError);
+                    const message = loginError && loginError.message ? loginError.message : 'The code was not accepted.';
+                    window.alert('Admin login failed: ' + message + '\nCheck that the adminLogin Firebase Function has been deployed and its secret is configured.');
+                    if (status) status.textContent = 'Admin login failed. Check the deployed Cloud Function and code secret.';
+                    return;
+                }
+            }
+            panel.classList.add('open');
+            const ok = await verifyAdminAccess(true);
+            if (ok) await loadAdminLeaderboardEntries();
+        } catch (err) {
+            console.error('Unable to open admin panel:', err);
+            if (status) status.textContent = 'Admin sign-in failed (' + (err.code || err.message || 'unknown error') + ').';
+            panel.classList.add('open');
+        }
     }
     window.addEventListener('keydown', ev => {
         if (ev.ctrlKey && ev.shiftKey && ev.key.toLowerCase() === 'a') {
@@ -4892,7 +4926,7 @@ h1 span {
         }
         try {
             const token = await user.getIdTokenResult(!!forceRefresh);
-            adminClaimVerified = (user.uid === ZS_ADMIN_UID) || !!(token && token.claims && token.claims.admin === true);
+            adminClaimVerified = !!(token && token.claims && token.claims.admin === true && Number(token.claims.adminUntil) > Date.now());
             if (adminClaimVerified) {
                 if (status)
                     status.textContent = 'ADMIN VERIFIED · ' + (user.email || user.uid) + ' · leaderboard edits enabled.';
@@ -4904,7 +4938,7 @@ h1 span {
                 return true;
             }
             if (status)
-                status.textContent = 'LOCKED — this account is not on the admin allowlist. UID: ' + user.uid;
+                status.textContent = 'LOCKED — enter the admin access code with Ctrl+Shift+A or the Admin Access button.';
             return false;
         }
         catch (err) {
@@ -8397,7 +8431,87 @@ h1 span {
     };
     const Z = .8;
     const WN = ['PISTOL', 'SHOTGUN', 'ROCKET LAUNCHER', 'SMG', 'HOMING GUN', 'VOID ORB', 'ROSIE CANNON', 'INEVITABLE RING', 'ETERNAL DARKNESS', 'UDAINGAJAVEERA', 'BAILSSS'];
-    let w = 0, h = 0, p = { x: 0, y: 0 }, e = [], b = [], k = {}, score = 0, H = 0, dead = 2, R = [], X = [], VORTEX = [], P = [], F = [], D = [], S = 0, rc = 0, L = 0, T = 0, fl = 0, wk = 0, fr = 0, ci = 0, md = 0, m = { x: 0, y: 0 }, wp = 0, cd = 0, BLD = [], WPN = [], AMMO = [], ammo = 0, own = [1, 0, 0, 0, 0, 0], SC = [], po = 0, O = [], G = [], hp = 100, ih = 0, apples = [], appleCount = 0, pears = [], pearCount = 0, AEX = [], buildHeld = 0, buildPreview = null, gunMult = [1, 1, 1, 1, 1, 1], upgrades = [], nextUpgrade = 20, level = 1, levelBanner = 0, transitionFade = 0, environmentBlend = 1, environmentFromLevel = 1, totalSpawned = 0, level2Kills = 0, bossSpawned = 0, bossCutscene = 0, level2Spawned = 0, level2PostBossSpawned = 0, level2PostBossKills = 0, level3Spawned = 0, level3Kills = 0, level4Spawned = 0, level4Kills = 0, firePatches = [], fireHitCooldown = 0, halfHealthBlastUsed = false, reviveUsed = false, reviveTimer = 0, scoreSaved = false, wallCharges = 5, stone = 0, wood = 0, playerScore = 0, BASE_BUILDS = [], selectedBaseBuild = '', lastBuildPointerAt = 0, pickaxe = true, miningCooldown = 0, miningAnim = 0, buildMaterial = 'wood';
+let w = 0
+        h = 0
+        p = { x: 0, y: 0 }
+        e = []
+        b = []
+        k = {}
+        score = 0
+        H = 0
+        dead = 2
+        R = []
+        X = []
+        VORTEX = []
+        P = []
+        F = []
+        D = []
+        S = 0
+        rc = 0
+        L = 0
+        T = 0
+        fl = 0
+        wk = 0
+        fr = 0
+        ci = 0
+        md = 0
+        m = { x: 0, y: 0 }
+        wp = 0
+        cd = 0
+        BLD = []
+        WPN = []
+        AMMO = []
+        ammo = 0
+        own = [1, 0, 0, 0, 0, 0]
+        SC = []
+        po = 0
+        O = []
+        G = []
+        hp = 100
+        ih = 0
+        apples = []
+        appleCount = 0
+        pears = []
+        pearCount = 0
+        AEX = []
+        buildHeld = 0
+        buildPreview = null
+        gunMult = [1, 1, 1, 1, 1, 1]
+        upgrades = []
+        nextUpgrade = 20
+        level = 1
+        levelBanner = 0
+        transitionFade = 0
+        environmentBlend = 1
+        environmentFromLevel = 1
+        totalSpawned = 0
+        level2Kills = 0
+        bossSpawned = 0
+        bossCutscene = 0
+        level2Spawned = 0
+        level2PostBossSpawned = 0
+        level2PostBossKills = 0
+        level3Spawned = 0
+        level3Kills = 0
+        level4Spawned = 0
+        level4Kills = 0
+        firePatches = []
+        fireHitCooldown = 0
+        halfHealthBlastUsed = false
+        reviveUsed = false
+        reviveTimer = 0
+        scoreSaved = false
+        wallCharges = 5
+        stone = 0
+        wood = 0
+        playerScore = 0
+        BASE_BUILDS = []
+        selectedBaseBuild = ''
+        lastBuildPointerAt = 0
+        pickaxe = true
+        miningCooldown = 0
+        miningAnim = 0
+        buildMaterial = 'wood';
     const CH = [
         { n: 'SOLDIER', shirt: '#4b5a32', vest: '#3a4526', pants: '#3b4028', helm: '#3d4a2a', skin: '#e0ac82', boot: '#1a1a1a', accent: '#a4ad71', glove: '#313728', pack: '#343f29' },
         { n: 'SURVIVOR', shirt: '#8e2b2b', pants: '#2f4a6b', hair: '#5a3a1e', skin: '#f0c39a', pack: '#5d4a2f', boot: '#3b2a1a', accent: '#d0b17c', glove: '#43362b' },
@@ -8460,8 +8574,10 @@ h1 span {
         watchLeaderboard(leaderboardMode);
     // Homepage refresh is deferred until the full game state has been initialised.
     function pt(x, y, vx, vy, l, col, s, sm) {
+        // Trim in batches instead of shifting 500 entries for every incoming particle. Weapon trails
+        // and explosions often emit bursts, so this avoids repeated O(n) array moves under load.
         if (P.length >= 500)
-            P.shift();
+            P.splice(0, Math.max(32, P.length - 400));
         P.push({ x: x, y: y, vx: vx, vy: vy, life: l, max: l, col: col, s: s, sm: sm });
     }
     function el(x, y, rx, ry, col, r) {
@@ -8736,14 +8852,82 @@ h1 span {
         for (let i = 0; i < 500; i++)
             G.push({ x: Math.random() * w, y: Math.random() * h, a: Math.random() * .8 - .4, l: Math.random() < .7 });
     }
+    // Natural scenery is static between world generations. Index it once so collisions only
+    // visit trees/rocks in the nearby cells instead of allocating O.filter(...) per zombie.
+    const NATURAL_GRID_CELL = 240;
+    let naturalGridSource = null, naturalGridLength = -1, naturalGrid = new Map();
+    let naturalGridVisitMarks = new WeakMap(), naturalGridVisitId = 0;
+    function ensureNaturalGrid() {
+        if (naturalGridSource === O && naturalGridLength === O.length) return;
+        naturalGrid = new Map();
+        naturalGridVisitMarks = new WeakMap();
+        for (const object of O) {
+            const gx = Math.floor(object.x / NATURAL_GRID_CELL), gy = Math.floor(object.y / NATURAL_GRID_CELL);
+            const key = gx + ',' + gy;
+            let bucket = naturalGrid.get(key);
+            if (!bucket) naturalGrid.set(key, bucket = []);
+            bucket.push(object);
+        }
+        naturalGridSource = O;
+        naturalGridLength = O.length;
+    }
+    function visitNearbyNaturalObjects(x, y, radius, visitor) {
+        ensureNaturalGrid();
+        if (++naturalGridVisitId >= 2147483000) { naturalGridVisitId = 1; naturalGridVisitMarks = new WeakMap(); }
+        const stamp = naturalGridVisitId;
+        const minX = Math.floor((x - radius) / NATURAL_GRID_CELL), maxX = Math.floor((x + radius) / NATURAL_GRID_CELL);
+        const minY = Math.floor((y - radius) / NATURAL_GRID_CELL), maxY = Math.floor((y + radius) / NATURAL_GRID_CELL);
+        for (let gx = minX; gx <= maxX; gx++) for (let gy = minY; gy <= maxY; gy++) {
+            const bucket = naturalGrid.get(gx + ',' + gy);
+            if (!bucket) continue;
+            for (const object of bucket) {
+                if (naturalGridVisitMarks.get(object) === stamp) continue;
+                naturalGridVisitMarks.set(object, stamp);
+                visitor(object);
+            }
+        }
+    }
+    function getNearbyNaturalObjects(x, y, radius) {
+        const result = [];
+        visitNearbyNaturalObjects(x, y, radius, object => result.push(object));
+        return result;
+    }
     function col(q, r) {
-        O.filter(o => !o.dead).forEach(o => {
+        visitNearbyNaturalObjects(q.x, q.y, r + 42, o => {
+            if (o.dead) return;
             const dx = q.x - o.x, dy = q.y - o.y, d = Math.hypot(dx, dy), mm = o.r + r;
             if (d < mm && d > 0) {
                 q.x = o.x + dx / d * mm;
                 q.y = o.y + dy / d * mm;
             }
         });
+    }
+    // A per-frame spatial grid for live zombies. Large hordes previously performed all-pairs
+    // separation and repeatedly scanned the full enemy array for turrets, vortices and explosions.
+    const ZOMBIE_GRID_CELL = 160;
+    let zombieSpatialGrid = new Map(), zombieGridSource = null;
+    function rebuildZombieSpatialGrid() {
+        zombieSpatialGrid = new Map();
+        for (const zombie of e) {
+            if (!zombie || zombie.dead) continue;
+            const gx = Math.floor(zombie.x / ZOMBIE_GRID_CELL), gy = Math.floor(zombie.y / ZOMBIE_GRID_CELL);
+            const key = gx + ',' + gy;
+            let bucket = zombieSpatialGrid.get(key);
+            if (!bucket) zombieSpatialGrid.set(key, bucket = []);
+            bucket.push(zombie);
+        }
+        zombieGridSource = e;
+    }
+    function visitNearbyZombies(x, y, radius, visitor) {
+        if (zombieGridSource !== e) rebuildZombieSpatialGrid();
+        const minX = Math.floor((x - radius) / ZOMBIE_GRID_CELL), maxX = Math.floor((x + radius) / ZOMBIE_GRID_CELL);
+        const minY = Math.floor((y - radius) / ZOMBIE_GRID_CELL), maxY = Math.floor((y + radius) / ZOMBIE_GRID_CELL);
+        for (let gx = minX; gx <= maxX; gx++) {
+            for (let gy = minY; gy <= maxY; gy++) {
+                const bucket = zombieSpatialGrid.get(gx + ',' + gy);
+                if (bucket) for (const zombie of bucket) if (!zombie.dead) visitor(zombie);
+            }
+        }
     }
     function gen() {
         level = 1;
@@ -9076,15 +9260,15 @@ h1 span {
         const boundW = isBaseWorldMode() ? BASE_WORLD_W : w, boundH = isBaseWorldMode() ? BASE_WORLD_H : h;
         if (q.x < 35 || q.x > boundW - 35 || q.y < 35 || q.y > boundH - 35)
             return false;
-        if (O.some(o => pointWallDist(o.x, o.y, q) < o.r + q.th / 2 + 4))
-            return false;
-        if (BLD.some(o => wallsOverlap(q, o)))
-            return false;
-        if (STATIC_WALLS.some(o => wallsOverlap(q, o)))
-            return false;
-        if (DOORS.some(o => !o.open && wallsOverlap(q, o)))
-            return false;
-        return true;
+        const nearbyNature = getNearbyNaturalObjects(q.x, q.y, Math.hypot(q.len / 2, q.th / 2) + 70);
+        if (nearbyNature.some(o => !o.dead && pointWallDist(o.x, o.y, q) < o.r + q.th / 2 + 4)) return false;
+        let overlapsObstacle = false;
+        visitNearbyObstacles(q.x, q.y, Math.hypot(q.len / 2, q.th / 2) + 12, (o, kind) => {
+            if (overlapsObstacle) return;
+            if ((kind === 'staticWall' || kind === 'buildWall') && !o.dead && wallsOverlap(q, o)) overlapsObstacle = true;
+            else if (kind === 'door' && !o.dead && !o.open && wallsOverlap(q, o)) overlapsObstacle = true;
+        });
+        return !overlapsObstacle;
     }
     const BASE_BUILD_DEFS = {
         wood_wall: { name: 'Timber wall', category: 'walls', wall: true, mat: 'wood', wood: 8, stone: 0, hp: 300, desc: 'Interlocking wall section', score: 0 },
@@ -10072,8 +10256,12 @@ h1 span {
             if (!d || !['defences'].includes(d.category))
                 return;
             b.cooldown = Math.max(0, (Number(b.cooldown) || 0) - 1);
-            const targets = e.filter(z => !z.dead && Math.hypot(z.x - b.x, z.y - b.y) < (d.range || 100)).sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y));
-            const target = targets[0];
+            const range = Number(d.range) || 100, rangeSq = range * range;
+            let target = null, nearestSq = rangeSq;
+            visitNearbyZombies(b.x, b.y, range + 12, z => {
+                const dx = z.x - b.x, dy = z.y - b.y, distanceSq = dx * dx + dy * dy;
+                if (distanceSq < nearestSq) { nearestSq = distanceSq; target = z; }
+            });
             if (b.type === 'spike_trap') {
                 if (target && b.cooldown <= 0) {
                     hit(target, d.damage || 16, true);
@@ -10131,11 +10319,10 @@ h1 span {
             return;
         halfHealthBlastUsed = true;
         const radius = 145;
-        e.forEach(z => {
-            if (!z.dead && Math.hypot(z.x - p.x, z.y - p.y) <= radius) {
+        visitNearbyZombies(p.x, p.y, radius + 18, z => {
+            if (Math.hypot(z.x - p.x, z.y - p.y) <= radius) {
                 const damage = Math.max(0, Math.min(Math.max(0, z.hp - 1), Math.ceil((z.mh || z.hp) * .7)));
-                if (damage > 0)
-                    hit(z, damage);
+                if (damage > 0) hit(z, damage);
             }
         });
         AEX.push({ x: p.x, y: p.y, t: 0, r: radius, purple: 0 });
@@ -10162,9 +10349,8 @@ h1 span {
             return;
         pearCount--;
         const radius = 145;
-        e.forEach(z => {
-            if (!z.dead && Math.hypot(z.x - p.x, z.y - p.y) <= radius)
-                hit(z, 999999);
+        visitNearbyZombies(p.x, p.y, radius + 18, z => {
+            if (Math.hypot(z.x - p.x, z.y - p.y) <= radius) hit(z, 999999);
         });
         AEX.push({ x: p.x, y: p.y, t: 0, r: radius, purple: 0 });
         for (let i = 0; i < 38; i++) {
@@ -12439,6 +12625,10 @@ h1 span {
         g.restore();
     }
     function drawSkeleton(q, a, alpha = 1, rise = 0, fall = 0) {
+        if (isBaseWorldMode()) {
+            const vw = logicalCanvasW / (Z * BASE_ZOOM), vh = logicalCanvasH / (Z * BASE_ZOOM), pad = 110;
+            if (q.x < cameraX - pad || q.x > cameraX + vw + pad || q.y < cameraY - pad || q.y > cameraY + vh + pad) return;
+        }
         g.save();
         g.globalAlpha = alpha;
         g.translate(q.x, q.y - rise);
@@ -12570,6 +12760,10 @@ h1 span {
         g.restore();
     }
     function drawZombie(q, a) {
+        if (isBaseWorldMode()) {
+            const vw = logicalCanvasW / (Z * BASE_ZOOM), vh = logicalCanvasH / (Z * BASE_ZOOM), pad = 110;
+            if (q.x < cameraX - pad || q.x > cameraX + vw + pad || q.y < cameraY - pad || q.y > cameraY + vh + pad) return;
+        }
         if (q.ty === 6)
             drawSkeleton(q, a, 1, 0, 0);
         else
@@ -13012,44 +13206,116 @@ h1 span {
     function doorDist(x, y, d) {
         return pointWallDist(x, y, d);
     }
-    function collWall(q, r) {
-        STATIC_WALLS.forEach(o => {
-            if (o.dead)
-                return;
-            const d = pointWallDist(q.x, q.y, o);
-            if (d < r) {
-                const a = Math.atan2(q.y - o.y, q.x - o.x), push = r - d;
-                q.x += Math.cos(a) * push;
-                q.y += Math.sin(a) * push;
-            }
-        });
-        DOORS.filter(d => !d.open).forEach(o => {
-            const d = doorDist(q.x, q.y, o);
-            if (d < r) {
-                const a = Math.atan2(q.y - o.y, q.x - o.x), push = r - d;
-                q.x += Math.cos(a) * push;
-                q.y += Math.sin(a) * push;
-            }
-        });
-        BLD.forEach(o => {
-            const d = pointWallDist(q.x, q.y, o);
-            if (d < r) {
-                const a = Math.atan2(q.y - o.y, q.x - o.x), push = r - d;
-                q.x += Math.cos(a) * push;
-                q.y += Math.sin(a) * push;
-            }
-        });
-        BASE_BUILDS.forEach(o => {
+    // Spatial index for walls, doors and blocking base builds. Most of these objects do not move,
+    // so the index is rebuilt only when an obstacle array is replaced or its length changes.
+    // Objects are inserted into every cell their bounding box covers; each query deduplicates entries
+    // with a reusable visit stamp rather than allocating Sets/filtered arrays for each zombie.
+    const OBSTACLE_GRID_CELL = 240;
+    let obstacleGrid = new Map();
+    let obstacleGridStaticSource = null, obstacleGridDoorSource = null, obstacleGridBuildSource = null, obstacleGridBaseBuildSource = null;
+    let obstacleGridStaticLength = -1, obstacleGridDoorLength = -1, obstacleGridBuildLength = -1, obstacleGridBaseBuildLength = -1;
+    let obstacleGridVisitMarks = new WeakMap();
+    let obstacleGridVisitId = 0;
+    function obstacleGridBounds(o, kind) {
+        const x = Number(o.x) || 0, y = Number(o.y) || 0;
+        if (kind === 'baseBuild') {
             const def = BASE_BUILD_DEFS[o.type];
-            if (!def || !def.blocks)
+            const hw = Math.max(1, Number(def && def.w) || 60) / 2;
+            const hh = Math.max(1, Number(def && def.h) || 60) / 2;
+            return { minX: x - hw, maxX: x + hw, minY: y - hh, maxY: y + hh };
+        }
+        const len = Math.abs(Number(o.len) || Number(o.w) || 36);
+        const th = Math.abs(Number(o.th) || Number(o.h) || 20);
+        const a = Number(o.a) || 0, ca = Math.abs(Math.cos(a)), sa = Math.abs(Math.sin(a));
+        const hw = ca * len / 2 + sa * th / 2;
+        const hh = sa * len / 2 + ca * th / 2;
+        return { minX: x - hw, maxX: x + hw, minY: y - hh, maxY: y + hh };
+    }
+    function ensureObstacleGrid() {
+        const needsRebuild = obstacleGridStaticSource !== STATIC_WALLS || obstacleGridDoorSource !== DOORS ||
+            obstacleGridBuildSource !== BLD || obstacleGridBaseBuildSource !== BASE_BUILDS ||
+            obstacleGridStaticLength !== STATIC_WALLS.length || obstacleGridDoorLength !== DOORS.length ||
+            obstacleGridBuildLength !== BLD.length || obstacleGridBaseBuildLength !== BASE_BUILDS.length;
+        if (!needsRebuild) return;
+        obstacleGrid = new Map();
+        obstacleGridVisitMarks = new WeakMap();
+        const addObject = (obj, kind) => {
+            if (!obj || !Number.isFinite(Number(obj.x)) || !Number.isFinite(Number(obj.y))) return;
+            if (kind === 'baseBuild') {
+                const def = BASE_BUILD_DEFS[obj.type];
+                if (!def || !def.blocks) return;
+            }
+            const bounds = obstacleGridBounds(obj, kind);
+            const minGX = Math.floor(bounds.minX / OBSTACLE_GRID_CELL), maxGX = Math.floor(bounds.maxX / OBSTACLE_GRID_CELL);
+            const minGY = Math.floor(bounds.minY / OBSTACLE_GRID_CELL), maxGY = Math.floor(bounds.maxY / OBSTACLE_GRID_CELL);
+            const entry = { obj, kind };
+            for (let gx = minGX; gx <= maxGX; gx++) for (let gy = minGY; gy <= maxGY; gy++) {
+                const key = gx + ',' + gy;
+                let bucket = obstacleGrid.get(key);
+                if (!bucket) obstacleGrid.set(key, bucket = []);
+                bucket.push(entry);
+            }
+        };
+        for (const obj of STATIC_WALLS) addObject(obj, 'staticWall');
+        for (const obj of DOORS) addObject(obj, 'door');
+        for (const obj of BLD) addObject(obj, 'buildWall');
+        for (const obj of BASE_BUILDS) addObject(obj, 'baseBuild');
+        obstacleGridStaticSource = STATIC_WALLS;
+        obstacleGridDoorSource = DOORS;
+        obstacleGridBuildSource = BLD;
+        obstacleGridBaseBuildSource = BASE_BUILDS;
+        obstacleGridStaticLength = STATIC_WALLS.length;
+        obstacleGridDoorLength = DOORS.length;
+        obstacleGridBuildLength = BLD.length;
+        obstacleGridBaseBuildLength = BASE_BUILDS.length;
+    }
+    function visitNearbyObstacles(x, y, radius, visitor) {
+        ensureObstacleGrid();
+        if (++obstacleGridVisitId >= 2147483000) { obstacleGridVisitId = 1; obstacleGridVisitMarks = new WeakMap(); }
+        const stamp = obstacleGridVisitId;
+        const minGX = Math.floor((x - radius) / OBSTACLE_GRID_CELL), maxGX = Math.floor((x + radius) / OBSTACLE_GRID_CELL);
+        const minGY = Math.floor((y - radius) / OBSTACLE_GRID_CELL), maxGY = Math.floor((y + radius) / OBSTACLE_GRID_CELL);
+        for (let gx = minGX; gx <= maxGX; gx++) for (let gy = minGY; gy <= maxGY; gy++) {
+            const bucket = obstacleGrid.get(gx + ',' + gy);
+            if (!bucket) continue;
+            for (const entry of bucket) {
+                if (obstacleGridVisitMarks.get(entry) === stamp) continue;
+                obstacleGridVisitMarks.set(entry, stamp);
+                visitor(entry.obj, entry.kind);
+            }
+        }
+    }
+    function collWall(q, r) {
+        visitNearbyObstacles(q.x, q.y, r + 4, (o, kind) => {
+            if (kind === 'staticWall' || kind === 'buildWall') {
+                if (o.dead) return;
+                const d = pointWallDist(q.x, q.y, o);
+                if (d < r) {
+                    const a = Math.atan2(q.y - o.y, q.x - o.x), push = r - d;
+                    q.x += Math.cos(a) * push;
+                    q.y += Math.sin(a) * push;
+                }
                 return;
-            const dx = q.x - o.x, dy = q.y - o.y, hw = (def.w || 60) / 2, hh = (def.h || 60) / 2;
-            if (Math.abs(dx) < hw + r && Math.abs(dy) < hh + r) {
-                const px = hw + r - Math.abs(dx), py = hh + r - Math.abs(dy);
-                if (px < py)
-                    q.x += (dx < 0 ? -1 : 1) * px;
-                else
-                    q.y += (dy < 0 ? -1 : 1) * py;
+            }
+            if (kind === 'door') {
+                if (o.dead || o.open) return;
+                const d = doorDist(q.x, q.y, o);
+                if (d < r) {
+                    const a = Math.atan2(q.y - o.y, q.x - o.x), push = r - d;
+                    q.x += Math.cos(a) * push;
+                    q.y += Math.sin(a) * push;
+                }
+                return;
+            }
+            if (kind === 'baseBuild') {
+                const def = BASE_BUILD_DEFS[o.type];
+                if (!def || !def.blocks) return;
+                const dx = q.x - o.x, dy = q.y - o.y, hw = (def.w || 60) / 2, hh = (def.h || 60) / 2;
+                if (Math.abs(dx) < hw + r && Math.abs(dy) < hh + r) {
+                    const px = hw + r - Math.abs(dx), py = hh + r - Math.abs(dy);
+                    if (px < py) q.x += (dx < 0 ? -1 : 1) * px;
+                    else q.y += (dy < 0 ? -1 : 1) * py;
+                }
             }
         });
     }
@@ -13425,7 +13691,7 @@ h1 span {
     // Base World static terrain is rendered into bounded world-space tiles and reused while the
     // camera moves. This removes thousands of repeated paths, gradients and deterministic speckles
     // from the per-frame hot path. Tile baking is throttled when quality is low to prevent long frames.
-    const BASE_GROUND_TILE = 640, BASE_GROUND_CACHE_LIMIT = 18, baseGroundTileCache = new Map();
+    const BASE_GROUND_TILE = 640, BASE_GROUND_CACHE_LIMIT = 10, baseGroundTileCache = new Map();
     function baseGroundPixelRatio() {
         // Base World is magnified by Z * BASE_ZOOM. Bake at roughly the same final pixel
         // density so terrain tiles don't turn blurry when the camera zooms in.
@@ -13437,6 +13703,24 @@ h1 span {
             const oldest = baseGroundTileCache.keys().next().value;
             baseGroundTileCache.delete(oldest);
         }
+    }
+    function baseGroundFallbackColour(x, y) {
+        // Very fast approximate biome fill used for at most a few frames while tiles bake.
+        // Detailed shapes and terrain replace it as soon as the cached tile is ready.
+        const regions = [
+            [BASE_WORLD_W * .17, BASE_WORLD_H * .60, BASE_WORLD_W * .36, BASE_WORLD_H * .43, '#416638'],
+            [BASE_WORLD_W * .34, BASE_WORLD_H * .20, BASE_WORLD_W * .34, BASE_WORLD_H * .35, '#78613a'],
+            [BASE_WORLD_W * .51, BASE_WORLD_H * .52, BASE_WORLD_W * .34, BASE_WORLD_H * .40, '#294637'],
+            [BASE_WORLD_W * .78, BASE_WORLD_H * .27, BASE_WORLD_W * .30, BASE_WORLD_H * .38, '#c5d9df'],
+            [BASE_WORLD_W * .80, BASE_WORLD_H * .78, BASE_WORLD_W * .31, BASE_WORLD_H * .34, '#582631'],
+            [BASE_WORLD_W * .90, BASE_WORLD_H * .70, BASE_WORLD_W * .18, BASE_WORLD_H * .23, '#3e3533']
+        ];
+        let best = Infinity, color = '#203b2a';
+        for (const r of regions) {
+            const dx = (x - r[0]) / r[2], dy = (y - r[1]) / r[3], d = dx * dx + dy * dy;
+            if (d < best) { best = d; color = r[4]; }
+        }
+        return color;
     }
     function getBaseGroundTile(tx, ty) {
         const ratio = baseGroundPixelRatio(), wx = tx * BASE_GROUND_TILE, wy = ty * BASE_GROUND_TILE;
@@ -13609,7 +13893,9 @@ h1 span {
             for (let tx = tx0; tx <= tx1; tx++)
                 coords.push({ tx, ty, wx: tx * BASE_GROUND_TILE, wy: ty * BASE_GROUND_TILE });
         let generated = 0;
-        const tileBudget = adaptiveQualityLevel >= 2 ? 1 : 2;
+        // Keep tile baking to one expensive canvas per frame. Missing tiles temporarily show
+        // the coarse biome fill; the detailed tile appears as soon as baking completes.
+        const tileBudget = adaptiveQualityLevel >= 1 ? 1 : 2;
         for (const q of coords) {
             const ratio = baseGroundPixelRatio(), key = [q.tx, q.ty, Math.round(VISUAL_DENSITY * 100), Math.round(ratio * 100), level, ULTRA_VISUALS ? 1 : 0].join(':');
             let tile = baseGroundTileCache.get(key);
@@ -13622,14 +13908,11 @@ h1 span {
                 baseGroundTileCache.set(key, tile);
                 g.drawImage(tile.canvas, tile.wx, tile.wy, BASE_GROUND_TILE, BASE_GROUND_TILE);
             }
-            else { // During cache warm-up paint only the large biome shapes. Baking the detailed texture
-                // again here every frame would duplicate the most expensive work for every missing tile.
-                g.save();
-                g.beginPath();
-                g.rect(q.wx, q.wy, BASE_GROUND_TILE, BASE_GROUND_TILE);
-                g.clip();
-                drawWorldBiomes(g, { left: q.wx, top: q.wy, right: q.wx + BASE_GROUND_TILE, bottom: q.wy + BASE_GROUND_TILE });
-                g.restore();
+            else { // Cheap temporary base-colour fallback while the detailed tile is baked.
+                // Re-running the full six-biome polygon renderer for every missing tile on every
+                // frame caused large CPU spikes whenever the camera moved into a new area.
+                g.fillStyle = baseGroundFallbackColour(q.wx + BASE_GROUND_TILE * .5, q.wy + BASE_GROUND_TILE * .5);
+                g.fillRect(q.wx, q.wy, BASE_GROUND_TILE, BASE_GROUND_TILE);
             }
         }
     }
@@ -13805,7 +14088,11 @@ h1 span {
     }
     function vehicleBlockedByWall(x, y) {
         const r = 58;
-        const blocked = [...STATIC_WALLS, ...DOORS.filter(d => !d.open), ...BLD].some(o => pointWallDist(x, y, o) < r);
+        let blocked = false;
+        visitNearbyObstacles(x, y, r + 4, (o, kind) => {
+            if (blocked || kind === 'baseBuild' || o.dead || (kind === 'door' && o.open)) return;
+            if (pointWallDist(x, y, o) < r) blocked = true;
+        });
         return blocked;
     }
     function updateVehicle() {
@@ -13864,6 +14151,38 @@ h1 span {
         return true;
     }
     function drawWorldMinimap() {
+        // Cache only the minimap's own rectangle, not a full-screen transparent canvas. This
+        // avoids a large full-screen image blit every frame on laptops while still refreshing
+        // player, viewport and zombie markers at 20 Hz.
+        const mw = Math.min(500, w * .56), mh = mw * (BASE_WORLD_H / BASE_WORLD_W), mx = w - mw - 18, my = 18;
+        const scale = renderScale * Z;
+        const key = [Math.round(mw), Math.round(mh), Math.round(mx), Math.round(my), Math.round(scale * 100), c.width, c.height].join(':');
+        let cache = drawWorldMinimap._frameCache;
+        if (!cache || cache.key !== key) {
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.ceil((mw + 4) * scale));
+            canvas.height = Math.max(1, Math.ceil((mh + 32) * scale));
+            const ctx = canvas.getContext('2d');
+            cache = { key, canvas, ctx, lastFrame: -1 };
+            drawWorldMinimap._frameCache = cache;
+        }
+        if (!cache.ctx) return;
+        if (cache.lastFrame < 0 || fr - cache.lastFrame >= 3) {
+            cache.ctx.setTransform(1, 0, 0, 1, 0, 0);
+            cache.ctx.clearRect(0, 0, cache.canvas.width, cache.canvas.height);
+            // Original drawing uses global minimap coordinates; offset them into this small buffer.
+            cache.ctx.setTransform(scale, 0, 0, scale, -mx * scale, -my * scale);
+            drawWorldMinimapUncached(cache.ctx);
+            cache.lastFrame = fr;
+        }
+        // Cached image is already in backing-buffer pixels; blit only the small minimap rectangle.
+        g.save();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.drawImage(cache.canvas, Math.round(mx * scale), Math.round(my * scale));
+        g.restore();
+    }
+    function drawWorldMinimapUncached(targetContext = g) {
+        const g = targetContext;
         const mw = Math.min(500, w * .56), mh = mw * (BASE_WORLD_H / BASE_WORLD_W), mx = w - mw - 18, my = 18;
         g.save();
         g.fillStyle = 'rgba(4,7,12,.94)';
@@ -13959,25 +14278,26 @@ h1 span {
             g.stroke();
         });
         // Zombie clusters; bosses are marked in gold.
-        const clusters = new Map();
-        e.filter(z => !z.dead).forEach(z => {
-            const gx = Math.floor(z.x / BASE_WORLD_W * 10), gy = Math.floor(z.y / BASE_WORLD_H * 7), key = gx + ',' + gy;
-            if (!clusters.has(key))
-                clusters.set(key, { x: (gx + .5) / 10, y: (gy + .5) / 7, n: 0, boss: false });
-            const q = clusters.get(key);
-            q.n++;
-            if (z.boss)
-                q.boss = true;
-        });
-        clusters.forEach(q => {
-            if (q.n < 2 && !q.boss)
-                return;
+        if (!drawWorldMinimap._zombieClusterCache || fr - (drawWorldMinimap._clusterCacheFrame || 0) >= 8) {
+            const clusters = new Map();
+            for (const z of e) {
+                if (z.dead) continue;
+                const gx = Math.floor(z.x / BASE_WORLD_W * 10), gy = Math.floor(z.y / BASE_WORLD_H * 7), key = gx + ',' + gy;
+                let q = clusters.get(key);
+                if (!q) clusters.set(key, q = { x: (gx + .5) / 10, y: (gy + .5) / 7, n: 0, boss: false });
+                q.n++;
+                if (z.boss) q.boss = true;
+            }
+            drawWorldMinimap._zombieClusterCache = Array.from(clusters.values()).filter(q => q.n >= 2 || q.boss);
+            drawWorldMinimap._clusterCacheFrame = fr;
+        }
+        for (const q of drawWorldMinimap._zombieClusterCache) {
             const x = mapX(q.x * BASE_WORLD_W), y = mapY(q.y * BASE_WORLD_H);
             g.fillStyle = q.boss ? '#ffe16b' : '#ff655f';
             g.beginPath();
             g.arc(x, y, q.boss ? 3.5 : 2.2, 0, Math.PI * 2);
             g.fill();
-        });
+        }
         // Outline the current visible viewport so the minimap communicates scale and position.
         const viewW = logicalCanvasW / (Z * BASE_ZOOM), viewH = logicalCanvasH / (Z * BASE_ZOOM);
         g.strokeStyle = '#ffffff';
@@ -14313,8 +14633,23 @@ h1 span {
             }
             ctx.restore();
         }
-        else if (o.t === 3) {
-            // Deadwood: split bark, sharp branch tips, broken snags and a few dangling fibres.
+        if (o.t === 3) {
+            // Deadwood: any last autumn leaves fade out above the branches, then the dead snag remains.
+            if (Number(o.leafFade) > 0) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, Math.min(1, Number(o.leafFade) || 0));
+                const deadLeafCols = ['#b96c2d', '#d18a35', '#c5a13f', '#8f572b'];
+                const deadLobes = [[-19, -9, 18, 13], [-8, -25, 17, 14], [10, -20, 19, 15], [23, -4, 16, 13], [7, 5, 18, 13], [-15, 5, 16, 12]];
+                for (let i = 0; i < deadLobes.length; i++) {
+                    const [dx, dy, rx, ry] = deadLobes[i];
+                    ctx.fillStyle = deadLeafCols[i % deadLeafCols.length];
+                    ctx.beginPath();
+                    ctx.ellipse(o.x + dx, o.y + dy, rx, ry, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+            // Split bark, sharp branch tips, broken snags and a few dangling fibres.
             ctx.save();
             ctx.strokeStyle = '#130d10';
             ctx.lineWidth = Math.max(2.5, r * .16);
@@ -14433,8 +14768,10 @@ h1 span {
         for (const o of O) {
             if (o.dead || o.x < minX || o.x > maxX || o.y < minY || o.y > maxY)
                 continue;
-            // Level-four trees can have a live leaf-fade animation; draw those few objects dynamically.
-            if (level === 4 && o.t === 0 && Number(o.leafFade) > 0 && Number(o.leafFade) < .999) {
+            // Level-four foliage is animated only during the short transition; keep that handful of
+            // objects dynamic, while all other natural props use their cached full-detail sprites.
+            if (level === 4 && (o.t === 0 || o.t === 3) && Number(o.leafFade) > 0) {
+                o.leafFade = Math.max(0, Number(o.leafFade) - .008);
                 paintNaturalObjectDetail(g, o);
                 continue;
             }
@@ -14474,7 +14811,9 @@ h1 span {
         g.restore();
     }
     function drawBaseStructureMicroDetail() {
-        if (!isBaseWorldMode())
+        // Main buildings, doors, windows and collision stay visible at every quality level.
+        // Skip only extra rooftop seams/props when the FPS monitor has detected sustained slow frames.
+        if (!isBaseWorldMode() || adaptiveQualityLevel >= 3)
             return;
         const vw = logicalCanvasW / (Z * BASE_ZOOM), vh = logicalCanvasH / (Z * BASE_ZOOM), left = cameraX - 150, right = cameraX + vw + 150, top = cameraY - 150, bottom = cameraY + vh + 150;
         g.save();
@@ -14813,30 +15152,25 @@ h1 span {
     // visits grass near the camera, instead of scanning all 4,200 blades on every frame.
     const GRASS_INDEX_CELL = 240;
     let grassSpatialSource = null, grassSpatialIndex = new Map();
-    function getGrassCandidates(left, top, right, bottom) {
-        if (grassSpatialSource !== G) {
-            grassSpatialSource = G;
-            grassSpatialIndex = new Map();
-            for (const blade of G) {
-                const gx = Math.floor(blade.x / GRASS_INDEX_CELL), gy = Math.floor(blade.y / GRASS_INDEX_CELL), key = gx + ',' + gy;
-                let bucket = grassSpatialIndex.get(key);
-                if (!bucket) {
-                    bucket = [];
-                    grassSpatialIndex.set(key, bucket);
-                }
-                bucket.push(blade);
-            }
+    function ensureGrassSpatialIndex() {
+        if (grassSpatialSource === G) return;
+        grassSpatialSource = G;
+        grassSpatialIndex = new Map();
+        for (const blade of G) {
+            const gx = Math.floor(blade.x / GRASS_INDEX_CELL), gy = Math.floor(blade.y / GRASS_INDEX_CELL), key = gx + ',' + gy;
+            let bucket = grassSpatialIndex.get(key);
+            if (!bucket) grassSpatialIndex.set(key, bucket = []);
+            bucket.push(blade);
         }
-        const out = [];
+    }
+    function visitGrassCandidates(left, top, right, bottom, visitor) {
+        ensureGrassSpatialIndex();
         for (let gx = Math.floor(left / GRASS_INDEX_CELL); gx <= Math.floor(right / GRASS_INDEX_CELL); gx++) {
             for (let gy = Math.floor(top / GRASS_INDEX_CELL); gy <= Math.floor(bottom / GRASS_INDEX_CELL); gy++) {
                 const bucket = grassSpatialIndex.get(gx + ',' + gy);
-                if (bucket)
-                    for (const blade of bucket)
-                        out.push(blade);
+                if (bucket) for (const blade of bucket) visitor(blade);
             }
         }
-        return out;
     }
     function game() {
         sampleAdaptivePerformance();
@@ -14916,10 +15250,11 @@ h1 span {
         {
             const baseGrass = isBaseWorldMode(), viewW = baseGrass ? logicalCanvasW / (Z * BASE_ZOOM) : w, viewH = baseGrass ? logicalCanvasH / (Z * BASE_ZOOM) : h;
             const left = baseGrass ? cameraX - 20 : 0, right = baseGrass ? cameraX + viewW + 20 : w, top = baseGrass ? cameraY - 20 : 0, bottom = baseGrass ? cameraY + viewH + 20 : h;
-            const visibleGrass = baseGrass ? getGrassCandidates(left, top, right, bottom) : G;
-            visibleGrass.forEach(q => {
-                if (q.x < left || q.x > right || q.y < top || q.y > bottom)
-                    return;
+            const grassStride = adaptiveQualityLevel >= 4 ? 4 : adaptiveQualityLevel >= 3 ? 3 : adaptiveQualityLevel >= 2 ? 2 : 1;
+            const drawGrassBlade = q => {
+                if (q.x < left || q.x > right || q.y < top || q.y > bottom) return;
+                // Deterministic thinning avoids flicker and reduces hundreds of tiny paths at low FPS.
+                if (grassStride > 1 && (Math.abs((Math.floor(q.x) * 31 + Math.floor(q.y) * 17) % grassStride) !== 0)) return;
                 g.strokeStyle = q.l ? envColour('grassLight') : envColour('grassDark');
                 g.beginPath();
                 g.moveTo(q.x, q.y);
@@ -14929,7 +15264,9 @@ h1 span {
                 g.moveTo(q.x, q.y);
                 g.lineTo(q.x + q.a * 5, q.y - 10);
                 g.stroke();
-            });
+            };
+            if (baseGrass) visitGrassCandidates(left, top, right, bottom, drawGrassBlade);
+            else G.forEach(drawGrassBlade);
         }
         D.forEach(q => {
             g.fillStyle = 'rgba(95,10,10,.6)';
@@ -14943,75 +15280,6 @@ h1 span {
         const envViewW = isBaseWorldMode() ? logicalCanvasW / (Z * BASE_ZOOM) : w, envViewH = isBaseWorldMode() ? logicalCanvasH / (Z * BASE_ZOOM) : h;
         const envLeft = isBaseWorldMode() ? cameraX - 100 : -100, envRight = isBaseWorldMode() ? cameraX + envViewW + 100 : w + 100;
         const envTop = isBaseWorldMode() ? cameraY - 100 : -100, envBottom = isBaseWorldMode() ? cameraY + envViewH + 100 : h + 100;
-        O.forEach(o => {
-            if (o.dead || (isBaseWorldMode() && (o.x < envLeft || o.x > envRight || o.y < envTop || o.y > envBottom)))
-                return;
-            if (o.t == 0) {
-                cc(o.x + 10, o.y + 12, 34, 'rgba(0,0,0,.22)');
-                cc(o.x, o.y, 10, level === 3 ? '#201b16' : level === 1 ? '#5a3a1e' : '#4a3020');
-                cc(o.x - 2, o.y - 2, 5, level === 1 ? '#7a5230' : '#6f4325');
-                const leafAlpha = level === 4 ? Math.max(0, o.leafFade || 0) : 1;
-                if (leafAlpha > 0) {
-                    g.save();
-                    g.globalAlpha = leafAlpha;
-                    const leafCols = level === 4 ? ['#b96c2d', '#d18a35', '#c5a13f', '#8f572b'] : null;
-                    const leafColour = i => level === 4 ? leafCols[i % leafCols.length] : envLeafColour(i);
-                    cc(o.x - 14, o.y - 7, 25, leafColour(0));
-                    cc(o.x + 11, o.y - 5, 27, leafColour(1));
-                    cc(o.x - 1, o.y - 21, 22, leafColour(2));
-                    cc(o.x + 4, o.y + 8, 20, leafColour(3));
-                    g.restore();
-                }
-            }
-            else if (o.t == 1) {
-                el(o.x + 4, o.y + 6, o.r * 1.1, o.r * .9, 'rgba(0,0,0,.3)');
-                el(o.x, o.y, o.r * 1.05, o.r * .9, level === 3 ? '#292d2a' : level == 1 ? '#5f5f5f' : '#6f6659', o.s);
-                el(o.x - o.r * .2, o.y - o.r * .25, o.r * .65, o.r * .5, level === 3 ? '#3b433a' : level == 1 ? '#8a8a8a' : '#918676', o.s);
-                el(o.x + o.r * .3, o.y + o.r * .3, o.r * .3, o.r * .2, level === 3 ? '#171b18' : level == 1 ? '#4a4a4a' : '#4d463e', o.s);
-            }
-            else if (o.t === 3) {
-                // Twisted tree; any remaining foliage fades away as the crimson biome appears.
-                if (o.leafFade > 0)
-                    o.leafFade = Math.max(0, o.leafFade - 0.008);
-                if (o.leafFade > 0) {
-                    g.save();
-                    g.globalAlpha = o.leafFade;
-                    cc(o.x - 14, o.y - 7, 25, '#b96c2d');
-                    cc(o.x + 11, o.y - 5, 27, '#d18a35');
-                    cc(o.x - 1, o.y - 21, 22, '#c5a13f');
-                    cc(o.x + 4, o.y + 8, 20, '#8f572b');
-                    g.restore();
-                }
-                g.strokeStyle = '#160b0d';
-                g.lineWidth = 8;
-                g.lineCap = 'round';
-                g.beginPath();
-                g.moveTo(o.x, o.y + o.r * .8);
-                g.lineTo(o.x - 3, o.y - o.r * .75);
-                g.lineTo(o.x - 14, o.y - o.r * 1.35);
-                g.moveTo(o.x - 3, o.y - o.r * .35);
-                g.lineTo(o.x + o.r * .75, o.y - o.r * .9);
-                g.lineTo(o.x + o.r * 1.05, o.y - o.r * 1.35);
-                g.moveTo(o.x - 7, o.y - o.r * .8);
-                g.lineTo(o.x - o.r * .9, o.y - o.r * 1.05);
-                g.stroke();
-                g.strokeStyle = '#4b2025';
-                g.lineWidth = 3;
-                g.beginPath();
-                g.moveTo(o.x - 1, o.y + o.r * .45);
-                g.lineTo(o.x - 4, o.y - o.r * .65);
-                g.lineTo(o.x - 14, o.y - o.r * 1.35);
-                g.moveTo(o.x - 4, o.y - o.r * .35);
-                g.lineTo(o.x + o.r * .75, o.y - o.r * .9);
-                g.stroke();
-            }
-            else {
-                el(o.x + 5, o.y + 9, o.r * 1.15, o.r * .85, 'rgba(0,0,0,.28)');
-                el(o.x, o.y, o.r, o.r * .82, '#4e514b', o.s);
-                el(o.x - o.r * .2, o.y - o.r * .22, o.r * .55, o.r * .42, '#777b70', o.s);
-                el(o.x + o.r * .28, o.y + o.r * .18, o.r * .28, o.r * .18, '#363934', o.s);
-            }
-        });
         drawNaturalObjectDetailPass();
         // Flickering fire hazards in Level 4.
         firePatches.forEach(f => {
@@ -15208,6 +15476,7 @@ h1 span {
             bossCutscene--;
         const sp = 1.2 + Math.min(2.3, T / 3600);
         const runSharedWorld = sharedWorldShouldRun() && (!activeSharedRun() || multiplayerIsAuthority);
+        rebuildZombieSpatialGrid();
         if (runSharedWorld && isBaseWorldMode())
             updateBaseDefences();
         if ((!dead || (activeSharedRun() && multiplayerIsAuthority && Object.values(remotePlayers).some(v => !v.dead && v.online !== false))) && bossCutscene <= 0) {
@@ -15537,21 +15806,17 @@ h1 span {
             g.stroke();
             g.restore();
         }
-        BLD = BLD.filter(q => !q.dead);
+        if (BLD.some(q => q.dead))
+            BLD = BLD.filter(q => !q.dead);
         // Recently thrown grit sacks leave a short-lived world-space bin prop at their landing point.
         drawGritBinScenery();
         // bullets and pellets
         b.forEach(q => {
             if (q.homing) {
                 let target = null, best = 300 * 300;
-                e.forEach(z => {
-                    if (z.dead)
-                        return;
+                visitNearbyZombies(q.x, q.y, 300, z => {
                     const dx = z.x - q.x, dy = z.y - q.y, d2 = dx * dx + dy * dy;
-                    if (d2 < best) {
-                        best = d2;
-                        target = z;
-                    }
+                    if (d2 < best) { best = d2; target = z; }
                 });
                 if (target) {
                     const current = Math.atan2(q.vy, q.vx);
@@ -15927,24 +16192,19 @@ h1 span {
             g.fill();
             g.restore();
             if ((!activeSharedRun() || multiplayerIsAuthority) && !v.visualOnly) {
-                for (const z of e) {
-                    if (z.dead)
-                        continue;
+                visitNearbyZombies(v.x, v.y, v.r + 20, z => {
                     const dx = v.x - z.x, dy = v.y - z.y, d = Math.hypot(dx, dy);
                     if (d < v.r && d > 1) {
                         const pull = (1 - d / v.r) * 5.5 + .8;
                         z.x += dx / d * pull;
                         z.y += dy / d * pull;
                     }
-                    if (d < 25) {
-                        if ((z.vortexHitTimer || 0) <= 0) {
-                            hit(z, v.dmg * .5);
-                            z.vortexHitTimer = 12;
-                        }
+                    if (d < 25 && (z.vortexHitTimer || 0) <= 0) {
+                        hit(z, v.dmg * .5);
+                        z.vortexHitTimer = 12;
                     }
-                    if (z.vortexHitTimer > 0)
-                        z.vortexHitTimer--;
-                }
+                    if (z.vortexHitTimer > 0) z.vortexHitTimer--;
+                });
             }
         });
         VORTEX = VORTEX.filter(v => v.t < v.life);
@@ -16047,13 +16307,12 @@ h1 span {
                         q.y = Math.max(fortress.y - fortress.h / 2 + pad, Math.min(fortress.y + fortress.h / 2 - pad, q.y));
                     }
                 }
-                e.forEach(o => {
-                    if (o !== q) {
-                        const dx = q.x - o.x, dy = q.y - o.y, dd = Math.hypot(dx, dy);
-                        if (dd > 0 && dd < 28) {
-                            q.x += dx / dd * .6;
-                            q.y += dy / dd * .6;
-                        }
+                visitNearbyZombies(q.x, q.y, 38, o => {
+                    if (o === q) return;
+                    const dx = q.x - o.x, dy = q.y - o.y, dd = Math.hypot(dx, dy);
+                    if (dd > 0 && dd < 28) {
+                        q.x += dx / dd * .6;
+                        q.y += dy / dd * .6;
                     }
                 });
                 const zombieRadius = q.boss ? (q.fortressBoss ? 17 : 24) : q.ty == 4 ? 20 : q.ty == 5 ? 12 : q.ty == 6 ? 13 : 14;
@@ -16066,17 +16325,25 @@ h1 span {
                             o.dead = 1;
                     }
                 };
-                STATIC_WALLS.forEach(damageWall);
-                DOORS.filter(d => !d.open).forEach(d => {
-                    if (pointWallDist(q.x, q.y, d) < zombieRadius + 3) {
-                        d.hp = (d.hp ?? 360) - 0.045;
-                        if (d.hp <= 0)
-                            d.open = true;
+                // Query nearby obstacles once per zombie movement instead of scanning every wall/door
+                // and allocating filtered/concatenated arrays for every enemy on every frame.
+                let touchingWall = false;
+                visitNearbyObstacles(q.x, q.y, zombieRadius + 18, (o, kind) => {
+                    if (kind === 'baseBuild' || o.dead) return;
+                    if (kind === 'door') {
+                        if (o.open) return;
+                        const d = pointWallDist(q.x, q.y, o);
+                        if (d < zombieRadius + 3) {
+                            o.hp = (o.hp ?? 360) - 0.045;
+                            if (o.hp <= 0) o.open = true;
+                        }
+                        if (!o.open && (o.hp ?? 1) > 0 && d < zombieRadius + 8) touchingWall = true;
+                        return;
                     }
+                    const d = pointWallDist(q.x, q.y, o);
+                    if (d < zombieRadius + 3) damageWall(o);
+                    if ((o.hp ?? 1) > 0 && d < zombieRadius + 8) touchingWall = true;
                 });
-                BLD.forEach(damageWall);
-                // Walls and closed doors slow zombies while they press against them.
-                const touchingWall = [...STATIC_WALLS.filter(o => !o.dead), ...DOORS.filter(d => !d.open && !d.dead), ...BLD].find(o => (o.hp ?? 1) > 0 && pointWallDist(q.x, q.y, o) < zombieRadius + 8);
                 if (touchingWall) {
                     q.x -= Math.cos(a) * Math.min(v * .62, v);
                     q.y -= Math.sin(a) * Math.min(v * .62, v);
@@ -16207,7 +16474,10 @@ h1 span {
                 }
             }
             const boundW = worldW(), boundH = worldH();
-            const hitZombie = !q.visualOnly && e.some(z => !z.dead && Math.hypot(z.x - q.x, z.y - q.y) < 30);
+            let hitZombie = false;
+            if (!q.visualOnly) visitNearbyZombies(q.x, q.y, 34, z => {
+                if (!hitZombie && Math.hypot(z.x - q.x, z.y - q.y) < 30) hitZombie = true;
+            });
             const hitObject = !q.visualOnly && O.some(o => !o.dead && Math.hypot(q.x - o.x, q.y - o.y) < o.r);
             const boom = Math.hypot(q.tx - q.x, q.ty - q.y) < 10 || q.life <= 0 || q.x < 0 || q.x > boundW || q.y < 0 || q.y > boundH || hitZombie || hitObject;
             if (boom) {
@@ -16226,9 +16496,8 @@ h1 span {
                     pt(q.x, q.y, Math.cos(a) * s, Math.sin(a) * s, 40 + Math.random() * 30 | 0, '#555', 8 + Math.random() * 6, 1);
                 }
                 if (!q.visualOnly)
-                    e.forEach(z => {
-                        if (!z.dead && Math.hypot(z.x - q.x, z.y - q.y) < 120)
-                            hit(z, q.dmg || 5);
+                    visitNearbyZombies(q.x, q.y, 125, z => {
+                        if (Math.hypot(z.x - q.x, z.y - q.y) < 120) hit(z, q.dmg || 5);
                     });
             }
             else {
@@ -16599,5 +16868,6 @@ h1 span {
     updatePauseUI();
 })();
 </script>
-  </body>
-  </html>
+</body>
+</html>
+ <!DOCTYPE html>
