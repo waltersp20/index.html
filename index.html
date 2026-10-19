@@ -1957,7 +1957,7 @@ h1 span {
 </div>
             <div class="field-label" style="margin-top:16px">CHOOSE A GAME MODE</div>
             <div class="mode-grid" role="group" aria-label="Game mode">
-              <button class="mode-card selected" data-mode="classic" type="button" aria-pressed="true"><span class="mode-icon">☠</span><strong>CLASSIC LEVELS</strong><span>Four environments, a boss and the original survival challenge.</span></button>
+              <button class="mode-card selected" data-mode="classic" type="button" aria-pressed="true"><span class="mode-icon">☠</span><strong>CLASSIC LEVELS</strong><span>Five evolving environments, boss fights and the original survival challenge.</span></button>
               <button class="mode-card" data-mode="infinite" type="button" aria-pressed="false"><span class="mode-icon">∞</span><strong>INFINITE</strong><span>Endless waves. Difficulty keeps rising and there is no final level.</span></button>
               <button class="mode-card" data-mode="base" type="button" aria-pressed="false"><span class="mode-icon">⌂</span><strong>BASE WORLD</strong><span>Explore a vast world of distinct biomes, settlements and dangerous outbreak zones.</span></button>
               <button class="mode-card" data-mode="ffa" type="button" aria-pressed="false"><span class="mode-icon">⚔</span><strong>FREE FOR ALL</strong><span>Build, scavenge and survive in a shared world where players can fight each other.</span></button>
@@ -2310,6 +2310,7 @@ h1 span {
         blackwood: { root: 36, scale: [0, 2, 3, 5, 7, 9, 10, 12], progression: [0, 7, 3, 10], pulse: .82, family: 'forest' },
         frostpeak: { root: 41, scale: [0, 2, 4, 7, 9, 12, 14, 16], progression: [0, 7, 5, 9], pulse: .62, family: 'cold' },
         crimson: { root: 33, scale: [0, 2, 3, 5, 7, 8, 11, 12], progression: [0, 8, 6, 11], pulse: 1.08, family: 'crimson' },
+        enchanted: { root: 43, scale: [0, 2, 4, 7, 9, 11, 14, 16], progression: [0, 7, 4, 9], pulse: .58, family: 'forest' },
         deadlands: { root: 31, scale: [0, 3, 5, 6, 7, 10, 12, 15], progression: [0, 6, 8, 10], pulse: .94, family: 'dead' }
     };
     const AMBIENT_THEME_LABELS = {
@@ -2322,7 +2323,8 @@ h1 span {
         blackwood: 'Blackwood Forest',
         frostpeak: 'Frostpeak Snowfields',
         crimson: 'Crimson Forest',
-        deadlands: 'Deadlands'
+        deadlands: 'Deadlands',
+        enchanted: 'Enchanted Forest'
     };
     const homepageMusicTrack = document.getElementById('homepageMusicTrack');
     const gameplayMusicTrack = document.getElementById('gameplayMusicTrack');
@@ -2332,7 +2334,7 @@ h1 span {
     let musicFadeToken = 0, musicFadeActive = false;
     function currentMusicLevel() { return audioMuted ? 0 : Math.max(0, Math.min(1, audioMusicLevel / 100)); }
     function stopMusicFade() { musicFadeToken++; musicFadeActive = false; }
-    function syncSelectedMusicTrack(which, fadeMs = 1200) {
+    function syncSelectedMusicTrack(which, fadeMs = 2800) {
         const next = which === 'home' ? homepageMusicTrack : gameplayMusicTrack;
         if (!next) return;
         const old = selectedMusicTrack;
@@ -2888,7 +2890,7 @@ h1 span {
         if (m === 'base' || m === 'ffa')
             return baseBiomeMusicName((p && Number.isFinite(p.x)) ? p.x : BASE_WORLD_W * .12, (p && Number.isFinite(p.y)) ? p.y : BASE_WORLD_H * .48);
         if (m === 'classic')
-            return level >= 4 ? 'crimson' : level === 3 ? 'blackwood' : level === 2 ? 'autumn' : 'grasslands';
+            return level >= 5 ? 'enchanted' : level === 4 ? 'crimson' : level === 3 ? 'blackwood' : level === 2 ? 'autumn' : 'grasslands';
         if (m === 'infinite')
             return 'infinite';
         return 'classic';
@@ -6240,6 +6242,8 @@ h1 span {
     let multiplayerRoom = '', multiplayerLastSent = 0, lastSharedStateSent = 0, lastPersonalSent = 0, multiplayerJoinedAt = 0;
     let multiplayerIsAuthority = false, multiplayerAuthorityKnown = false, roomFull = false;
     let baseRosterInitialised = false, pendingBaseResourceGrants = 0;
+    let classicManualSpawnQueue = 0, level5BossesRemaining = 0, level5Spawned = 0, level5Kills = 0;
+    let enchantedTreehouses = [], enchantedFireflies = [];
     const baseRosterResourceSessions = new Set(), processedBaseResourceRequests = new Set();
     let lastAppliedSharedTs = 0, hasPublishedSharedState = false, personalRestored = false, multiplayerInitialStateLoaded = false;
     let clientSessionId = '', nextActionSeq = 0, recentNetworkActions = [], processedActionSeq = {}, processedPlayerHitSeq = {};
@@ -6324,7 +6328,7 @@ h1 span {
             BLD: serializeArray(BLD), BASE_BUILDS: serializeArray(BASE_BUILDS), O: serializeArray(O), STATIC_WALLS: isBaseWorldMode() ? serializeArray(STATIC_WALLS) : [], DOORS: isBaseWorldMode() ? serializeArray(DOORS) : [],
             firePatches: serializeArray(firePatches), AMMO: isBaseWorldMode() ? serializeArray(AMMO) : [], WPN: isBaseWorldMode() ? serializeArray(WPN) : [],
             level, score, T, totalSpawned, level2Kills, bossSpawned, bossCutscene, level2Spawned, level2PostBossSpawned, level2PostBossKills,
-            level3Spawned, level3Kills, level4Spawned, level4Kills, levelBanner, transitionFade, environmentFromLevel, environmentBlend, wallCharges, nextUpgrade, infiniteNextBossScore
+            level3Spawned, level3Kills, level4Spawned, level4Kills, level5Spawned, level5Kills, level5BossesRemaining, classicManualSpawnQueue, levelBanner, transitionFade, environmentFromLevel, environmentBlend, wallCharges, nextUpgrade, infiniteNextBossScore
         };
     }
     function createSharedStaticSnapshot() {
@@ -6525,6 +6529,10 @@ h1 span {
             'level3Kills',
             'level4Spawned',
             'level4Kills',
+            'level5Spawned',
+            'level5Kills',
+            'level5BossesRemaining',
+            'classicManualSpawnQueue',
             'levelBanner',
             'transitionFade',
             'environmentFromLevel',
@@ -6565,6 +6573,14 @@ h1 span {
                     level4Spawned = Number(state[key]);
                 else if (key === 'level4Kills')
                     level4Kills = Number(state[key]);
+                else if (key === 'level5Spawned')
+                    level5Spawned = Number(state[key]);
+                else if (key === 'level5Kills')
+                    level5Kills = Number(state[key]);
+                else if (key === 'level5BossesRemaining')
+                    level5BossesRemaining = Number(state[key]);
+                else if (key === 'classicManualSpawnQueue')
+                    classicManualSpawnQueue = Number(state[key]);
                 else if (key === 'levelBanner')
                     levelBanner = Number(state[key]);
                 else if (key === 'transitionFade')
@@ -6737,10 +6753,35 @@ h1 span {
             BASE_BUILDS.push({ ...build });
             score += Math.max(0, Number(action.scoreAward) || 0);
             if (gameMode === 'base')
-                try {
-                    localStorage.setItem('zs_base_builds', JSON.stringify(BASE_BUILDS));
-                }
-                catch (_) { }
+                try { localStorage.setItem('zs_base_builds', JSON.stringify(BASE_BUILDS)); } catch (_) { }
+        }
+        else if (action.type === 'removeBaseBuild' && multiplayerIsAuthority) {
+            const index = BASE_BUILDS.findIndex(build => String(build.id || '') === String(action.buildId || ''));
+            if (index >= 0 && String(BASE_BUILDS[index].ownerUid || '') === String(action.from || '')) {
+                BASE_BUILDS.splice(index, 1);
+                try { if (gameMode === 'base') localStorage.setItem('zs_base_builds', JSON.stringify(BASE_BUILDS)); } catch (_) { }
+            }
+        }
+        else if (action.type === 'removeWall' && multiplayerIsAuthority) {
+            const index = BLD.findIndex(wall => String(wall.id || '') === String(action.wallId || ''));
+            if (index >= 0 && String(BLD[index].ownerUid || '') === String(action.from || '')) {
+                BLD.splice(index, 1);
+                try { if (gameMode === 'base') localStorage.setItem('zs_base_walls', JSON.stringify(BLD)); } catch (_) { }
+            }
+        }
+        else if (action.type === 'upgradeBaseTurret' && multiplayerIsAuthority) {
+            const turret = BASE_BUILDS.find(build => String(build.id || '') === String(action.buildId || '') && build.type === 'turret');
+            const wantLevel = Math.max(0, Math.min(5, Number(action.upgradeLevel) || 0));
+            if (turret && String(turret.ownerUid || '') === String(action.from || '') && wantLevel > (Number(turret.upgradeLevel) || 0)) {
+                turret.upgradeLevel = wantLevel; turret.damageMultiplier = 1 + wantLevel * .6;
+                try { if (gameMode === 'base') localStorage.setItem('zs_base_builds', JSON.stringify(BASE_BUILDS)); } catch (_) { }
+            }
+        }
+        else if (action.type === 'spawnBaseZombies' && gameMode === 'base' && multiplayerIsAuthority) {
+            spawnBaseWorldZombies(Math.max(0, Math.min(4, Number(action.count) || 2)));
+        }
+        else if (action.type === 'classicSkipWave' && gameMode === 'classic' && multiplayerIsAuthority) {
+            classicManualSpawnQueue = Math.min(120, classicManualSpawnQueue + Math.max(1, Math.min(30, Number(action.count) || 30)));
         }
         else if (action.type === 'chopTree' && isBaseWorldMode()) {
             const tree = O.find(o => o.id === action.objectId && !o.dead);
@@ -8569,6 +8610,12 @@ let w = 0
         level3Kills = 0
         level4Spawned = 0
         level4Kills = 0
+        level5Spawned = 0
+        level5Kills = 0
+        level5BossesRemaining = 0
+        classicManualSpawnQueue = 0
+        enchantedTreehouses = []
+        enchantedFireflies = []
         firePatches = []
         fireHitCooldown = 0
         halfHealthBlastUsed = false
@@ -8862,8 +8909,8 @@ let w = 0
         if (z.hp <= 0 && !z.dead) {
             z.dead = 1;
             // Every newly killed zombie awards exactly one point. The !z.dead guard above
-            // ensures this block can only run once for each death; resurrected skeletons
-            // are reset to alive and can score again when killed.
+            // ensures this block can only run once per death; only legacy non-Level-4
+            // skeletons can later be revived and scored again.
             z.scored = true;
             if (!blackHoleResolving)
                 playGameSound('zombieDown');
@@ -8873,6 +8920,8 @@ let w = 0
             }
             spawnAmmoDrop(z);
             z.deathT = 0;
+            if (gameMode === 'classic' && level === 5 && z.level5Boss)
+                level5BossesRemaining = Math.max(0, level5BossesRemaining - 1);
             if (!blackHoleResolving) {
                 if (gameMode === 'infinite' && z.boss) {
                     bossSpawned = 0;
@@ -8909,6 +8958,10 @@ let w = 0
                 }
                 else if (level === 4) {
                     level4Kills++;
+                    if (level4Kills >= 60) activateLevel5();
+                }
+                else if (level === 5) {
+                    if (!z.level5Boss) level5Kills++;
                 }
                 if (gameMode === 'classic' && score >= 100 && level === 1)
                     activateLevel2();
@@ -8921,7 +8974,8 @@ let w = 0
         1: { ground: '#2f6a2a', tile: '#347230', grassLight: '#5aa64a', grassDark: '#245a20', leaves: ['#397d2e', '#438c32', '#2f7028', '#4b9637'] },
         2: { ground: '#66533a', tile: '#806544', grassLight: '#b08a4d', grassDark: '#55412e', leaves: ['#b96c2d', '#d18a35', '#c5a13f', '#8f572b'] },
         3: { ground: '#101b17', tile: '#14231b', grassLight: '#263a2a', grassDark: '#0a120e', leaves: ['#263b2b', '#344b32', '#1b3024', '#40513a'] },
-        4: { ground: '#21090e', tile: '#300d14', grassLight: '#5b1b25', grassDark: '#17070a', leaves: ['#68202a', '#81252b', '#4c171e', '#9a3430'] }
+        4: { ground: '#21090e', tile: '#300d14', grassLight: '#5b1b25', grassDark: '#17070a', leaves: ['#68202a', '#81252b', '#4c171e', '#9a3430'] },
+        5: { ground: '#0b211c', tile: '#14352a', grassLight: '#4f9869', grassDark: '#09271d', leaves: ['#225a3e', '#2e704c', '#3b8059', '#4e6687'] }
     };
     function mixColour(a, b, t) {
         const A = [parseInt(a.slice(1, 3), 16), parseInt(a.slice(3, 5), 16), parseInt(a.slice(5, 7), 16)];
@@ -8967,6 +9021,7 @@ let w = 0
             pears.push({ id: newEntityId('pear'), x: worldW() * .72, y: worldH() * .68, got: 0 });
     }
     function activateLevel2() {
+        classicManualSpawnQueue = 0;
         wallCharges += 5;
         beginEnvironmentTransition(2);
         levelBanner = 180;
@@ -8998,6 +9053,7 @@ let w = 0
         // No new floor guns are spawned when Level 2 begins.
     }
     function activateLevel3() {
+        classicManualSpawnQueue = 0;
         wallCharges += 5;
         beginEnvironmentTransition(3);
         levelBanner = 240;
@@ -9046,6 +9102,7 @@ let w = 0
         }
     }
     function activateLevel4() {
+        classicManualSpawnQueue = 0;
         wallCharges += 5;
         beginEnvironmentTransition(4);
         levelBanner = 240;
@@ -9086,6 +9143,43 @@ let w = 0
         }
         for (let i = 0; i < 500; i++)
             G.push({ x: Math.random() * w, y: Math.random() * h, a: Math.random() * .8 - .4, l: Math.random() < .7 });
+    }
+    function activateLevel5() {
+        classicManualSpawnQueue = 0;
+        wallCharges += 5;
+        beginEnvironmentTransition(5);
+        levelBanner = 300;
+        e = []; b = []; R = []; X = []; BLD = []; G = []; O = [];
+        apples = []; pears = []; WPN = []; upgrades = []; AEX = []; firePatches = [];
+        level5Spawned = 0; level5Kills = 0; level5BossesRemaining = 2;
+        level4Kills = 60;
+        // A deep, luminous woodland with plenty of canopy cover and open paths between trees.
+        let tries = 0;
+        while (O.length < 46 && tries++ < 2600) {
+            const x = 38 + Math.random() * (w - 76), y = 38 + Math.random() * (h - 76);
+            const r = 24 + Math.random() * 18;
+            if (Math.hypot(x - p.x, y - p.y) > 170 && O.every(o => Math.hypot(o.x - x, o.y - y) > o.r + r + 30))
+                O.push({ id: newEntityId('enchanted-tree'), x, y, r, t: 0, s: Math.random() * 6, enchanted: 1 });
+        }
+        spawnLevelFruit(0);
+        for (let i = 0; i < 620; i++)
+            G.push({ x: Math.random() * w, y: Math.random() * h, a: Math.random() * .65 - .325, l: Math.random() < .82 });
+        enchantedTreehouses = O.filter(o => o.t === 0).filter((o, i) => i % 3 === 1).slice(0, 13).map((o, i) => ({
+            id: 'treehouse-' + i, x: o.x + Math.sin(o.s) * o.r * .42, y: o.y - o.r * .22,
+            scale: .72 + (i % 4) * .1, phase: Math.random() * 6.28
+        }));
+        enchantedFireflies = Array.from({ length: 42 }, (_, i) => ({
+            x: Math.random() * w, y: Math.random() * h, phase: Math.random() * 6.28,
+            drift: .35 + Math.random() * .8, size: .8 + Math.random() * 1.2
+        }));
+        const spawnBossAt = (side, idx) => {
+            let x = side === 0 ? -55 : w + 55;
+            let y = 70 + Math.random() * Math.max(1, h - 140);
+            if (Math.hypot(x - p.x, y - p.y) < 280) y = (y + h * .43) % h;
+            e.push({ id: newEntityId('enchanted-boss'), x, y, ty: 3, hp: 220, mh: 220, ar: 115,
+                wk: idx * 2.4, sv: 1.7, sh: '#42314f', sk: '#c8adff', boss: 1, level5Boss: 1, level5BossIndex: idx });
+        };
+        spawnBossAt(0, 1); spawnBossAt(1, 2);
     }
     // Natural scenery is static between world generations. Index it once so collisions only
     // visit trees/rocks in the nearby cells instead of allocating O.filter(...) per zombie.
@@ -9214,6 +9308,31 @@ let w = 0
             multiplayerWorldStaticRef.set(createSharedStaticSnapshot()).catch(err => console.warn('Could not publish new Base World resources:', err));
         }
         return { trees, rocks };
+    }
+    function spawnBaseWorldZombies(count = 2) {
+        if (gameMode !== 'base' || !gameStarted || dead !== 0 || !sharedWorldShouldRun()) return 0;
+        if (activeSharedRun() && !multiplayerIsAuthority) return 0;
+        let spawned = 0;
+        for (let i = 0; i < Math.max(0, Math.min(4, Number(count) || 2)); i++) {
+            let x = p.x, y = p.y, tries = 0;
+            do {
+                const a = Math.random() * Math.PI * 2, r = 260 + Math.random() * 170;
+                x = Math.max(30, Math.min(BASE_WORLD_W - 30, p.x + Math.cos(a) * r));
+                y = Math.max(30, Math.min(BASE_WORLD_H - 30, p.y + Math.sin(a) * r));
+                tries++;
+            } while (tries < 28 && (isInsideBaseSafeZone(x, y) || BASE_BUILDS.some(build => {
+                const d = BASE_BUILD_DEFS[build.type] || {}; return Math.abs(x - build.x) < (d.w || 50) / 2 + 40 && Math.abs(y - build.y) < (d.h || 50) / 2 + 40;
+            })));
+            const roll = Math.random();
+            const ty = roll < .12 ? 1 : roll < .20 ? 2 : 0;
+            const hpValue = ty === 1 ? 2 : ty === 2 ? 4 : 3;
+            e.push({ id: newEntityId('base-manual-zombie'), x, y, ty, hp: hpValue, mh: hpValue, ar: 70,
+                wk: Math.random() * 6, sv: ty === 1 ? 1.25 : .82 + Math.random() * .2,
+                sh: ty === 2 ? '#197a2b' : ty === 1 ? '#5a5a6a' : '#485148',
+                sk: ty === 2 ? '#8eea4f' : ty === 1 ? '#c9d0b8' : '#a9b5a3', baseManualSpawn: 1 });
+            spawned++;
+        }
+        return spawned;
     }
     function grantBaseResourcesForPlayers(playerCount = 1) {
         const count = Math.max(0, Math.min(100, Math.floor(Number(playerCount) || 0)));
@@ -9560,7 +9679,7 @@ let w = 0
             w: 66,
             h: 66,
             range: 420,
-            damage: 7,
+            damage: 0.72,
             cooldown: 24,
             score: 18,
             blocks: false,
@@ -9896,7 +10015,7 @@ let w = 0
             g.bezierCurveTo(x + w * .35, y + 1, x + w * .72, y + h - 2, x + w - 3, y + 2);
             g.stroke();
         };
-        const drawGunMount = (scale = 1) => {
+        const drawGunMount = (scale = 1, turretAngle = 0) => {
             g.save();
             g.scale(scale, scale);
             // Rotating cast-steel race with eight mounting bolts.
@@ -9919,7 +10038,7 @@ let w = 0
                 bolt(Math.cos(a) * 19, Math.sin(a) * 19, 1.7);
             }
             g.save();
-            g.rotate(Number.isFinite(Number(b.currentAngle)) ? Number(b.currentAngle) : (Number(b.angle) || 0));
+            g.rotate(Number.isFinite(Number(turretAngle)) ? Number(turretAngle) : 0);
             // Angular turret housing, recessed rear equipment, bevelled armour plates.
             poly([[-18, -13], [-8, -19], [17, -15], [27, -8], [27, 8], [17, 15], [-8, 19], [-18, 12]], '#263235', '#111819', 2.8);
             poly([[-12, -12], [8, -14], [18, -8], [18, 8], [8, 14], [-12, 11]], '#465456', '#1b2527', 1.6);
@@ -10015,7 +10134,7 @@ let w = 0
                         bolt(xx, yy, 2.2);
                 g.save();
                 g.translate(0, -1);
-                drawGunMount(1);
+                drawGunMount(1, Number.isFinite(Number(b.currentAngle)) ? Number(b.currentAngle) : (Number(b.angle) || 0));
                 g.restore();
                 // Fine laser rangefinder dots and hull warning chevrons.
                 g.fillStyle = '#e3b15b';
@@ -10071,7 +10190,7 @@ let w = 0
                 [[-37, -31], [37, -31], [-37, 22], [37, 22]].forEach(([xx, yy]) => g.fillRect(xx - 3, yy - 3, 6, 7));
                 g.save();
                 g.translate(0, -1);
-                drawGunMount(.70);
+                drawGunMount(.70, Number.isFinite(Number(b.currentAngle)) ? Number(b.currentAngle) : (Number(b.angle) || 0));
                 g.restore();
                 g.strokeStyle = '#b7a078';
                 g.lineWidth = 2;
@@ -10533,43 +10652,58 @@ let w = 0
         g.restore();
     }
     function updateBaseDefences() {
-        if (!isBaseWorldMode() || (!sharedWorldShouldRun()) || (activeSharedRun() && !multiplayerIsAuthority))
-            return;
-        BASE_BUILDS.forEach(b => {
-            const d = BASE_BUILD_DEFS[b.type];
-            if (!d || !['defences'].includes(d.category))
-                return;
-            b.cooldown = Math.max(0, (Number(b.cooldown) || 0) - 1);
+        if (!isBaseWorldMode() || !sharedWorldShouldRun() || (activeSharedRun() && !multiplayerIsAuthority)) return;
+        BASE_BUILDS.forEach(build => {
+            const d = BASE_BUILD_DEFS[build.type];
+            if (!d || d.category !== 'defences') return;
+            build.cooldown = Math.max(0, (Number(build.cooldown) || 0) - 1);
             const range = Number(d.range) || 100, rangeSq = range * range;
             let target = null, nearestSq = rangeSq;
-            visitNearbyZombies(b.x, b.y, range + 12, z => {
-                const dx = z.x - b.x, dy = z.y - b.y, distanceSq = dx * dx + dy * dy;
+            visitNearbyZombies(build.x, build.y, range + 12, z => {
+                if (!z || z.dead) return;
+                const dx = z.x - build.x, dy = z.y - build.y, distanceSq = dx * dx + dy * dy;
                 if (distanceSq < nearestSq) { nearestSq = distanceSq; target = z; }
             });
-            if (b.type === 'spike_trap') {
-                if (target && b.cooldown <= 0) {
-                    hit(target, d.damage || 16, true);
-                    b.cooldown = d.cooldown || 55;
-                    for (let i = 0; i < 6; i++)
-                        pt(target.x, target.y, (Math.random() - .5) * 3, -1 - Math.random() * 2, 10, '#d7c68e', 2, 0);
+            if (build.type === 'spike_trap') {
+                if (target && build.cooldown <= 0) {
+                    hit(target, d.damage || 16, true); build.cooldown = d.cooldown || 55;
+                    for (let i = 0; i < 6; i++) pt(target.x, target.y, (Math.random() - .5) * 3, -1 - Math.random() * 2, 10, '#d7c68e', 2, 0);
                 }
+                return;
             }
-            else if (b.type === 'electric_fence') {
-                if (target && b.cooldown <= 0) {
-                    hit(target, d.damage || 8, true);
-                    b.cooldown = d.cooldown || 22;
-                    for (let i = 0; i < 5; i++)
-                        pt(target.x, target.y, (Math.random() - .5) * 4, (Math.random() - .5) * 4, 12, '#78f5ec', 2, 0);
+            if (build.type === 'electric_fence') {
+                if (target && build.cooldown <= 0) {
+                    hit(target, d.damage || 8, true); build.cooldown = d.cooldown || 22;
+                    for (let i = 0; i < 5; i++) pt(target.x, target.y, (Math.random() - .5) * 4, (Math.random() - .5) * 4, 12, '#78f5ec', 2, 0);
                 }
+                return;
             }
-            else if (target) {
-                b.angle = Math.atan2(target.y - b.y, target.x - b.x);
-                if (b.cooldown <= 0) {
-                    hit(target, d.damage || 6, true);
-                    b.cooldown = d.cooldown || 28;
+            if (build.type === 'turret') {
+                let currentAngle = Number.isFinite(Number(build.currentAngle)) ? Number(build.currentAngle) : (Number(build.angle) || 0);
+                const targetAngle = target ? Math.atan2(target.y - build.y, target.x - build.x) : currentAngle + .008;
+                let diff = Math.atan2(Math.sin(targetAngle - currentAngle), Math.cos(targetAngle - currentAngle));
+                const turnRate = .075;
+                currentAngle += Math.max(-turnRate, Math.min(turnRate, diff));
+                build.currentAngle = currentAngle; build.angle = currentAngle;
+                if (target && build.cooldown <= 0 && Math.abs(diff) < .2) {
+                    const upgrades = Math.max(0, Math.min(5, Number(build.upgradeLevel) || 0));
+                    const damage = baseWorldGunDamage(1) * (1 + upgrades * .6);
+                    const speed = 14;
+                    b.push({ id: newEntityId('turret-round'), x: build.x + Math.cos(currentAngle) * 40, y: build.y + Math.sin(currentAngle) * 40,
+                        vx: Math.cos(currentAngle) * speed, vy: Math.sin(currentAngle) * speed, life: 90, t: 1,
+                        baseTurretBullet: 1, dmg: damage, turretOwnerUid: build.ownerUid || '', weaponType: -1 });
+                    build.cooldown = Math.max(8, 24 - upgrades * 2);
+                    for (let i = 0; i < 3; i++) pt(build.x + Math.cos(currentAngle) * 39, build.y + Math.sin(currentAngle) * 39,
+                        (Math.random() - .5) * 2, (Math.random() - .5) * 2, 8, '#a8ffe5', 1.5, 0);
+                }
+                return;
+            }
+            if (target) {
+                build.angle = Math.atan2(target.y - build.y, target.x - build.x);
+                if (build.cooldown <= 0) {
+                    hit(target, d.damage || 6, true); build.cooldown = d.cooldown || 28;
                     AEX.push({ x: target.x, y: target.y, t: 0, r: 15, purple: 1 });
-                    for (let i = 0; i < 4; i++)
-                        pt(target.x, target.y, (Math.random() - .5) * 3, (Math.random() - .5) * 3, 10, '#b9f9ed', 1.8, 0);
+                    for (let i = 0; i < 4; i++) pt(target.x, target.y, (Math.random() - .5) * 3, (Math.random() - .5) * 3, 10, '#b9f9ed', 1.8, 0);
                 }
             }
         });
@@ -10610,6 +10744,136 @@ let w = 0
         updateBuildMenuButtons();
     }
     bindBuildMenu();
+    function findNearbyOwnedTurret() {
+        if (gameMode !== 'base' || !gameStarted || dead !== 0) return null;
+        const ownerUid = String((firebaseUser && firebaseUser.uid) || '');
+        let best = null, bestDistance = 151;
+        for (const build of BASE_BUILDS) {
+            if (!build || build.type !== 'turret' || String(build.ownerUid || '') !== ownerUid) continue;
+            const distance = Math.hypot(p.x - Number(build.x || 0), p.y - Number(build.y || 0));
+            if (distance < bestDistance) { best = { build, distance }; bestDistance = distance; }
+        }
+        return best;
+    }
+    function upgradeNearbyOwnTurret() {
+        if (gameMode !== 'base' || !gameStarted || dead !== 0) return false;
+        const found = findNearbyOwnedTurret();
+        if (!found) return false;
+        const build = found.build;
+        const currentLevel = Math.max(0, Math.min(5, Number(build.upgradeLevel) || 0));
+        if (currentLevel >= 5) {
+            upgradeTurretButton.textContent = 'TURRET FULLY UPGRADED';
+            return false;
+        }
+        const woodCost = 12 + currentLevel * 8, stoneCost = 8 + currentLevel * 6;
+        if (wood < woodCost || stone < stoneCost) {
+            upgradeTurretButton.textContent = 'NEED ' + woodCost + ' WOOD / ' + stoneCost + ' STONE';
+            return false;
+        }
+        wood -= woodCost; stone -= stoneCost;
+        build.upgradeLevel = currentLevel + 1;
+        build.damageMultiplier = 1 + build.upgradeLevel * .6;
+        persistBaseConstruction();
+        if (activeSharedRun() && !multiplayerIsAuthority) {
+            queueMultiplayerAction({ type: 'upgradeBaseTurret', buildId: build.id, upgradeLevel: build.upgradeLevel });
+        }
+        playGameSound('build');
+        refreshBuildMenuUI();
+        updateGameActionButtons(true);
+        if (buildSelectionStatus) buildSelectionStatus.textContent = 'Turret upgraded to level ' + build.upgradeLevel + '. Damage increased.';
+        return true;
+    }
+    function tryDismantleOwnedConstructionNearPlayer() {
+        if (!isBaseWorldMode() || !gameStarted || dead !== 0) return false;
+        const ownerUid = String((firebaseUser && firebaseUser.uid) || '');
+        let chosen = null;
+        for (const build of BASE_BUILDS) {
+            if (!build || String(build.ownerUid || '') !== ownerUid) continue;
+            const d = BASE_BUILD_DEFS[build.type] || {};
+            const halfW = (Number(d.w) || 64) / 2, halfH = (Number(d.h) || 48) / 2;
+            const dx = Math.max(0, Math.abs(p.x - Number(build.x || 0)) - halfW);
+            const dy = Math.max(0, Math.abs(p.y - Number(build.y || 0)) - halfH);
+            const distance = Math.hypot(dx, dy);
+            if (distance <= 76 && (!chosen || distance < chosen.distance))
+                chosen = { kind: 'build', item: build, distance };
+        }
+        for (const wall of BLD) {
+            if (!wall || String(wall.ownerUid || '') !== ownerUid || wall.dead) continue;
+            const distance = pointWallDist(p.x, p.y, wall);
+            if (distance <= Math.max(62, (Number(wall.th) || 28) / 2 + 42) && (!chosen || distance < chosen.distance))
+                chosen = { kind: 'wall', item: wall, distance };
+        }
+        if (!chosen) return false;
+        const item = chosen.item;
+        if (activeSharedRun() && !multiplayerIsAuthority) {
+            queueMultiplayerAction(chosen.kind === 'build'
+                ? { type: 'removeBaseBuild', buildId: item.id }
+                : { type: 'removeWall', wallId: item.id });
+        }
+        const list = chosen.kind === 'build' ? BASE_BUILDS : BLD;
+        const index = list.findIndex(v => v === item || (v && item && v.id === item.id));
+        if (index >= 0) list.splice(index, 1);
+        persistBaseConstruction();
+        playGameSound('build');
+        if (buildSelectionStatus) buildSelectionStatus.textContent = 'Removed your ' + (chosen.kind === 'build' ? ((BASE_BUILD_DEFS[item.type] || {}).name || 'building') : 'wall') + '.';
+        updateGameActionButtons(true);
+        return true;
+    }
+    const gameActionDock = document.createElement('div');
+    gameActionDock.id = 'gameActionDock';
+    gameActionDock.style.cssText = 'position:fixed;right:14px;bottom:49px;z-index:44;display:none;flex-direction:column;gap:7px;align-items:stretch;max-width:min(245px,56vw);pointer-events:auto;';
+    function makeGameActionButton(id, text, accent) {
+        const btn = document.createElement('button'); btn.id = id; btn.type = 'button'; btn.textContent = text;
+        btn.style.cssText = 'display:none;max-width:100%;padding:10px 13px;border:1px solid ' + accent + ';border-radius:9px;background:linear-gradient(135deg,rgba(12,25,17,.97),rgba(5,10,7,.96));color:#f0ffe9;font:800 11px Arial,sans-serif;letter-spacing:.035em;line-height:1.25;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer;';
+        gameActionDock.appendChild(btn); return btn;
+    }
+    const spawnTwoZombiesButton = makeGameActionButton('spawnTwoZombiesButton', '＋ SPAWN 2 ZOMBIES', '#a34d59');
+    const skipClassicWaveButton = makeGameActionButton('skipClassicWaveButton', 'SKIP WAVE · QUEUE 30 ZOMBIES', '#b18df5');
+    const upgradeTurretButton = makeGameActionButton('upgradeTurretButton', 'UPGRADE NEARBY TURRET', '#70d6b2');
+    document.body.appendChild(gameActionDock);
+    spawnTwoZombiesButton.addEventListener('click', () => {
+        if (gameMode !== 'base' || !gameStarted || dead !== 0) return;
+        if (activeSharedRun() && !multiplayerIsAuthority) queueMultiplayerAction({ type: 'spawnBaseZombies', count: 2 });
+        else spawnBaseWorldZombies(2);
+        spawnTwoZombiesButton.textContent = '＋ SPAWN 2 ZOMBIES';
+    });
+    skipClassicWaveButton.addEventListener('click', () => {
+        if (gameMode !== 'classic' || !gameStarted || dead !== 0) return;
+        if (activeSharedRun() && !multiplayerIsAuthority) {
+            queueMultiplayerAction({ type: 'classicSkipWave', count: 30 });
+            skipClassicWaveButton.textContent = 'SKIP REQUEST SENT · +30 ZOMBIES';
+        }
+        else {
+            const previousQueue = classicManualSpawnQueue;
+            classicManualSpawnQueue = Math.min(120, classicManualSpawnQueue + 30);
+            skipClassicWaveButton.textContent = classicManualSpawnQueue > previousQueue
+                ? 'QUEUE ' + classicManualSpawnQueue + ' ZOMBIES · ADD 30'
+                : 'QUEUE LIMIT REACHED';
+        }
+    });
+    upgradeTurretButton.addEventListener('click', upgradeNearbyOwnTurret);
+    let lastGameActionUiFrame = -100;
+    function updateGameActionButtons(force = false) {
+        if (!force && fr - lastGameActionUiFrame < 8) return;
+        lastGameActionUiFrame = fr;
+        const inRun = !!gameStarted && dead === 0 && !isPaused;
+        gameActionDock.style.display = inRun ? 'flex' : 'none';
+        const showBaseSpawn = inRun && gameMode === 'base';
+        const showClassicSkip = inRun && gameMode === 'classic';
+        const nearbyTurret = showBaseSpawn ? findNearbyOwnedTurret() : null;
+        spawnTwoZombiesButton.style.display = showBaseSpawn ? 'block' : 'none';
+        skipClassicWaveButton.style.display = showClassicSkip ? 'block' : 'none';
+        upgradeTurretButton.style.display = nearbyTurret ? 'block' : 'none';
+        if (nearbyTurret) {
+            const n = Math.max(0, Math.min(5, Number(nearbyTurret.build.upgradeLevel) || 0));
+            if (n >= 5) upgradeTurretButton.textContent = 'TURRET FULLY UPGRADED';
+            else upgradeTurretButton.textContent = 'UPGRADE TURRET LV ' + n + ' → ' + (n + 1) + ' · ' + (12 + n * 8) + ' WOOD / ' + (8 + n * 6) + ' STONE';
+        }
+        if (showClassicSkip && classicManualSpawnQueue > 0)
+            skipClassicWaveButton.textContent = 'QUEUE ' + classicManualSpawnQueue + ' ZOMBIES · ADD 30';
+        else if (showClassicSkip)
+            skipClassicWaveButton.textContent = 'SKIP WAVE · QUEUE 30 ZOMBIES';
+    }
     function triggerHalfHealthBlast() {
         if (halfHealthBlastUsed || hp > maxPlayerHp() / 2)
             return;
@@ -11517,6 +11781,7 @@ let w = 0
                 eatPear();
         }
         if (n == 'e' && !q.repeat && L <= 0) {
+            if (isBaseWorldMode() && tryDismantleOwnedConstructionNearPlayer()) { q.preventDefault(); return; }
             if (isBaseWorldMode()) {
                 const nearbyWeaponCrate = WPN.filter(v => !v.got && !v.opened).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
                 if (nearbyWeaponCrate && Math.hypot(nearbyWeaponCrate.x - p.x, nearbyWeaponCrate.y - p.y) < 78) {
@@ -11624,7 +11889,7 @@ let w = 0
         if (n == 'b' && buildHeld) {
             buildHeld = 0;
             if (buildPreview && canBuild(buildPreview)) {
-                const placed = { ...buildPreview, id: newEntityId('wall') };
+                const placed = { ...buildPreview, id: newEntityId('wall'), ownerUid: firebaseUser && firebaseUser.uid || '' };
                 BLD.push(placed);
                 if (activeSharedRun() && !multiplayerIsAuthority)
                     queueMultiplayerAction({ type: 'placeWall', wall: placed });
@@ -11685,8 +11950,10 @@ let w = 0
             return;
         if (isBaseWorldMode() && Math.random() < 0.97)
             return; // Very rare ambient spawns in the open world.
-        // Hard cap on simultaneously living zombies; level-specific total spawn limits remain below.
-        if (e.reduce((count, z) => count + (!z.dead ? 1 : 0), 0) >= 30)
+        // Hard cap on living zombies. Level 5 permits a larger horde; a button can queue extra spawns but never bypass this cap.
+        const manualClassicSpawn = gameMode === 'classic' && classicManualSpawnQueue > 0;
+        const maxLivingZombies = gameMode === 'classic' && level === 5 ? 50 : 30;
+        if (e.reduce((count, z) => count + (!z.dead ? 1 : 0), 0) >= maxLivingZombies)
             return;
         if (gameMode === 'infinite' && score >= infiniteNextBossScore && !e.some(z => z.boss && !z.dead)) {
             spawnBoss();
@@ -11698,13 +11965,15 @@ let w = 0
             return;
         if (level === 4 && level4Spawned >= 60)
             return;
+        if (gameMode === 'classic' && level === 5 && level5BossesRemaining > 0 && !manualClassicSpawn)
+            return;
         // Level 2: 55 regular zombies before the boss. No regular spawns while
         // the boss is alive. After the boss dies and the cutscene ends, a fresh
         // 100-zombie phase begins.
         if (level == 2) {
             if (bossSpawned === 0 && level2Spawned >= 55)
                 return;
-            if (bossSpawned === 1)
+            if (bossSpawned === 1 && !manualClassicSpawn)
                 return;
             if (bossSpawned === 2 && level2PostBossSpawned >= 100)
                 return;
@@ -11770,6 +12039,12 @@ let w = 0
                 ty = 5;
             if (level === 4 && Math.random() < .42)
                 ty = 5;
+            if (level === 5) {
+                const lateType = Math.random();
+                if (lateType < .20) ty = 5;
+                else if (lateType < .34) ty = 2;
+                else if (lateType < .48) ty = 4;
+            }
         }
         let sh = SH[Math.random() * SH.length | 0], sk = SK[Math.random() * SK.length | 0], hp = Math.max(1, Math.ceil((1 + Math.floor(score / (gameMode === 'infinite' ? 25 : 10))) * (level == 2 ? 1.15 : 1))), sv = .75 + Math.random() * .3;
         if (ty == 1) {
@@ -11824,6 +12099,11 @@ let w = 0
         else if (level === 4) {
             level4Spawned++;
         }
+        else if (level === 5) {
+            level5Spawned++;
+        }
+        if (manualClassicSpawn && classicManualSpawnQueue > 0)
+            classicManualSpawnQueue--;
     }, isBaseWorldMode() ? Math.round(2200 / 1.2) : 850);
     setInterval(() => {
         if (!isBaseWorldMode() || blackHoleWorldLocked() || bossCutscene > 0 || (activeSharedRun() && !multiplayerIsAuthority) || !sharedWorldShouldRun())
@@ -14753,6 +15033,8 @@ let w = 0
         const minY = Math.floor(oy / step) * step, maxY = oy + vh + step;
         const biomeAt = (x, y) => {
             if (!isBaseWorldMode()) {
+                if (level === 5)
+                    return { moss: '#245d48', light: '#92e3ad', dark: '#071a17', leaf: '#64a985', rock: '#486c67' };
                 if (level === 4)
                     return { moss: '#38282a', light: '#78404a', dark: '#180f13', leaf: '#a85b39', rock: '#4d4241' };
                 if (level === 3)
@@ -15538,6 +15820,35 @@ let w = 0
         }
         g.restore();
     }
+    function drawEnchantedLevelDecor() {
+        if (gameMode !== 'classic' || level !== 5) return;
+        const viewLeft = 0, viewTop = 0, viewRight = logicalCanvasW / Z, viewBottom = logicalCanvasH / Z;
+        for (const house of enchantedTreehouses) {
+            if (house.x < viewLeft - 90 || house.x > viewRight + 90 || house.y < viewTop - 90 || house.y > viewBottom + 90) continue;
+            const sc = house.scale || 1, pulse = .5 + .5 * Math.sin(fr * .04 + house.phase);
+            g.save(); g.translate(house.x, house.y); g.scale(sc, sc);
+            // Hanging plank walkway, tiny timber cabin, moss roof and warm windows.
+            g.strokeStyle = '#4a372a'; g.lineWidth = 4; g.beginPath(); g.moveTo(-21, 14); g.lineTo(22, 14); g.stroke();
+            g.strokeStyle = '#bd9a61'; g.lineWidth = 1.3; g.beginPath(); g.moveTo(-23, 12); g.lineTo(23, 12); g.stroke();
+            g.fillStyle = '#523c34'; g.fillRect(-15, -8, 30, 22);
+            g.fillStyle = '#7b5642'; g.fillRect(-12, -5, 24, 16);
+            g.fillStyle = '#234b3b'; g.beginPath(); g.moveTo(-20, -7); g.lineTo(0, -21); g.lineTo(20, -7); g.closePath(); g.fill();
+            g.strokeStyle = '#8acb91'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(-20, -7); g.lineTo(0, -21); g.lineTo(20, -7); g.stroke();
+            g.fillStyle = '#ffd780'; g.globalAlpha = .7 + .3 * pulse; g.fillRect(-8, -1, 5, 7); g.fillRect(4, -1, 5, 7);
+            g.globalAlpha = 1; g.fillStyle = '#171f25'; g.fillRect(-2, 3, 5, 8); g.restore();
+        }
+        const every = adaptiveQualityLevel >= 4 ? 3 : adaptiveQualityLevel >= 2 ? 2 : 1;
+        for (let i = 0; i < enchantedFireflies.length; i += every) {
+            const f = enchantedFireflies[i];
+            const x = f.x + Math.sin(fr * .013 * f.drift + f.phase) * 14;
+            const y = f.y + Math.cos(fr * .011 * f.drift + f.phase * 1.7) * 10;
+            if (x < viewLeft - 20 || x > viewRight + 20 || y < viewTop - 20 || y > viewBottom + 20) continue;
+            const pulse = .25 + .75 * (.5 + .5 * Math.sin(fr * .08 + f.phase));
+            g.globalAlpha = .16 + .22 * pulse; g.fillStyle = '#81ffd3'; g.beginPath(); g.arc(x, y, 4.6 * f.size, 0, Math.PI * 2); g.fill();
+            g.globalAlpha = .45 + .55 * pulse; g.fillStyle = '#d8ffd0'; g.beginPath(); g.arc(x, y, f.size, 0, Math.PI * 2); g.fill();
+        }
+        g.globalAlpha = 1;
+    }
     function drawUltraHUDFrame(width = 320, height = 182) {
         g.save();
         g.strokeStyle = 'rgba(220,235,220,.13)';
@@ -15584,6 +15895,7 @@ let w = 0
     }
     function game() {
         sampleAdaptivePerformance();
+        if (typeof updateGameActionButtons === 'function') updateGameActionButtons();
         // The menu is DOM-rendered. Do not keep repainting thousands of world details underneath it.
         // The first frame after death still runs to save the score/show the homepage; subsequent frames idle.
         if ((!gameStarted || dead !== 0) && homePage && !homePage.classList.contains('hidden') && blackHoleCinematic <= 0) {
@@ -15691,6 +16003,7 @@ let w = 0
         const envLeft = isBaseWorldMode() ? cameraX - 100 : -100, envRight = isBaseWorldMode() ? cameraX + envViewW + 100 : w + 100;
         const envTop = isBaseWorldMode() ? cameraY - 100 : -100, envBottom = isBaseWorldMode() ? cameraY + envViewH + 100 : h + 100;
         drawNaturalObjectDetailPass();
+        if (gameMode === 'classic' && level === 5) drawEnchantedLevelDecor();
         // Flickering fire hazards in Level 4.
         firePatches.forEach(f => {
             f.phase += .08;
@@ -16496,6 +16809,12 @@ let w = 0
                 g.arc(3, 0, 1.8, 0, Math.PI * 2);
                 g.fill();
             }
+            else if (q.baseTurretBullet) {
+                g.shadowColor = '#6dffe0'; g.shadowBlur = 10;
+                g.strokeStyle = 'rgba(77,255,220,.32)'; g.lineWidth = 5; g.beginPath(); g.moveTo(-21, 0); g.lineTo(2, 0); g.stroke();
+                g.strokeStyle = '#a8ffe9'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(-16, 0); g.lineTo(2, 0); g.stroke();
+                g.fillStyle = '#f0fff7'; g.beginPath(); g.arc(2, 0, 2.3, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0;
+            }
             else if (q.orb) {
                 g.shadowBlur = 0;
                 g.fillStyle = '#17121d';
@@ -16742,8 +17061,7 @@ let w = 0
                     q.removeAt = 78;
                 }
                 else if (t < 180) {
-                    // Level 4: dissolve into a skeleton lying on its side. Resurrection starts
-                    // only after 180 frames (3 seconds at 60 FPS) from the original death.
+                    // Level 4: dissolve into a one-life skeleton lying on its side; it never revives.
                     const f = Math.min(1, (t - 42) / 35);
                     if (t < 77) {
                         drawFallenBody(1 - f);
@@ -16755,8 +17073,12 @@ let w = 0
                         drawSkeleton(q, 0, 1, 0, Math.PI / 2);
                     }
                 }
+                else if (level === 4) {
+                    // The Level 4 skeleton stays dead: no resurrection loop and no extra life.
+                    q.removeAt = 180;
+                }
                 else if (t < 222) {
-                    // Skeleton pushes up from the ground, lifts its skull and plants its feet before rising.
+                    // Legacy rise animation remains for non-Level-4 modes only.
                     const f = Math.min(1, (t - 180) / 42), ease = f * f * (3 - 2 * f);
                     drawSkeleton(q, 0, 1, 24 * ease, Math.PI / 2 * (1 - ease));
                     if (t % 5 === 0)
@@ -16781,7 +17103,7 @@ let w = 0
             if (sharedWorldShouldRun() && !sharedFollower && bossCutscene <= 0 && !blackHoleWorldLocked()) {
                 // Cap movement speed so enemies remain manageable late in a long run.
                 const rawSpeed = q.boss ? sp * q.sv : sp * (q.ty == 1 ? 1.15 + Math.min(1.6, score / 70) : q.sv);
-                const v = Math.min(q.boss ? (q.fortressBoss ? 3.0 : 1.5) : 3.2, rawSpeed);
+                const v = Math.min(q.level5Boss ? 6.4 : q.boss ? (q.fortressBoss ? 3.0 : 1.5) : 3.2, rawSpeed);
                 q.x += Math.cos(a) * v;
                 q.y += Math.sin(a) * v;
                 q.wk += v * .1;
@@ -17275,8 +17597,8 @@ let w = 0
         else {
             const progression = gameMode === 'infinite' ? 'INFINITE · WAVES ' + Math.floor(score / 10)
                 : 'LEVEL ' + level + (level === 2 ? (bossSpawned === 0 ? ' · PRE-BOSS ' + level2Spawned + '/55' : bossSpawned === 1 ? ' · BOSS FIGHT' : bossCutscene > 0 ? ' · BOSS DEFEATED' : ' · AFTER BOSS ' + level2PostBossSpawned + '/100')
-                : level === 3 ? ' · DARK FOREST ' + level3Kills + '/150' : level === 4 ? ' · CRIMSON FOREST ' + level4Kills + '/60' : '');
-            addHudRow(progression, level === 4 ? '#ff6578' : level === 3 ? '#b89cde' : level === 2 ? '#f2d39b' : '#9ddc80', 'bold 13px Arial');
+                : level === 3 ? ' · DARK FOREST ' + level3Kills + '/150' : level === 4 ? ' · CRIMSON FOREST ' + level4Kills + '/60' : level === 5 ? ' · ENCHANTED FOREST ' + level5Kills + ' KILLS · BOSSES ' + level5BossesRemaining + ' LEFT' : '');
+            addHudRow(progression, level === 5 ? '#a8ffd5' : level === 4 ? '#ff6578' : level === 3 ? '#b89cde' : level === 2 ? '#f2d39b' : '#9ddc80', 'bold 13px Arial');
             addHudRow('BEST: ' + H, '#ffd400', 'bold 13px Arial');
             addHudRow('PLAYER: ' + playerName, '#c8d1ca', '13px Arial');
             addHudRow('WALL CHARGES: ' + wallCharges, '#d8c0a0', '12px Arial');
@@ -17316,15 +17638,15 @@ let w = 0
         g.fillText(controlLines[0], 10, controlStripY + 13, Math.max(60, logicalCanvasW - 20));
         g.fillText(controlLines[1], 10, controlStripY + 27, Math.max(60, logicalCanvasW - 20));
         g.textAlign = 'left';
-        if ((level == 2 || level === 3 || level === 4) && !dead && logicalCanvasW >= 720) {
-            g.fillStyle = level === 4 ? 'rgba(38,4,10,.88)' : level === 3 ? 'rgba(5,12,9,.82)' : 'rgba(70,40,20,.7)';
+        if ((level == 2 || level === 3 || level === 4 || level === 5) && !dead && logicalCanvasW >= 720) {
+            g.fillStyle = level === 5 ? 'rgba(8,42,34,.88)' : level === 4 ? 'rgba(38,4,10,.88)' : level === 3 ? 'rgba(5,12,9,.82)' : 'rgba(70,40,20,.7)';
             g.fillRect(logicalCanvasW / 2 - 150, 20, 300, 48);
             g.textAlign = 'center';
-            g.fillStyle = level === 4 ? '#ff8b98' : level === 3 ? '#bca0e8' : '#f2d39b';
+            g.fillStyle = level === 5 ? '#a8ffd5' : level === 4 ? '#ff8b98' : level === 3 ? '#bca0e8' : '#f2d39b';
             g.font = 'bold 24px Arial';
-            g.fillText(level === 4 ? 'LEVEL 4' : level === 3 ? 'LEVEL 3' : 'LEVEL 2', logicalCanvasW / 2, 50);
+            g.fillText(level === 5 ? 'LEVEL 5' : level === 4 ? 'LEVEL 4' : level === 3 ? 'LEVEL 3' : 'LEVEL 2', logicalCanvasW / 2, 50);
             g.font = '12px Arial';
-            g.fillText(level === 4 ? 'THE CRIMSON FOREST' : level === 3 ? 'THE DARK FOREST' : 'THE WILDLANDS', logicalCanvasW / 2, 64);
+            g.fillText(level === 5 ? 'THE ENCHANTED FOREST' : level === 4 ? 'THE CRIMSON FOREST' : level === 3 ? 'THE DARK FOREST' : 'THE WILDLANDS', logicalCanvasW / 2, 64);
             g.textAlign = 'left';
         }
         if (isBaseWorldMode())
