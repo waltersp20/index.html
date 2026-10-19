@@ -11509,9 +11509,9 @@ let w = 0
         const a = Math.atan2(m.y - p.y, m.x - p.x);
         b.push({ id: newEntityId('noah-sandwich'), x: p.x + Math.cos(a) * 44, y: p.y + Math.sin(a) * 44,
             vx: Math.cos(a) * 16, vy: Math.sin(a) * 16, life: 10000, t: 1, weaponType: 13, sandwichBullet: 1,
-            sandwichHitTargets: [], dmg: 999999 });
+            sandwichHitTargets: [], sandwichAge: 0, dmg: 9999999 });
         fl = 3; muzzle(a, 4); playWeaponSound(3);
-        for (let i = 0; i < 5; i++) pt(p.x + Math.cos(a) * 42, p.y + Math.sin(a) * 42, Math.cos(a + (Math.random() - .5) * .7) * 2, Math.sin(a + (Math.random() - .5) * .7) * 2, 11, i % 2 ? '#18d938' : '#f5d977', 1.5, 0);
+        for (let i = 0; i < 8; i++) pt(p.x + Math.cos(a) * 42, p.y + Math.sin(a) * 42, Math.cos(a + (Math.random() - .5) * .7) * 2, Math.sin(a + (Math.random() - .5) * .7) * 2, 13, i % 2 ? '#18d938' : '#f5d977', 1.5, 0);
     }
     function aimBasketballAtNextZombie(q, fromX, fromY) {
         let best = null, bestD2 = Infinity;
@@ -11533,11 +11533,18 @@ let w = 0
     }
     function shootHendoBendo() {
         const a = Math.atan2(m.y - p.y, m.x - p.x);
-        b.push({ id: newEntityId('hendo-basketball'), x: p.x + Math.cos(a) * 44, y: p.y + Math.sin(a) * 44,
+        const q = { id: newEntityId('hendo-basketball'), x: p.x + Math.cos(a) * 44, y: p.y + Math.sin(a) * 44,
             vx: Math.cos(a) * 10, vy: Math.sin(a) * 10, life: 10000, t: 1, weaponType: 14, basketballBullet: 1,
-            basketballHitTargets: [], basketballSeeking: false, basketballTargetId: '', dmg: 999999 });
+            basketballHitTargets: [], basketballSeeking: false, basketballTargetId: '', basketballBounceIndex: 0, dmg: 9999999 };
+        // Acquire the first target at launch. Without this, the ball flew straight forever
+        // and could never begin its zombie-to-zombie bounce chain unless the aim line hit one.
+        if (!aimBasketballAtNextZombie(q, q.x, q.y)) {
+            q.basketballSeeking = false;
+            q.vx = Math.cos(a) * 10; q.vy = Math.sin(a) * 10;
+        }
+        b.push(q);
         fl = 3; muzzle(a, 3); playWeaponSound(4);
-        for (let i = 0; i < 4; i++) pt(p.x + Math.cos(a) * 42, p.y + Math.sin(a) * 42, Math.cos(a + (Math.random() - .5) * .5) * 2, Math.sin(a + (Math.random() - .5) * .5) * 2, 10, i % 2 ? '#ec7d32' : '#f9d58a', 1.5, 0);
+        for (let i = 0; i < 6; i++) pt(p.x + Math.cos(a) * 42, p.y + Math.sin(a) * 42, Math.cos(a + (Math.random() - .5) * .5) * 2, Math.sin(a + (Math.random() - .5) * .5) * 2, 12, i % 2 ? '#ec7d32' : '#f9d58a', 1.5, 0);
     }
     function drawCustomWeaponPopups() {
         for (let i = fillingTaunts.length - 1; i >= 0; i--) {
@@ -11558,15 +11565,15 @@ let w = 0
             const q = basketballHoops[i]; q.age = (q.age || 0) + 1;
             if (q.age >= q.life) { basketballHoops.splice(i, 1); continue; }
             const alpha = Math.min(1, q.age / 7, (q.life - q.age) / 20);
-            g.save(); g.globalAlpha = Math.max(0, alpha); g.translate(q.x, q.y - 25 - Math.min(7, q.age * .04));
+            g.save(); g.globalAlpha = Math.max(0, alpha); g.translate(q.x, q.y - 32 - Math.min(10, q.age * .045));
             // Compact, readable hoop and net. The pole/backboard stay behind the celebratory lettering.
             g.strokeStyle = '#d9e0df'; g.lineWidth = 3; g.beginPath(); g.moveTo(22, 20); g.lineTo(22, 63); g.stroke();
             g.fillStyle = '#c8d1d8'; g.fillRect(5, 7, 25, 18); g.strokeStyle = '#f4f5f5'; g.lineWidth = 1.5; g.strokeRect(5, 7, 25, 18);
             g.strokeStyle = '#f34b35'; g.lineWidth = 3; g.beginPath(); g.ellipse(9, 25, 11, 4, 0, 0, Math.PI * 2); g.stroke();
             g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1; g.beginPath(); g.moveTo(1, 27); g.lineTo(4, 37); g.lineTo(9, 27); g.lineTo(13, 37); g.lineTo(17, 27); g.stroke();
             const letters = 'DUNK', colours = ['#ff4d6d', '#ffbd32', '#4ee56f', '#58a9ff'];
-            g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 22px Arial'; g.lineJoin = 'round'; g.lineWidth = 4; g.strokeStyle = 'rgba(18,8,24,.95)'; g.shadowColor = '#fef08a'; g.shadowBlur = 10;
-            for (let j = 0; j < letters.length; j++) { const x = -28 + j * 18; g.strokeText(letters[j], x, -4); g.fillStyle = colours[j]; g.fillText(letters[j], x, -4); }
+            g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 25px Arial'; g.lineJoin = 'round'; g.lineWidth = 4; g.strokeStyle = 'rgba(18,8,24,.95)'; g.shadowColor = '#fef08a'; g.shadowBlur = 10;
+            for (let j = 0; j < letters.length; j++) { const x = -32 + j * 21; g.strokeText(letters[j], x, -4); g.fillStyle = colours[j]; g.fillText(letters[j], x, -4); }
             g.shadowBlur = 0; g.restore();
         }
     }
@@ -17188,11 +17195,18 @@ let w = 0
         drawGritBinScenery();
         // bullets and pellets
         b.forEach(q => {
-            if (q.basketballBullet && q.basketballSeeking && !q.dead) {
-                let target = e.find(z => z && !z.dead && String(z.id || ('z-' + e.indexOf(z))) === q.basketballTargetId);
-                if (!target && !aimBasketballAtNextZombie(q, q.x, q.y)) q.dead = 1;
-                if (!target && q.basketballTargetId) target = e.find(z => z && !z.dead && String(z.id || ('z-' + e.indexOf(z))) === q.basketballTargetId);
-                if (target && !q.dead) { const dx = target.x - q.x, dy = target.y - q.y, d = Math.hypot(dx, dy) || 1; q.vx = dx / d * 9.5; q.vy = dy / d * 9.5; }
+            if (q.basketballBullet && !q.dead) {
+                const wasSeeking = !!q.basketballSeeking;
+                let target = wasSeeking ? e.find(z => z && !z.dead && String(z.id || ('z-' + e.indexOf(z))) === q.basketballTargetId) : null;
+                if (!target) {
+                    const acquired = aimBasketballAtNextZombie(q, q.x, q.y);
+                    if (acquired) target = e.find(z => z && !z.dead && String(z.id || ('z-' + e.indexOf(z))) === q.basketballTargetId);
+                    else if (wasSeeking) q.dead = 1; // ran out of eligible bounce targets
+                }
+                if (target && !q.dead) {
+                    const dx = target.x - q.x, dy = target.y - q.y, d = Math.hypot(dx, dy) || 1;
+                    q.vx = dx / d * 9.5; q.vy = dy / d * 9.5;
+                }
             }
             if (q.klipBullet) {
                 q.klipAge = (q.klipAge || 0) + 1;
@@ -17259,6 +17273,59 @@ let w = 0
                 q.y += q.vy;
             }
             q.life--;
+            // Dedicated swept-path collision for the two secret weapons. Keeping this outside
+            // the generic projectile collision gate prevents them from being skipped by flags
+            // used by other weapon types and prevents fast projectiles tunnelling through targets.
+            if (!q.dead && (q.sandwichBullet || q.basketballBullet)) {
+                const sx = q.x - prevX, sy = q.y - prevY, sden = sx * sx + sy * sy;
+                const sweptHits = [];
+                for (let zi = 0; zi < e.length; zi++) {
+                    const z = e[zi];
+                    if (!z || z.dead || (gameMode === 'base' && isInsideBaseSafeZone(z.x, z.y))) continue;
+                    const id = String(z.id || ('z-' + zi));
+                    const priorHits = q.sandwichBullet ? (q.sandwichHitTargets || []) : (q.basketballHitTargets || []);
+                    if (priorHits.includes(id)) continue;
+                    const u = sden > 0 ? Math.max(0, Math.min(1, ((z.x - prevX) * sx + (z.y - prevY) * sy) / sden)) : 0;
+                    const cx = prevX + u * sx, cy = prevY + u * sy;
+                    const baseRadius = z.boss ? 48 : (z.ty === 4 ? 40 : 34);
+                    const projectileRadius = q.sandwichBullet ? 7 : 13;
+                    if (Math.hypot(z.x - cx, z.y - cy) <= baseRadius + projectileRadius) sweptHits.push({ z, id, u });
+                }
+                sweptHits.sort((a, b) => a.u - b.u);
+                if (q.sandwichBullet) {
+                    q.sandwichHitTargets = q.sandwichHitTargets || [];
+                    for (const item of sweptHits) {
+                        if (item.z.dead || q.sandwichHitTargets.includes(item.id)) continue;
+                        q.sandwichHitTargets.push(item.id);
+                        fillingTaunts.push({ x: item.z.x, y: item.z.y, age: 0, life: 92 });
+                        if (fillingTaunts.length > 45) fillingTaunts.splice(0, fillingTaunts.length - 45);
+                        hit(item.z, Math.max(9999999, (Number(item.z.hp) || 0) + 1));
+                        for (let k = 0; k < 22; k++) {
+                            const aa = Math.random() * Math.PI * 2, v = 1.2 + Math.random() * 4.8;
+                            pt(item.z.x, item.z.y, Math.cos(aa) * v, Math.sin(aa) * v, 18 + Math.random() * 16 | 0,
+                                ['#22f044', '#b7ff5b', '#f5dc70', '#fff0c2'][k % 4], 1.5 + Math.random() * 2.6, 0);
+                        }
+                    }
+                } else if (q.basketballBullet && sweptHits.length) {
+                    q.basketballHitTargets = q.basketballHitTargets || [];
+                    const item = sweptHits[0];
+                    if (!item.z.dead && !q.basketballHitTargets.includes(item.id)) {
+                        // Snap to the impact point so the next bounce visibly starts at the zombie.
+                        q.x = prevX + item.u * sx; q.y = prevY + item.u * sy;
+                        q.basketballHitTargets.push(item.id);
+                        hit(item.z, Math.max(9999999, (Number(item.z.hp) || 0) + 1));
+                        basketballHoops.push({ x: item.z.x, y: item.z.y, age: 0, life: 155 });
+                        if (basketballHoops.length > 18) basketballHoops.splice(0, basketballHoops.length - 18);
+                        for (let k = 0; k < 24; k++) {
+                            const aa = Math.random() * Math.PI * 2, v = 1.4 + Math.random() * 5.2;
+                            pt(item.z.x, item.z.y, Math.cos(aa) * v, Math.sin(aa) * v, 17 + Math.random() * 15 | 0,
+                                k % 2 ? '#f47c2e' : '#302a28', 1.6 + Math.random() * 2.5, 0);
+                        }
+                        q.basketballBounceIndex = (q.basketballBounceIndex || 0) + 1;
+                        if (q.basketballHitTargets.length >= 3 || !aimBasketballAtNextZombie(q, q.x, q.y)) q.dead = 1;
+                    }
+                }
+            }
             if ((fr + (q.weaponType || 0)) % 2 === 0) {
                 if (q.orb) {
                     pt(prevX, prevY, -q.vx * .08 + (Math.random() - .5), -q.vy * .08 + (Math.random() - .5), 13, '#b38be8', 1.5 + Math.random() * 1.5, 0);
@@ -17320,7 +17387,7 @@ let w = 0
                     }
                 }
             }
-            if (!q.dead && !q.klipBullet && !q.orb && !q.visualOnly) {
+            if (!q.dead && !q.klipBullet && !q.orb && !q.visualOnly && !q.sandwichBullet && !q.basketballBullet) {
                 const collisionPrevX = q.bagProjectile ? q.groundPrevX : prevX;
                 const collisionPrevY = q.bagProjectile ? q.groundPrevY : prevY;
                 const collisionX = q.bagProjectile ? q.groundX : q.x;
@@ -17463,7 +17530,7 @@ let w = 0
                 q.dead = 1;
             }
             const projectileInSafeCamp = isInsideBaseSafeZone(q.x, q.y);
-            if (!q.dead && !q.bagProjectile && !q.klipBullet && !q.rosieBullet && !q.visualOnly && !projectileInSafeCamp && (O.some(o => Math.hypot(q.x - o.x, q.y - o.y) < o.r) || BLD.some(o => pointWallDist(q.x, q.y, o) < o.th / 2 + 3))) {
+            if (!q.dead && !q.bagProjectile && !q.klipBullet && !q.rosieBullet && !q.sandwichBullet && !q.basketballBullet && !q.visualOnly && !projectileInSafeCamp && (O.some(o => Math.hypot(q.x - o.x, q.y - o.y) < o.r) || BLD.some(o => pointWallDist(q.x, q.y, o) < o.th / 2 + 3))) {
                 if (q.orb) {
                     createVoidVortex(q.x, q.y, q.dmg);
                     q.dead = 1;
@@ -17487,22 +17554,35 @@ let w = 0
                 g.shadowBlur = 0;
             }
             else if (q.sandwichBullet) {
-                // Warm bread, golden butter and a deliberately bright, jagged green lettuce layer.
-                g.shadowColor = '#b8ffab'; g.shadowBlur = 5;
-                g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(0, 5, 17, 8, 0, 0, Math.PI * 2); g.fill();
-                g.fillStyle = '#c58a3f'; g.beginPath(); g.ellipse(0, 1, 17, 8, 0, 0, Math.PI * 2); g.fill();
-                g.fillStyle = '#f5d58a'; g.beginPath(); g.ellipse(0, -1, 15, 6, 0, 0, Math.PI * 2); g.fill();
-                g.fillStyle = '#ffe9a8'; g.fillRect(-11, -2, 22, 3);
-                g.fillStyle = '#06d934'; g.strokeStyle = '#7aff78'; g.lineWidth = 1.2; g.beginPath();
-                g.moveTo(-16, -1); g.lineTo(-12, -6); g.lineTo(-8, -2); g.lineTo(-4, -7); g.lineTo(0, -2); g.lineTo(4, -6); g.lineTo(8, -2); g.lineTo(12, -5); g.lineTo(16, -1);
-                g.lineTo(13, 3); g.lineTo(8, 1); g.lineTo(3, 4); g.lineTo(-2, 1); g.lineTo(-7, 4); g.lineTo(-12, 1); g.closePath(); g.fill(); g.stroke();
-                g.strokeStyle = 'rgba(220,255,203,.9)'; g.lineWidth = .8; g.beginPath(); g.moveTo(-11, 0); g.lineTo(-3, 1); g.lineTo(4, -1); g.lineTo(11, 0); g.stroke();
+                // Clearly readable side-view sandwich: two bread slices, golden crust, thick
+                // butter and ruffled bright-green lettuce extending beyond the bread.
+                g.shadowColor = '#b5ff86'; g.shadowBlur = 9;
+                // Soft contact shadow.
+                g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(0, 8, 22, 7, 0, 0, Math.PI * 2); g.fill();
+                // Bottom toast slice with a browned crust and pale centre.
+                g.fillStyle = '#9b5728'; g.beginPath(); g.moveTo(-19, 2); g.quadraticCurveTo(-20, -1, -15, -2); g.lineTo(14, -2); g.quadraticCurveTo(20, -1, 19, 3); g.lineTo(16, 8); g.quadraticCurveTo(0, 11, -17, 7); g.closePath(); g.fill();
+                g.fillStyle = '#eebd68'; g.beginPath(); g.moveTo(-17, 2); g.quadraticCurveTo(-17, 0, -13, 0); g.lineTo(13, 0); g.quadraticCurveTo(17, 1, 16, 4); g.lineTo(14, 6); g.quadraticCurveTo(0, 8, -15, 5); g.closePath(); g.fill();
+                // Ruffled lettuce layer is intentionally thick and obvious from either side.
+                g.fillStyle = '#087d20'; g.strokeStyle = '#b9ff61'; g.lineWidth = 1.5; g.beginPath();
+                g.moveTo(-20, 1); g.lineTo(-17, -4); g.lineTo(-13, -1); g.lineTo(-10, -8); g.lineTo(-5, -2); g.lineTo(-1, -7); g.lineTo(4, -2); g.lineTo(9, -8); g.lineTo(12, -2); g.lineTo(17, -5); g.lineTo(20, 1); g.lineTo(16, 4); g.lineTo(11, 2); g.lineTo(7, 5); g.lineTo(2, 2); g.lineTo(-3, 5); g.lineTo(-8, 2); g.lineTo(-13, 5); g.lineTo(-17, 2); g.closePath(); g.fill(); g.stroke();
+                g.fillStyle = '#42ed36'; g.beginPath(); g.moveTo(-17, 0); g.lineTo(-13, -3); g.lineTo(-10, 1); g.lineTo(-6, -4); g.lineTo(-2, 1); g.lineTo(2, -3); g.lineTo(6, 1); g.lineTo(11, -4); g.lineTo(14, 0); g.lineTo(18, -2); g.lineTo(15, 3); g.lineTo(10, 1); g.lineTo(6, 4); g.lineTo(1, 1); g.lineTo(-4, 4); g.lineTo(-9, 1); g.lineTo(-14, 3); g.closePath(); g.fill();
+                g.strokeStyle = 'rgba(225,255,196,.95)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-15, 0); g.lineTo(-8, -1); g.lineTo(-2, 2); g.lineTo(5, 0); g.lineTo(12, 1); g.stroke();
+                // Thick butter slab and a few pale-gold glints.
+                g.fillStyle = '#ffd84a'; g.strokeStyle = '#fff2a0'; g.lineWidth = 1.1; g.beginPath(); g.moveTo(-13, -3); g.lineTo(-10, -6); g.lineTo(10, -6); g.lineTo(13, -3); g.lineTo(11, 0); g.lineTo(-11, 0); g.closePath(); g.fill(); g.stroke();
+                g.fillStyle = '#fff5ad'; g.fillRect(-8, -5, 5, 1.1); g.fillRect(2, -5, 6, 1.1);
+                // Top toast slice, drawn over the filling edge but leaving the lettuce clearly visible.
+                g.fillStyle = '#a8622b'; g.beginPath(); g.moveTo(-17, -5); g.quadraticCurveTo(-20, -11, -13, -12); g.lineTo(12, -12); g.quadraticCurveTo(20, -11, 17, -5); g.lineTo(14, -3); g.lineTo(-14, -3); g.closePath(); g.fill();
+                g.fillStyle = '#f2c77b'; g.beginPath(); g.moveTo(-14, -6); g.quadraticCurveTo(-16, -10, -11, -10); g.lineTo(10, -10); g.quadraticCurveTo(16, -9, 14, -6); g.lineTo(12, -5); g.lineTo(-12, -5); g.closePath(); g.fill();
+                g.fillStyle = 'rgba(255,242,188,.9)'; g.fillRect(-8, -9, 5, 1.2); g.fillRect(2, -9, 4, 1.2);
                 g.shadowBlur = 0;
             }
             else if (q.basketballBullet) {
-                g.shadowColor = '#ff8a35'; g.shadowBlur = 7; g.fillStyle = '#ed7a25'; g.beginPath(); g.arc(0, 0, 10, 0, Math.PI * 2); g.fill();
-                g.shadowBlur = 0; g.strokeStyle = '#33231d'; g.lineWidth = 1.5; g.beginPath(); g.arc(0, 0, 9.5, 0, Math.PI * 2); g.moveTo(-9, 0); g.quadraticCurveTo(0, -5, 9, 0); g.moveTo(0, -9); g.quadraticCurveTo(-5, 0, 0, 9); g.moveTo(-5, -7, 3, 0); g.stroke();
-                g.strokeStyle = '#f8b36b'; g.lineWidth = 1.2; g.beginPath(); g.arc(-3, -3, 3, 3.3, 5.2); g.stroke();
+                g.save(); g.shadowColor = '#ff8a35'; g.shadowBlur = 10;
+                g.strokeStyle = 'rgba(255,177,83,.65)'; g.lineWidth = 3; g.beginPath(); g.moveTo(-24, 0); g.lineTo(-13, 0); g.stroke();
+                const ball = g.createRadialGradient(-4, -5, 1, 0, 0, 14); ball.addColorStop(0, '#ffb25d'); ball.addColorStop(.48, '#f58224'); ball.addColorStop(1, '#b94712');
+                g.fillStyle = ball; g.beginPath(); g.arc(0, 0, 13, 0, Math.PI * 2); g.fill(); g.shadowBlur = 0;
+                g.strokeStyle = '#33231d'; g.lineWidth = 1.7; g.beginPath(); g.arc(0, 0, 12.3, 0, Math.PI * 2); g.moveTo(-12, -1); g.quadraticCurveTo(0, -7, 12, 1); g.moveTo(-1, -12); g.quadraticCurveTo(6, 0, -1, 12); g.moveTo(3, -11); g.quadraticCurveTo(-5, 0, 3, 11); g.stroke();
+                g.strokeStyle = '#ffe0a6'; g.lineWidth = 1.4; g.beginPath(); g.arc(-4, -4, 4, 3.4, 5.25); g.stroke(); g.restore();
             }
             else if (q.faceProjectile) {
                 g.shadowColor = '#aa87ff';
