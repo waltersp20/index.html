@@ -6061,8 +6061,8 @@ h1 span {
         { key: 'FORROSIE321', title: 'FORROSIE321', desc: 'Unlock Rosie Cannon' },
         { key: 'CHANGEISINEVITABLE', title: 'CHANGEISINEVITABLE', desc: 'Unlock Inevitable Ring' },
         { key: 'AMMO', title: 'AMMO', desc: 'Grant two additional ammunition rounds' },
-        { key: 'MUSTAFAMISSILE', title: 'MUSTAFAMISSILE', desc: 'Triple size, double health, reduced speed' },
-        { key: 'TIMESPEED', title: 'TIMESPEED', desc: 'Toggle local time-speed mode' },
+        { key: 'MUSTAFAMISSILE', title: 'MUSTAFAMISSILE', desc: 'Triple size, double health, reduced speed', hudMode: 'mustafaMissileMode', hudLabel: 'Missile Form' },
+        { key: 'TIMESPEED', title: 'TIMESPEED', desc: 'Toggle local time-speed mode', hudMode: 'timeSpeedMode', hudLabel: 'TimeSpeed ×5' },
         { key: 'UDAINGAJAVEERA', title: 'UDAINGAJAVEERA', desc: 'Unlock the face projectile launcher' },
         { key: 'BAILSSS', title: 'BAILSSS', desc: 'Unlock the grit-bag launcher and five-shot burst' },
         { key: 'OWENTHEDESTROYER', title: 'OWENTHEDESTROYER', desc: 'Unlock the burger launcher with UWU trail and oversized explosions' },
@@ -6071,6 +6071,53 @@ h1 span {
         { key: 'ADMIN_REMOVE', title: '/remove or !remove', desc: 'Remove a visible chat message by number or message key (admin only)' },
         { key: 'ADMIN_JUMPSCARE', title: '/jumpscare or !jumpscare', desc: 'Broadcast the two-second jumpscare to all connected clients (admin only)' }
     ];
+    // Small HUD toggles are generated from command metadata, so future persistent non-gun
+    // modes can opt in by defining hudMode/hudLabel on their command definition.
+    const commandModeHud = document.createElement('div');
+    commandModeHud.id = 'commandModeHud';
+    commandModeHud.setAttribute('aria-label', 'Active command mode toggles');
+    Object.assign(commandModeHud.style, { position: 'fixed', top: '12px', right: '12px', zIndex: '1200', display: 'none', flexDirection: 'column', gap: '7px', maxWidth: 'min(220px, 42vw)', pointerEvents: 'auto' });
+    const commandModeHudStyle = document.createElement('style');
+    commandModeHudStyle.textContent = '#commandModeHud button{border:1px solid #86c78d;background:rgba(8,24,14,.94);color:#effff0;border-radius:9px;padding:9px 12px;font:700 12px Arial,sans-serif;box-shadow:0 3px 12px #0008;cursor:pointer;text-align:left}#commandModeHud button[aria-pressed="true"]{background:#245d36;border-color:#b5ff9b}#commandModeHud button:focus-visible{outline:2px solid #fff;outline-offset:2px}';
+    document.head.appendChild(commandModeHudStyle);
+    document.body.appendChild(commandModeHud);
+    const commandModeAvailable = {
+        timeSpeedMode: (() => { try { return localStorage.getItem('zs_timespeed_available') === '1' || localStorage.getItem('zs_timespeed') === '1'; } catch (_) { return false; } })(),
+        mustafaMissileMode: false
+    };
+    function setCommandModeEnabled(mode, enabled) {
+        commandModeAvailable[mode] = true;
+        if (mode === 'timeSpeedMode') {
+            timeSpeedMode = !!enabled;
+            try { localStorage.setItem('zs_timespeed', timeSpeedMode ? '1' : '0'); localStorage.setItem('zs_timespeed_available', '1'); } catch (_) { }
+        } else if (mode === 'mustafaMissileMode') {
+            const wasEnabled = !!mustafaMissileMode;
+            mustafaMissileMode = !!enabled;
+            if (wasEnabled && !mustafaMissileMode) hp = Math.min(hp, maxPlayerHp());
+            if (firebaseDb && firebaseUser && multiplayerRef) {
+                multiplayerRef.child(firebaseUser.uid).update({ mustafaMissileMode }).catch(() => { });
+                if (multiplayerPersonalRef) multiplayerPersonalRef.child(firebaseUser.uid).update({ mustafaMissileMode, hp, updatedAt: Date.now() }).catch(() => { });
+                if (multiplayerLastPresence) multiplayerLastPresence.mustafaMissileMode = mustafaMissileMode;
+            }
+        }
+        refreshCommandModeHUD();
+    }
+    function refreshCommandModeHUD() {
+        if (!commandModeHud) return;
+        const inRun = !!gameStarted && !dead && !document.getElementById('homePage')?.classList.contains('visible');
+        const modes = ZS_COMMAND_DEFS.filter(def => def.hudMode && isCommandEnabled(def.key) && !!commandModeAvailable[def.hudMode]);
+        commandModeHud.replaceChildren();
+        for (const def of modes) {
+            const active = def.hudMode === 'timeSpeedMode' ? timeSpeedMode : def.hudMode === 'mustafaMissileMode' ? mustafaMissileMode : false;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = (active ? 'ON · ' : 'OFF · ') + (def.hudLabel || def.title) + ' — click to toggle';
+            btn.setAttribute('aria-pressed', String(active));
+            btn.addEventListener('click', () => setCommandModeEnabled(def.hudMode, !active));
+            commandModeHud.appendChild(btn);
+        }
+        commandModeHud.style.display = inRun && modes.length ? 'flex' : 'none';
+    }
     let zsCommandEnabled = Object.fromEntries(ZS_COMMAND_DEFS.map(item => [item.key, true]));
     let zsCommandSettingsRef = null, zsCommandSettingsHandler = null, zsJumpscareRef = null, zsJumpscareHandler = null, zsJumpscareSeenId = '', zsJumpscareTimer = 0;
     function isCommandEnabled(key) {
@@ -7682,15 +7729,17 @@ h1 span {
                 chatConnection.textContent = 'That secret command is currently disabled by the administrator.';
                 return;
             }
+            commandModeAvailable.mustafaMissileMode = true;
             if (!mustafaMissileMode) {
                 mustafaMissileMode = true;
                 hp = Math.min(maxPlayerHp(), Math.max(1, hp) * 2);
                 if (firebaseDb && firebaseUser && multiplayerRef) {
                     multiplayerRef.child(firebaseUser.uid).update({ mustafaMissileMode: true }).catch(() => { });
-                    multiplayerPersonalRef?.child(firebaseUser.uid).update({ mustafaMissileMode: true, hp, updatedAt: Date.now() }).catch(() => { });
-                    multiplayerLastPresence.mustafaMissileMode = true;
+                    if (multiplayerPersonalRef) multiplayerPersonalRef.child(firebaseUser.uid).update({ mustafaMissileMode: true, hp, updatedAt: Date.now() }).catch(() => { });
+                    if (multiplayerLastPresence) multiplayerLastPresence.mustafaMissileMode = true;
                 }
             }
+            refreshCommandModeHUD();
             return;
         }
         if (command === 'UDAINGAJAVEERA') {
@@ -7764,12 +7813,15 @@ h1 span {
                 chatConnection.textContent = 'That secret command is currently disabled by the administrator.';
                 return;
             }
+            commandModeAvailable.timeSpeedMode = true;
             timeSpeedMode = !timeSpeedMode;
             try {
                 localStorage.setItem('zs_timespeed', timeSpeedMode ? '1' : '0');
+                localStorage.setItem('zs_timespeed_available', '1');
             }
             catch (_) { }
             input.value = '';
+            refreshCommandModeHUD();
             return;
         }
         if (!firebaseDb || !firebaseUser) {
@@ -8101,6 +8153,7 @@ h1 span {
         }
         dead = 0;
         gameStarted = true;
+        refreshCommandModeHUD();
         startAmbientMusic(gameMode);
         syncAmbientMusicToBiome(true);
         homePage.classList.add('hidden');
@@ -8465,6 +8518,7 @@ h1 span {
     }
     document.getElementById('resumeRunBtn').addEventListener('click', resumeSavedRun);
     async function returnToHomepage() {
+        if (commandModeHud) commandModeHud.style.display = 'none';
         if (!gameStarted)
             return;
         save();
@@ -16348,7 +16402,7 @@ let w = 0
                     queueMultiplayerAction({ type: 'collectAmmo', itemId: ap.id });
             }
         }
-        if (level === 4 && !blackHoleWorldLocked() && !dead && fireHitCooldown <= 0) {
+        if (gameMode === 'classic' && level === 4 && !blackHoleWorldLocked() && !dead && fireHitCooldown <= 0) {
             const fire = firePatches.find(f => Math.hypot(p.x - f.x, p.y - f.y) < f.r + 12);
             if (fire) {
                 hp = Math.max(0, hp - 8);
@@ -17574,6 +17628,7 @@ let w = 0
         // HUD: build rows first, then size the panel to the actual content so temporary
         // effects, long weapon names, resources and vehicle hints cannot overwrite each other.
         g.textAlign = 'left';
+        refreshCommandModeHUD();
         const hudWidth = Math.min(360, Math.max(160, logicalCanvasW - 16));
         const hudRows = [];
         const addHudRow = (text, color = '#edf4ed', font = 'bold 13px Arial') => hudRows.push({ text: String(text), color, font });
