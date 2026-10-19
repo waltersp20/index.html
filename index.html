@@ -1911,6 +1911,10 @@ h1 span {
   padding: 7px 11px;
   cursor: pointer;
   text-decoration: none;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.2;
+  appearance: none;
 }
 .klip-home-ad { color: #dcffd0; text-decoration: none; }
 .klip-ad-brand { font-weight: 900; letter-spacing: .07em; }
@@ -1943,9 +1947,11 @@ h1 span {
 .klip-reward-card h2 { margin: 5px 0 10px; color: #c4ff9a; font-size: clamp(24px, 4vw, 34px); }
 .klip-reward-desc { color: #c6d2c7; line-height: 1.55; }
 .klip-reward-close { position: absolute; top: 10px; right: 12px; border: 0; background: transparent; color: #e4eee4; font-size: 30px; cursor: pointer; }
-.klip-video-host { width: 100%; aspect-ratio: 16 / 9; min-height: 180px; margin: 16px 0 10px; overflow: hidden; border: 1px solid #324735; border-radius: 12px; background: #030503; }
+.klip-video-host { position: relative; width: 100%; aspect-ratio: 16 / 9; min-height: 180px; margin: 16px 0 10px; overflow: hidden; border: 1px solid #324735; border-radius: 12px; background: #030503; }
 .klip-video-host iframe, .klip-video-host video { display: block; width: 100%; height: 100%; min-height: 180px; border: 0; object-fit: contain; }
 .klip-video-placeholder { display: grid; min-height: 200px; height: 100%; place-items: center; padding: 24px; color: #a4b3a5; text-align: center; }
+.klip-video-clickthrough { position: absolute; z-index: 8; right: 10px; bottom: 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #a4d995; border-radius: 7px; padding: 8px 10px; background: rgba(9,24,12,.94); color: #e3ffda; font: 800 10px Arial,sans-serif; letter-spacing: .04em; text-decoration: none; box-shadow: 0 2px 10px rgba(0,0,0,.45); }
+.klip-video-clickthrough:hover { background: #2d4c30; }
 #klipRewardStatus { min-height: 32px; }
 @media (max-width: 600px) {
   .home-credit-row { left: 8px; bottom: 8px; gap: 5px; max-width: calc(100vw - 100px); }
@@ -2120,7 +2126,7 @@ h1 span {
     </div>
     <div class="home-credit-row" aria-label="Credits and sponsor">
   <span class="music-credit">♫ music by <strong>Noah Odell</strong></span>
-  <a id="klipAdHomeButton" class="klip-home-ad" href="https://klipl.ink" target="_blank" rel="noopener noreferrer" aria-label="Visit Klipl.ink">AD <span class="klip-ad-brand">KLIPL.INK</span> <span class="klip-ad-cta">VISIT SITE ↗</span></a>
+  <button id="klipAdHomeButton" class="klip-home-ad" type="button" aria-haspopup="dialog" aria-controls="klipRewardModal" aria-label="Open the Klipl.ink video advert">AD <span class="klip-ad-brand">KLIPL.INK</span> <span class="klip-ad-cta">WATCH AD ↗</span></button>
 </div>
   </main>
 
@@ -3220,8 +3226,14 @@ h1 span {
                 if (level3Kills >= 150)
                     activateLevel4();
             }
-            else if (startLevel === 4)
-                level4Kills += targets.length;
+            else if (startLevel === 4) {
+                // In Crimson Forest, the grave-stage zombie has not been fully defeated until its
+                // one-time skeleton is killed. Keep mass-kill progress consistent with normal hits.
+                const skeletonKills = targets.filter(z => z.ty === 6 || z.skeletonRevived).length;
+                level4Kills = Math.min(60, level4Kills + skeletonKills);
+                if (level4Kills >= 60)
+                    activateLevel5();
+            }
         }
         if (fromNetwork)
             blackHoleKilled = false;
@@ -6347,7 +6359,27 @@ h1 span {
     let multiplayerIsAuthority = false, multiplayerAuthorityKnown = false, roomFull = false;
     let baseRosterInitialised = false, pendingBaseResourceGrants = 0;
     let classicManualSpawnQueue = 0, level5BossesRemaining = 0, level5Spawned = 0, level5Kills = 0;
-    let enchantedTreehouses = [], enchantedFireflies = [];
+    let classicSpawnSubtick = 0;
+    function classicSpawnQueueRoom() {
+        if (gameMode !== 'classic' || !gameStarted) return 0;
+        let target = 0, spawned = 0;
+        if (level === 1) { target = 120; spawned = totalSpawned; }
+        else if (level === 2) {
+            if (bossSpawned === 0) { target = 55; spawned = level2Spawned; }
+            else if (bossSpawned === 1) return 0; // Do not queue regular zombies during the boss fight.
+            else { target = 100; spawned = level2PostBossSpawned; }
+        }
+        else if (level === 3) { target = 150; spawned = level3Spawned; }
+        else if (level === 4) { target = 60; spawned = level4Spawned; }
+        else if (level === 5) return 0; // This level is a boss encounter, not a regular spawn wave.
+        else return 0;
+        return Math.max(0, target - spawned - Math.max(0, classicManualSpawnQueue));
+    }
+    function classicQueueBlockedByBoss() {
+        return (level === 2 && bossSpawned === 1) || (level === 5 && level5BossesRemaining > 0);
+    }
+    let enchantedTreehouses = [], enchantedFireflies = [], enchantedGlimmerPlants = [];
+    let enchantedSceneProgress = 0;
     const baseRosterResourceSessions = new Set(), processedBaseResourceRequests = new Set();
     let lastAppliedSharedTs = 0, hasPublishedSharedState = false, personalRestored = false, multiplayerInitialStateLoaded = false;
     let clientSessionId = '', nextActionSeq = 0, recentNetworkActions = [], processedActionSeq = {}, processedPlayerHitSeq = {};
@@ -6885,7 +6917,9 @@ h1 span {
             spawnBaseWorldZombies(Math.max(0, Math.min(4, Number(action.count) || 2)));
         }
         else if (action.type === 'classicSkipWave' && gameMode === 'classic' && multiplayerIsAuthority) {
-            classicManualSpawnQueue = Math.min(120, classicManualSpawnQueue + Math.max(1, Math.min(30, Number(action.count) || 30)));
+            const room = classicSpawnQueueRoom();
+            const requested = Math.max(1, Math.min(30, Number(action.count) || 30));
+            classicManualSpawnQueue += Math.min(requested, room);
         }
         else if (action.type === 'chopTree' && isBaseWorldMode()) {
             const tree = O.find(o => o.id === action.objectId && !o.dead);
@@ -8731,6 +8765,8 @@ let w = 0
         classicManualSpawnQueue = 0
         enchantedTreehouses = []
         enchantedFireflies = []
+        enchantedGlimmerPlants = []
+        enchantedSceneProgress = 0
         firePatches = []
         fireHitCooldown = 0
         halfHealthBlastUsed = false
@@ -8801,6 +8837,17 @@ let w = 0
         if (klipVideoHost) klipVideoHost.innerHTML = '<div class="klip-video-placeholder">Video stopped. Load the reward video to watch it again.</div>';
         resetKlipVideoProgress();
     }
+    function addKlipVideoClickthrough() {
+        if (!klipVideoHost || klipVideoHost.querySelector('.klip-video-clickthrough')) return;
+        const link = document.createElement('a');
+        link.className = 'klip-video-clickthrough';
+        link.href = 'https://klipl.ink';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'VISIT KLIPL.INK ↗';
+        link.setAttribute('aria-label', 'Visit Klipl.ink from the video advert');
+        klipVideoHost.appendChild(link);
+    }
     function youtubeIdFromUrl(raw) {
         try {
             const u = new URL(raw);
@@ -8842,6 +8889,7 @@ let w = 0
             const video = document.createElement('video');
             video.controls = true; video.playsInline = true; video.preload = 'metadata'; video.src = parsed.href;
             klipVideoHost.replaceChildren(video); klipDirectVideo = video;
+            addKlipVideoClickthrough();
             video.addEventListener('play', () => { klipVideoHasStarted = true; setKlipRewardStatus('Keep watching until the video finishes to earn the KLIPgun.'); });
             video.addEventListener('timeupdate', () => recordKlipVideoProgress(video.currentTime));
             video.addEventListener('ended', () => {
@@ -8862,6 +8910,7 @@ let w = 0
         await ensureKlipYoutubeApi();
         if (!(window.YT && window.YT.Player)) return;
         klipVideoHost.innerHTML = '<div id="klipVideoPlayer" style="width:100%;height:100%;min-height:180px"></div>';
+        addKlipVideoClickthrough();
         klipYoutubePlayer = new window.YT.Player('klipVideoPlayer', {
             width: '100%', height: '100%', videoId: ytId,
             playerVars: { controls: 1, rel: 0, playsinline: 1, origin: window.location.origin },
@@ -8909,6 +8958,10 @@ let w = 0
     }
     const klipRewardClose = document.getElementById('klipRewardClose');
     if (klipRewardClose) klipRewardClose.addEventListener('click', closeKlipRewardModal);
+    if (klipAdHomeButton) klipAdHomeButton.addEventListener('click', () => {
+        openKlipRewardModal();
+        if (KLIP_AD_VIDEO_URL.trim() && !klipgunUnlocked) loadKlipRewardVideo();
+    });
     if (klipRewardWatchButton) klipRewardWatchButton.addEventListener('click', loadKlipRewardVideo);
     if (klipRewardModal) klipRewardModal.addEventListener('click', event => { if (event.target === klipRewardModal) closeKlipRewardModal(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && klipRewardModal?.classList.contains('open')) closeKlipRewardModal(); });
@@ -9021,8 +9074,8 @@ let w = 0
         if (z.hp <= 0 && !z.dead) {
             z.dead = 1;
             // Every newly killed zombie awards exactly one point. The !z.dead guard above
-            // ensures this block can only run once per death; only legacy non-Level-4
-            // skeletons can later be revived and scored again.
+            // ensures this block can only run once per death; Level 4 originals can become a skeleton once,
+            // while the revived skeleton's eventual death remains final.
             z.scored = true;
             if (!blackHoleResolving)
                 playGameSound('zombieDown');
@@ -9069,8 +9122,12 @@ let w = 0
                         activateLevel4();
                 }
                 else if (level === 4) {
-                    level4Kills++;
-                    if (level4Kills >= 60) activateLevel5();
+                    // The zombie's first death begins the grave animation; Level 4 progress advances
+                    // only when the revived skeleton is finally defeated. Each spawn is worth one clear.
+                    if (z.ty === 6 || z.skeletonRevived) {
+                        level4Kills++;
+                        if (level4Kills >= 60) activateLevel5();
+                    }
                 }
                 else if (level === 5) {
                     if (!z.level5Boss) level5Kills++;
@@ -9087,7 +9144,7 @@ let w = 0
         2: { ground: '#66533a', tile: '#806544', grassLight: '#b08a4d', grassDark: '#55412e', leaves: ['#b96c2d', '#d18a35', '#c5a13f', '#8f572b'] },
         3: { ground: '#101b17', tile: '#14231b', grassLight: '#263a2a', grassDark: '#0a120e', leaves: ['#263b2b', '#344b32', '#1b3024', '#40513a'] },
         4: { ground: '#21090e', tile: '#300d14', grassLight: '#5b1b25', grassDark: '#17070a', leaves: ['#68202a', '#81252b', '#4c171e', '#9a3430'] },
-        5: { ground: '#0b211c', tile: '#14352a', grassLight: '#4f9869', grassDark: '#09271d', leaves: ['#225a3e', '#2e704c', '#3b8059', '#4e6687'] }
+        5: { ground: '#17312f', tile: '#21453f', grassLight: '#65b99b', grassDark: '#102625', leaves: ['#286a54', '#3b896a', '#538fa1', '#7862a8'] }
     };
     function mixColour(a, b, t) {
         const A = [parseInt(a.slice(1, 3), 16), parseInt(a.slice(3, 5), 16), parseInt(a.slice(5, 7), 16)];
@@ -9097,18 +9154,20 @@ let w = 0
     function envColour(key) {
         const from = ENV_PALETTES[environmentFromLevel] || ENV_PALETTES[1];
         const to = ENV_PALETTES[level] || ENV_PALETTES[1];
-        return mixColour(from[key], to[key], environmentBlend);
+        const t = environmentBlend * environmentBlend * (3 - 2 * environmentBlend);
+        return mixColour(from[key], to[key], t);
     }
     function envLeafColour(i) {
         const from = (ENV_PALETTES[environmentFromLevel] || ENV_PALETTES[1]).leaves;
         const to = (ENV_PALETTES[level] || ENV_PALETTES[1]).leaves;
-        return mixColour(from[i % from.length], to[i % to.length], environmentBlend);
+        const t = environmentBlend * environmentBlend * (3 - 2 * environmentBlend);
+        return mixColour(from[i % from.length], to[i % to.length], t);
     }
     function beginEnvironmentTransition(nextLevel) {
         environmentFromLevel = level;
         level = nextLevel;
         environmentBlend = 0;
-        transitionFade = 1;
+        transitionFade = .86;
     }
     function spawnLevelFruit(treeType) {
         apples = [];
@@ -9276,20 +9335,28 @@ let w = 0
         spawnLevelFruit(0);
         for (let i = 0; i < 620; i++)
             G.push({ x: Math.random() * w, y: Math.random() * h, a: Math.random() * .65 - .325, l: Math.random() < .82 });
-        enchantedTreehouses = O.filter(o => o.t === 0).filter((o, i) => i % 3 === 1).slice(0, 13).map((o, i) => ({
-            id: 'treehouse-' + i, x: o.x + Math.sin(o.s) * o.r * .42, y: o.y - o.r * .22,
-            scale: .72 + (i % 4) * .1, phase: Math.random() * 6.28
+        enchantedSceneProgress = 0;
+        enchantedTreehouses = O.filter(o => o.t === 0).filter((o, i) => i % 3 === 1).slice(0, 16).map((o, i) => ({
+            id: 'treehouse-' + i, x: o.x + Math.sin(o.s) * o.r * .36, y: o.y - o.r * .34,
+            scale: 1.18 + (i % 4) * .15, appearAt: (i % 5) * .055, phase: Math.random() * 6.28
         }));
-        enchantedFireflies = Array.from({ length: 42 }, (_, i) => ({
+        enchantedFireflies = Array.from({ length: 48 }, (_, i) => ({
             x: Math.random() * w, y: Math.random() * h, phase: Math.random() * 6.28,
-            drift: .35 + Math.random() * .8, size: .8 + Math.random() * 1.2
+            drift: .55 + Math.random() * 1.05, size: 1.0 + Math.random() * 1.25
         }));
+        enchantedGlimmerPlants = Array.from({ length: 30 }, (_, i) => {
+            let x = 30 + Math.random() * Math.max(1, w - 60), y = 30 + Math.random() * Math.max(1, h - 60), tries = 0;
+            while (tries++ < 20 && (Math.hypot(x - p.x, y - p.y) < 45 || O.some(o => Math.hypot(o.x - x, o.y - y) < o.r + 24))) {
+                x = 30 + Math.random() * Math.max(1, w - 60); y = 30 + Math.random() * Math.max(1, h - 60);
+            }
+            return { x, y, phase: Math.random() * 6.28, size: .8 + Math.random() * .7, hue: i % 3 };
+        });
         const spawnBossAt = (side, idx) => {
             let x = side === 0 ? -55 : w + 55;
             let y = 70 + Math.random() * Math.max(1, h - 140);
             if (Math.hypot(x - p.x, y - p.y) < 280) y = (y + h * .43) % h;
             e.push({ id: newEntityId('enchanted-boss'), x, y, ty: 3, hp: 220, mh: 220, ar: 115,
-                wk: idx * 2.4, sv: 1.7, sh: '#42314f', sk: '#c8adff', boss: 1, level5Boss: 1, level5BossIndex: idx });
+                wk: idx * 2.4, sv: 1.7, introSlowUntil: fr + 480, sh: '#42314f', sk: '#c8adff', boss: 1, level5Boss: 1, level5BossIndex: idx });
         };
         spawnBossAt(0, 1); spawnBossAt(1, 2);
     }
@@ -10942,7 +11009,7 @@ let w = 0
         gameActionDock.appendChild(btn); return btn;
     }
     const spawnTwoZombiesButton = makeGameActionButton('spawnTwoZombiesButton', '＋ SPAWN 2 ZOMBIES', '#a34d59');
-    const skipClassicWaveButton = makeGameActionButton('skipClassicWaveButton', 'SKIP WAVE · QUEUE 30 ZOMBIES', '#b18df5');
+    const skipClassicWaveButton = makeGameActionButton('skipClassicWaveButton', 'SKIP WAVE · QUEUE 30 (2× SPEED)', '#b18df5');
     const upgradeTurretButton = makeGameActionButton('upgradeTurretButton', 'UPGRADE NEARBY TURRET', '#70d6b2');
     topLeftHudActionRow.appendChild(gameActionDock);
     spawnTwoZombiesButton.addEventListener('click', () => {
@@ -10953,16 +11020,19 @@ let w = 0
     });
     skipClassicWaveButton.addEventListener('click', () => {
         if (gameMode !== 'classic' || !gameStarted || dead !== 0) return;
+        const room = classicSpawnQueueRoom();
+        const addition = Math.min(30, room);
+        if (addition <= 0) {
+            skipClassicWaveButton.textContent = classicQueueBlockedByBoss() ? 'BOSS FIGHT · QUEUE LOCKED' : 'LEVEL SPAWN LIMIT REACHED';
+            return;
+        }
         if (activeSharedRun() && !multiplayerIsAuthority) {
-            queueMultiplayerAction({ type: 'classicSkipWave', count: 30 });
-            skipClassicWaveButton.textContent = 'SKIP REQUEST SENT · +30 ZOMBIES';
+            queueMultiplayerAction({ type: 'classicSkipWave', count: addition });
+            skipClassicWaveButton.textContent = 'SKIP REQUEST SENT · ' + addition + ' FAST SPAWNS';
         }
         else {
-            const previousQueue = classicManualSpawnQueue;
-            classicManualSpawnQueue = Math.min(120, classicManualSpawnQueue + 30);
-            skipClassicWaveButton.textContent = classicManualSpawnQueue > previousQueue
-                ? 'QUEUE ' + classicManualSpawnQueue + ' ZOMBIES · ADD 30'
-                : 'QUEUE LIMIT REACHED';
+            classicManualSpawnQueue += addition;
+            skipClassicWaveButton.textContent = 'QUEUED ' + classicManualSpawnQueue + ' · 2× SPAWN SPEED';
         }
     });
     upgradeTurretButton.addEventListener('click', upgradeNearbyOwnTurret);
@@ -10984,10 +11054,16 @@ let w = 0
             if (n >= 5) upgradeTurretButton.textContent = 'TURRET FULLY UPGRADED';
             else upgradeTurretButton.textContent = 'UPGRADE TURRET LV ' + n + ' → ' + (n + 1) + ' · ' + (12 + n * 8) + ' WOOD / ' + (8 + n * 6) + ' STONE';
         }
-        if (showClassicSkip && classicManualSpawnQueue > 0)
-            skipClassicWaveButton.textContent = 'QUEUE ' + classicManualSpawnQueue + ' ZOMBIES · ADD 30';
-        else if (showClassicSkip)
-            skipClassicWaveButton.textContent = 'SKIP WAVE · QUEUE 30 ZOMBIES';
+        if (showClassicSkip && classicManualSpawnQueue > 0) {
+            const room = classicSpawnQueueRoom();
+            skipClassicWaveButton.textContent = 'QUEUED ' + classicManualSpawnQueue + ' · ' + (room > 0 ? 'ADD UP TO ' + Math.min(30, room) : 'LIMIT REACHED') + ' · 2× SPEED';
+        }
+        else if (showClassicSkip) {
+            const room = classicSpawnQueueRoom();
+            skipClassicWaveButton.textContent = room > 0
+                ? 'SKIP WAVE · +' + Math.min(30, room) + ' FAST SPAWNS'
+                : classicQueueBlockedByBoss() ? 'BOSS FIGHT · QUEUE LOCKED' : 'LEVEL SPAWN LIMIT REACHED';
+        }
     }
     function triggerHalfHealthBlast() {
         if (halfHealthBlastUsed || hp > maxPlayerHp() / 2)
@@ -12072,10 +12148,18 @@ let w = 0
             return;
         if (!sharedWorldShouldRun())
             return;
+        const manualClassicSpawn = gameMode === 'classic' && classicManualSpawnQueue > 0;
+        // Timer runs every 425 ms: queued Classic spawns use every tick (2× speed),
+        // while ordinary spawns use alternate ticks to keep the original 850 ms pace.
+        if (!manualClassicSpawn) {
+            classicSpawnSubtick = (classicSpawnSubtick + 1) % 2;
+            if (classicSpawnSubtick !== 0) return;
+        } else {
+            classicSpawnSubtick = 0;
+        }
         if (isBaseWorldMode() && Math.random() < 0.97)
             return; // Very rare ambient spawns in the open world.
-        // Hard cap on living zombies. Level 5 permits a larger horde; a button can queue extra spawns but never bypass this cap.
-        const manualClassicSpawn = gameMode === 'classic' && classicManualSpawnQueue > 0;
+        // Hard cap on living zombies. Level 5 permits a larger horde; queue size is also limited by its phase budget.
         const maxLivingZombies = gameMode === 'classic' && level === 5 ? 50 : 30;
         if (e.reduce((count, z) => count + (!z.dead ? 1 : 0), 0) >= maxLivingZombies)
             return;
@@ -12085,7 +12169,7 @@ let w = 0
         }
         if (level == 1 && totalSpawned >= 120 && gameMode !== 'infinite')
             return;
-        if (level === 3 && level3Spawned >= 160)
+        if (level === 3 && level3Spawned >= 150)
             return;
         if (level === 4 && level4Spawned >= 60)
             return;
@@ -12228,7 +12312,7 @@ let w = 0
         }
         if (manualClassicSpawn && classicManualSpawnQueue > 0)
             classicManualSpawnQueue--;
-    }, isBaseWorldMode() ? Math.round(2200 / 1.2) : 850);
+    }, 425);
     setInterval(() => {
         if (!isBaseWorldMode() || blackHoleWorldLocked() || bossCutscene > 0 || (activeSharedRun() && !multiplayerIsAuthority) || !sharedWorldShouldRun())
             return;
@@ -13391,6 +13475,7 @@ let w = 0
         g.globalAlpha = alpha;
         g.translate(q.x, q.y - rise);
         g.rotate(a + fall);
+        const skelGait = q.dead ? 0 : Math.sin(Number(q.wk) || 0) * 2.1;
         g.lineCap = 'round';
         g.lineJoin = 'round';
         // Shadow and bones have warm ivory highlights and darker edges.
@@ -13492,29 +13577,70 @@ let w = 0
             g.arc(x, y, 2.2, 0, 7);
             g.stroke();
         }
-        bone(-5, 2, -10, 6);
-        bone(-10, 6, -14, 2);
-        joint(-10, 6);
-        bone(-14, 2, -16, 0, 2);
-        bone(-16, 0, -18, 1, 1.4);
-        bone(-16, 0, -16, -2, 1.4);
-        bone(5, 2, 10, 6);
-        bone(10, 6, 14, 2);
-        joint(10, 6);
-        bone(14, 2, 16, 0, 2);
-        bone(16, 0, 18, 1, 1.4);
-        bone(16, 0, 16, -2, 1.4);
-        // Femurs, knees, shin bones and feet.
-        bone(-4, 17, -7, 22, 3.3);
-        bone(-7, 22, -9, 27, 2.8);
-        joint(-7, 22);
-        bone(-9, 27, -13, 28, 2.8);
-        bone(-13, 28, -15, 27, 1.8);
-        bone(4, 17, 7, 22, 3.3);
-        bone(7, 22, 9, 27, 2.8);
-        joint(7, 22);
-        bone(9, 27, 13, 28, 2.8);
-        bone(13, 28, 15, 27, 1.8);
+        bone(-5, 2, -10, 6 + skelGait * .35);
+        bone(-10, 6 + skelGait * .35, -14, 2 + skelGait * .75);
+        joint(-10, 6 + skelGait * .35);
+        bone(-14, 2 + skelGait * .75, -16, skelGait * .6, 2);
+        bone(-16, skelGait * .6, -18, 1 + skelGait * .6, 1.4);
+        bone(-16, skelGait * .6, -16, -2 + skelGait * .6, 1.4);
+        bone(5, 2, 10, 6 - skelGait * .35);
+        bone(10, 6 - skelGait * .35, 14, 2 - skelGait * .75);
+        joint(10, 6 - skelGait * .35);
+        bone(14, 2 - skelGait * .75, 16, -skelGait * .6, 2);
+        bone(16, -skelGait * .6, 18, 1 - skelGait * .6, 1.4);
+        bone(16, -skelGait * .6, 16, -2 - skelGait * .6, 1.4);
+        // Femurs, knees, shin bones and feet move in opposition for a readable shambling gait.
+        bone(-4, 17, -7 + skelGait, 22);
+        bone(-7 + skelGait, 22, -9 + skelGait * 1.45, 27);
+        joint(-7 + skelGait, 22);
+        bone(-9 + skelGait * 1.45, 27, -13 + skelGait * 1.45, 28);
+        bone(-13 + skelGait * 1.45, 28, -15 + skelGait * 1.45, 27, 1.8);
+        bone(4, 17, 7 - skelGait, 22, 3.3);
+        bone(7 - skelGait, 22, 9 - skelGait * 1.45, 27, 2.8);
+        joint(7 - skelGait, 22);
+        bone(9 - skelGait * 1.45, 27, 13 - skelGait * 1.45, 28, 2.8);
+        bone(13 - skelGait * 1.45, 28, 15 - skelGait * 1.45, 27, 1.8);
+        g.restore();
+    }
+    function drawGravestone(x, y, alpha = 1) {
+        g.save();
+        g.globalAlpha *= Math.max(0, Math.min(1, alpha));
+        // Soft shadow and a slightly crooked, chipped stone slab set behind the emerging skeleton.
+        el(x + 2, y + 13, 16, 4.8, 'rgba(0,0,0,.34)');
+        g.fillStyle = '#39383a';
+        g.beginPath();
+        g.moveTo(x - 11, y + 13);
+        g.lineTo(x - 11, y - 5);
+        g.quadraticCurveTo(x - 11, y - 17, x - 1, y - 18);
+        g.quadraticCurveTo(x + 10, y - 18, x + 11, y - 7);
+        g.lineTo(x + 12, y + 13);
+        g.closePath();
+        g.fill();
+        g.strokeStyle = '#827b70';
+        g.lineWidth = 1.5;
+        g.stroke();
+        g.fillStyle = 'rgba(186,177,157,.30)';
+        g.beginPath();
+        g.moveTo(x - 7, y + 8);
+        g.lineTo(x - 7, y - 5);
+        g.quadraticCurveTo(x - 6, y - 13, x, y - 14);
+        g.lineTo(x + 4, y - 12);
+        g.lineTo(x + 5, y + 8);
+        g.closePath();
+        g.fill();
+        // Weathered grave mark, hairline cracks and a little disturbed earth at its foot.
+        g.strokeStyle = 'rgba(28,25,25,.85)';
+        g.lineWidth = 1.25;
+        g.beginPath();
+        g.moveTo(x, y - 11); g.lineTo(x, y + 4);
+        g.moveTo(x - 4, y - 6); g.lineTo(x + 4, y - 6);
+        g.moveTo(x + 6, y - 1); g.lineTo(x + 3, y + 3); g.lineTo(x + 5, y + 6);
+        g.stroke();
+        g.fillStyle = 'rgba(39,29,25,.50)';
+        g.beginPath();
+        g.ellipse(x + 13, y + 12, 6, 2.3, -.15, 0, Math.PI * 2);
+        g.ellipse(x - 11, y + 13, 5, 2, .18, 0, Math.PI * 2);
+        g.fill();
         g.restore();
     }
     function drawZombie(q, a) {
@@ -15397,8 +15523,8 @@ let w = 0
             // Draw the trunk and scaffold branches FIRST. The canopy is deliberately rendered last,
             // so leaves overlap the upper trunk naturally instead of the trunk cutting across foliage.
             const fade = level === 4 ? Math.max(0, Number(o.leafFade) || 0) : 1;
-            const bark = isBaseWorldMode() ? (o.x > BASE_WORLD_W * .78 && o.y > BASE_WORLD_H * .64 ? '#342126' : o.x > BASE_WORLD_W * .72 && o.y < BASE_WORLD_H * .40 ? '#667a81' : '#543b2a') : level === 4 ? '#241719' : level === 3 ? '#292e27' : level === 2 ? '#604329' : '#533722';
-            const barkLit = isBaseWorldMode() ? (o.x > BASE_WORLD_W * .78 && o.y > BASE_WORLD_H * .64 ? '#74404a' : o.x > BASE_WORLD_W * .72 && o.y < BASE_WORLD_H * .40 ? '#a6c1c8' : '#936847') : level === 4 ? '#5e2e29' : level === 3 ? '#56604d' : level === 2 ? '#a87843' : '#8a5d36';
+            const bark = isBaseWorldMode() ? (o.x > BASE_WORLD_W * .78 && o.y > BASE_WORLD_H * .64 ? '#342126' : o.x > BASE_WORLD_W * .72 && o.y < BASE_WORLD_H * .40 ? '#667a81' : '#543b2a') : o.enchanted ? '#302745' : level === 4 ? '#241719' : level === 3 ? '#292e27' : level === 2 ? '#604329' : '#533722';
+            const barkLit = isBaseWorldMode() ? (o.x > BASE_WORLD_W * .78 && o.y > BASE_WORLD_H * .64 ? '#74404a' : o.x > BASE_WORLD_W * .72 && o.y < BASE_WORLD_H * .40 ? '#a6c1c8' : '#936847') : o.enchanted ? '#9a83bd' : level === 4 ? '#5e2e29' : level === 3 ? '#56604d' : level === 2 ? '#a87843' : '#8a5d36';
             ctx.save();
             // Grounding shadow and roots keep the trunk visually attached to the forest floor.
             ctx.globalAlpha = .24;
@@ -15457,8 +15583,8 @@ let w = 0
                 ctx.fill();
             }
             // Now layer the leafy crown over the branch tops. This is the key draw-order correction.
-            const lobes = [[-19, -9, 18, 13], [-8, -25, 17, 14], [10, -20, 19, 15], [23, -4, 16, 13], [7, 5, 18, 13], [-15, 5, 16, 12], [-2, -12, 22, 17]];
-            let leafCols = level === 4 ? ['#241619', '#3b1f24', '#51272a', '#71382e'] : level === 2 ? ['#9a6b31', '#bf8b3e', '#d0a654', '#6c6635'] : ['#365d2c', '#4f7834', '#648c3d', '#83a451'];
+            const lobes = [[-16, -17, 14, 17], [-6, -33, 17, 17], [11, -28, 17, 18], [23, -13, 14, 16], [8, -7, 18, 16], [-13, -3, 16, 14], [-1, -20, 20, 21], [0, -12, 16, 18]];
+            let leafCols = o.enchanted ? ['#245d4d', '#347e68', '#4ba28a', '#6269a5', '#8b70bd'] : level === 4 ? ['#241619', '#3b1f24', '#51272a', '#71382e'] : level === 2 ? ['#9a6b31', '#bf8b3e', '#d0a654', '#6c6635'] : ['#365d2c', '#4f7834', '#648c3d', '#83a451'];
             if (isBaseWorldMode()) {
                 const candidates = [
                     { cx: BASE_WORLD_W * .34, cy: BASE_WORLD_H * .20, rx: BASE_WORLD_W * .34, ry: BASE_WORLD_H * .35, c: ['#995b2f', '#b87635', '#c99742', '#74633a'] },
@@ -15477,11 +15603,25 @@ let w = 0
                     }
                 }
             }
-            ctx.globalAlpha = fade;
+            // Let branches, trunk and fruit show through the crown; this also gives trees a leaf-like
+            // depth instead of the opaque, rock-shaped silhouette of the previous canopy.
+            const canopyOpacity = .78;
+            ctx.globalAlpha = fade * canopyOpacity;
+            if (o.enchanted) {
+                // A restrained teal-violet radiance makes these crowns feel enchanted, not merely green.
+                ctx.globalAlpha = fade * .46;
+                const magicHalo = ctx.createRadialGradient(o.x, o.y - 19, 2, o.x, o.y - 19, r * 1.8);
+                magicHalo.addColorStop(0, 'rgba(109,255,207,.30)');
+                magicHalo.addColorStop(.48, 'rgba(99,174,255,.14)');
+                magicHalo.addColorStop(1, 'rgba(168,104,255,0)');
+                ctx.fillStyle = magicHalo;
+                ctx.beginPath(); ctx.ellipse(o.x, o.y - 18, r * 1.65, r * 1.38, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = fade * canopyOpacity;
+            }
             // Layer darker underside shapes, then bright individual lobes for form and depth.
             ctx.fillStyle = level === 4 ? '#160f12' : 'rgba(8,16,9,.36)';
             ctx.beginPath();
-            ctx.ellipse(o.x + 4, o.y + 2, 31, 20, .12, 0, Math.PI * 2);
+            ctx.ellipse(o.x + 2, o.y - 18, 25, 28, .08, 0, Math.PI * 2);
             ctx.fill();
             for (let i = 0; i < lobes.length; i++) {
                 const [dx, dy, rx, ry] = lobes[i], j = seededNoise(seed + i * 13) - .5;
@@ -15489,7 +15629,7 @@ let w = 0
                 ctx.beginPath();
                 ctx.ellipse(o.x + dx + j * 5, o.y + dy + seededNoise(seed + i * 37) * 3, rx * (.8 + seededNoise(seed + i * 41) * .25), ry * (.8 + seededNoise(seed + i * 43) * .25), j * .55, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.strokeStyle = isBaseWorldMode() && o.x > BASE_WORLD_W * .72 && o.y < BASE_WORLD_H * .40 ? 'rgba(235,247,250,.22)' : level === 4 ? 'rgba(14,4,7,.42)' : 'rgba(15,31,13,.36)';
+                ctx.strokeStyle = o.enchanted ? 'rgba(183,255,224,.40)' : isBaseWorldMode() && o.x > BASE_WORLD_W * .72 && o.y < BASE_WORLD_H * .40 ? 'rgba(235,247,250,.22)' : level === 4 ? 'rgba(14,4,7,.42)' : 'rgba(15,31,13,.36)';
                 ctx.lineWidth = 1.05;
                 ctx.beginPath();
                 ctx.moveTo(o.x + dx - rx * .55, o.y + dy + ry * .1);
@@ -15505,11 +15645,11 @@ let w = 0
                 ctx.ellipse(lx, ly, rr * 1.6, rr * .7, ang, 0, Math.PI * 2);
                 ctx.fill();
             }
-            ctx.globalAlpha = fade;
+            ctx.globalAlpha = fade * canopyOpacity;
             // Tiny highlights on the crown catch ambient light; avoid painting the trunk over leaves again.
             for (let i = 0; i < 9; i++) {
                 const hx = o.x + (seededNoise(seed + i * 127) - .5) * 37, hy = o.y - 28 + seededNoise(seed + i * 131) * 26;
-                ctx.fillStyle = isBaseWorldMode() && o.x > BASE_WORLD_W * .72 && o.y < BASE_WORLD_H * .4 ? 'rgba(242,250,255,.34)' : level === 4 ? 'rgba(216,92,79,.22)' : 'rgba(190,220,135,.25)';
+                ctx.fillStyle = o.enchanted ? (i % 2 ? 'rgba(190,255,229,.54)' : 'rgba(205,185,255,.40)') : isBaseWorldMode() && o.x > BASE_WORLD_W * .72 && o.y < BASE_WORLD_H * .4 ? 'rgba(242,250,255,.34)' : level === 4 ? 'rgba(216,92,79,.22)' : 'rgba(190,220,135,.25)';
                 ctx.beginPath();
                 ctx.ellipse(hx, hy, 1.5, 2.4, seededNoise(seed + i * 137), 0, Math.PI * 2);
                 ctx.fill();
@@ -15658,7 +15798,7 @@ let w = 0
                 paintNaturalObjectDetail(g, o);
                 continue;
             }
-            const key = [gameMode, level, base ? 1 : 0, Math.round(detailScale * 100), o.t, Math.round(Number(o.r) || 20), Math.round(Number(o.s) || 0)].join(':');
+            const key = [gameMode, level, base ? 1 : 0, Math.round(detailScale * 100), o.t, Math.round(Number(o.r) || 20), Math.round(Number(o.s) || 0), o.enchanted ? 1 : 0].join(':');
             let entry = naturalObjectDetailCache.get(o);
             if (entry && entry.key === key) {
                 // Promote a recently used sprite in the bounded LRU so frequently visible objects
@@ -15669,7 +15809,7 @@ let w = 0
             else {
                 if (entry)
                     naturalObjectDetailCache.delete(o);
-                const r = Math.max(14, Number(o.r) || 20), pad = Math.max(64, r * 1.8 + 8), size = Math.ceil(pad * 2);
+                const r = Math.max(14, Number(o.r) || 20), pad = o.enchanted ? Math.max(94, r * 2.15 + 10) : Math.max(64, r * 1.8 + 8), size = Math.ceil(pad * 2);
                 const canvas = document.createElement('canvas');
                 canvas.width = Math.max(1, Math.ceil(size * detailScale));
                 canvas.height = canvas.width;
@@ -15689,7 +15829,10 @@ let w = 0
                     continue;
                 }
             }
-            g.drawImage(entry.canvas, o.x - entry.pad, o.y - entry.pad, entry.size, entry.size);
+            const sceneT = Math.max(0, Math.min(1, enchantedSceneProgress));
+            const sceneEase = sceneT * sceneT * (3 - 2 * sceneT);
+            const grow = o.enchanted && gameMode === 'classic' && level === 5 ? 1 + .58 * sceneEase : 1;
+            g.drawImage(entry.canvas, o.x - entry.pad * grow, o.y - entry.pad * grow, entry.size * grow, entry.size * grow);
         }
         g.restore();
     }
@@ -15956,6 +16099,22 @@ let w = 0
             }
             g.restore();
         }
+        if (!isBaseWorldMode() && gameMode === 'classic' && level === 5) {
+            const u = Math.max(0, Math.min(1, enchantedSceneProgress));
+            const a = .075 + .045 * u;
+            g.save();
+            g.fillStyle = `rgba(34, 25, 72, ${a})`;
+            g.fillRect(0, 0, logicalCanvasW, logicalCanvasH);
+            const mx = logicalCanvasW * (.48 + .04 * Math.sin(fr * .002)), my = logicalCanvasH * .34;
+            const radius = Math.max(logicalCanvasW, logicalCanvasH) * .72;
+            const moonlitGlow = g.createRadialGradient(mx, my, 0, mx, my, radius);
+            moonlitGlow.addColorStop(0, `rgba(108, 242, 190, ${.12 + .07 * u})`);
+            moonlitGlow.addColorStop(.38, `rgba(105, 137, 235, ${.075 + .035 * u})`);
+            moonlitGlow.addColorStop(1, 'rgba(153, 103, 221, 0)');
+            g.fillStyle = moonlitGlow;
+            g.fillRect(0, 0, logicalCanvasW, logicalCanvasH);
+            g.restore();
+        }
         // Keep the restrained filmic vignette. The central light and edge falloff are subtle
         // enough to preserve visibility and help the game feel atmospheric rather than muddy.
         const cx = (isBaseWorldMode() ? (p.x - cameraX) * Z * BASE_ZOOM : logicalCanvasW / 2), cy = (isBaseWorldMode() ? (p.y - cameraY) * Z * BASE_ZOOM : logicalCanvasH / 2);
@@ -15981,7 +16140,7 @@ let w = 0
             return;
         g.save();
         g.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-        let climate = level === 4 ? 'ember' : level === 3 ? 'spores' : level === 2 ? 'snow' : 'dust';
+        let climate = level === 5 ? 'enchanted' : level === 4 ? 'ember' : level === 3 ? 'spores' : level === 2 ? 'snow' : 'dust';
         if (isBaseWorldMode()) {
             const regions = [
                 { k: 'grass', x: BASE_WORLD_W * .17, y: BASE_WORLD_H * .60, rx: BASE_WORLD_W * .36, ry: BASE_WORLD_H * .43 },
@@ -16019,6 +16178,10 @@ let w = 0
         else if (climate === 'sand') {
             streakColor = 'rgba(226,189,123,.25)';
             sparkColor = '#e6bc77';
+        }
+        else if (climate === 'enchanted') {
+            streakColor = 'rgba(170,151,255,.24)';
+            sparkColor = '#a8ffe2';
         }
         else if (climate === 'forest' || climate === 'spores') {
             streakColor = 'rgba(161,199,150,.20)';
@@ -16096,31 +16259,82 @@ let w = 0
     function drawEnchantedLevelDecor() {
         if (gameMode !== 'classic' || level !== 5) return;
         const viewLeft = 0, viewTop = 0, viewRight = logicalCanvasW / Z, viewBottom = logicalCanvasH / Z;
+        const scene = Math.max(0, Math.min(1, enchantedSceneProgress));
+        const ease = scene * scene * (3 - 2 * scene);
+        // Tiny luminous flowers and mushrooms make the forest floor feel fairy-like, not just darker.
+        for (const plant of enchantedGlimmerPlants) {
+            if (plant.x < viewLeft - 25 || plant.x > viewRight + 25 || plant.y < viewTop - 25 || plant.y > viewBottom + 25) continue;
+            const pulse = .45 + .55 * (.5 + .5 * Math.sin(fr * .045 + plant.phase));
+            const colour = plant.hue === 0 ? '#8affcb' : plant.hue === 1 ? '#b5a0ff' : '#ffe8a6';
+            g.save();
+            g.globalAlpha = (.24 + .46 * pulse) * ease;
+            g.fillStyle = colour;
+            g.beginPath(); g.ellipse(plant.x, plant.y + 3, 4.5 * plant.size, 2.1 * plant.size, 0, 0, Math.PI * 2); g.fill();
+            g.globalAlpha = (.28 + .42 * pulse) * ease;
+            g.strokeStyle = colour; g.lineWidth = 1.2;
+            g.beginPath(); g.moveTo(plant.x, plant.y + 5); g.lineTo(plant.x, plant.y - 2.5 * plant.size); g.stroke();
+            for (let petal = 0; petal < 4; petal++) {
+                const a = petal * Math.PI / 2 + plant.phase;
+                g.beginPath(); g.ellipse(plant.x + Math.cos(a) * 3.2 * plant.size, plant.y - 2.5 * plant.size + Math.sin(a) * 2.1 * plant.size, 1.9 * plant.size, 1.25 * plant.size, a, 0, Math.PI * 2); g.fill();
+            }
+            g.restore();
+        }
         for (const house of enchantedTreehouses) {
-            if (house.x < viewLeft - 90 || house.x > viewRight + 90 || house.y < viewTop - 90 || house.y > viewBottom + 90) continue;
-            const sc = house.scale || 1, pulse = .5 + .5 * Math.sin(fr * .04 + house.phase);
-            g.save(); g.translate(house.x, house.y); g.scale(sc, sc);
-            // Hanging plank walkway, tiny timber cabin, moss roof and warm windows.
-            g.strokeStyle = '#4a372a'; g.lineWidth = 4; g.beginPath(); g.moveTo(-21, 14); g.lineTo(22, 14); g.stroke();
-            g.strokeStyle = '#bd9a61'; g.lineWidth = 1.3; g.beginPath(); g.moveTo(-23, 12); g.lineTo(23, 12); g.stroke();
-            g.fillStyle = '#523c34'; g.fillRect(-15, -8, 30, 22);
-            g.fillStyle = '#7b5642'; g.fillRect(-12, -5, 24, 16);
-            g.fillStyle = '#234b3b'; g.beginPath(); g.moveTo(-20, -7); g.lineTo(0, -21); g.lineTo(20, -7); g.closePath(); g.fill();
-            g.strokeStyle = '#8acb91'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(-20, -7); g.lineTo(0, -21); g.lineTo(20, -7); g.stroke();
-            g.fillStyle = '#ffd780'; g.globalAlpha = .7 + .3 * pulse; g.fillRect(-8, -1, 5, 7); g.fillRect(4, -1, 5, 7);
-            g.globalAlpha = 1; g.fillStyle = '#171f25'; g.fillRect(-2, 3, 5, 8); g.restore();
+            if (house.x < viewLeft - 130 || house.x > viewRight + 130 || house.y < viewTop - 110 || house.y > viewBottom + 110) continue;
+            const reveal = Math.max(0, Math.min(1, (ease - (house.appearAt || 0)) / .43));
+            const show = reveal * reveal * (3 - 2 * reveal);
+            if (show <= .005) continue;
+            const pulse = .5 + .5 * Math.sin(fr * .035 + house.phase);
+            const sc = (house.scale || 1.35) * (.20 + .80 * show);
+            g.save(); g.globalAlpha = show; g.translate(house.x, house.y + (1 - show) * 16); g.scale(sc, sc);
+            // Broad whimsical cabin, crooked moss roof, branch-supported deck and lanterns.
+            g.globalAlpha = show * .32; g.fillStyle = '#7fe8d0'; g.beginPath(); g.ellipse(0, -6, 43, 35, 0, 0, Math.PI * 2); g.fill();
+            g.globalAlpha = show; g.strokeStyle = '#49344f'; g.lineWidth = 5; g.lineCap = 'round';
+            g.beginPath(); g.moveTo(-31, 18); g.quadraticCurveTo(0, 24, 34, 16); g.stroke();
+            g.strokeStyle = '#a6d5a0'; g.lineWidth = 1.7; g.beginPath(); g.moveTo(-34, 15); g.quadraticCurveTo(0, 21, 36, 13); g.stroke();
+            // Suspension ropes and dangling glowing lanterns.
+            g.strokeStyle = '#85644d'; g.lineWidth = 1.7; g.beginPath(); g.moveTo(-24, 10); g.lineTo(-30, 28); g.moveTo(24, 10); g.lineTo(30, 28); g.stroke();
+            g.globalAlpha = show * (.35 + .4 * pulse); g.fillStyle = '#a7ffe1';
+            g.beginPath(); g.arc(-30, 30, 4.5, 0, Math.PI * 2); g.arc(30, 30, 4.5, 0, Math.PI * 2); g.fill();
+            g.globalAlpha = show;
+            // Timber cabin body, layered front wall, arched door and oversized glowing windows.
+            g.fillStyle = '#3b334e'; g.fillRect(-24, -12, 48, 31);
+            g.fillStyle = '#78567c'; g.fillRect(-20, -9, 40, 24);
+            g.strokeStyle = '#bf9cba'; g.lineWidth = 1.2; g.strokeRect(-20, -9, 40, 24);
+            // Curved, fern-like roof with a high fairy-cottage peak.
+            g.fillStyle = '#26584c'; g.beginPath(); g.moveTo(-32, -11); g.quadraticCurveTo(-15, -18, -7, -30); g.quadraticCurveTo(1, -39, 9, -30); g.quadraticCurveTo(20, -18, 32, -11); g.quadraticCurveTo(0, -4, -32, -11); g.closePath(); g.fill();
+            g.strokeStyle = '#9cf3be'; g.lineWidth = 1.8; g.beginPath(); g.moveTo(-31, -11); g.quadraticCurveTo(-11, -19, 1, -36); g.quadraticCurveTo(16, -19, 31, -11); g.stroke();
+            g.strokeStyle = '#d1ffc3'; g.lineWidth = .9; g.beginPath(); g.moveTo(-3, -17); g.quadraticCurveTo(8, -25, 4, -32); g.stroke();
+            g.globalAlpha = show * (.75 + .25 * pulse); g.fillStyle = '#ffe7a0';
+            g.fillRect(-15, -4, 8, 10); g.fillRect(7, -4, 8, 10);
+            g.globalAlpha = show * .55; g.fillStyle = '#a4fce3'; g.fillRect(-14, -3, 5, 8); g.fillRect(8, -3, 5, 8);
+            g.globalAlpha = show; g.fillStyle = '#211e38'; g.beginPath(); g.moveTo(-4, 19); g.lineTo(-4, 5); g.quadraticCurveTo(0, -1, 4, 5); g.lineTo(4, 19); g.closePath(); g.fill();
+            // A tiny glowing sigil above each doorway.
+            g.strokeStyle = '#e7c8ff'; g.lineWidth = 1.2; g.beginPath(); g.arc(0, -2, 3.5, 0, Math.PI * 2); g.moveTo(-5, -2); g.lineTo(5, -2); g.moveTo(0, -7); g.lineTo(0, 3); g.stroke();
+            g.restore();
         }
-        const every = adaptiveQualityLevel >= 4 ? 3 : adaptiveQualityLevel >= 2 ? 2 : 1;
-        for (let i = 0; i < enchantedFireflies.length; i += every) {
+        // Always render the fireflies (rather than thinning almost all of them at normal quality).
+        // A wider drifting path and layered halos make their movement visible on ordinary settings.
+        for (let i = 0; i < enchantedFireflies.length; i++) {
             const f = enchantedFireflies[i];
-            const x = f.x + Math.sin(fr * .013 * f.drift + f.phase) * 14;
-            const y = f.y + Math.cos(fr * .011 * f.drift + f.phase * 1.7) * 10;
-            if (x < viewLeft - 20 || x > viewRight + 20 || y < viewTop - 20 || y > viewBottom + 20) continue;
-            const pulse = .25 + .75 * (.5 + .5 * Math.sin(fr * .08 + f.phase));
-            g.globalAlpha = .16 + .22 * pulse; g.fillStyle = '#81ffd3'; g.beginPath(); g.arc(x, y, 4.6 * f.size, 0, Math.PI * 2); g.fill();
-            g.globalAlpha = .45 + .55 * pulse; g.fillStyle = '#d8ffd0'; g.beginPath(); g.arc(x, y, f.size, 0, Math.PI * 2); g.fill();
+            const rawX = f.x + Math.sin(fr * .012 * f.drift + f.phase) * 33 + Math.sin(fr * .004 + f.phase * .7) * 17;
+            const rawY = f.y + Math.cos(fr * .009 * f.drift + f.phase * 1.7) * 25 + Math.sin(fr * .005 + f.phase) * 11;
+            const x = ((rawX % viewRight) + viewRight) % viewRight;
+            const y = ((rawY % viewBottom) + viewBottom) % viewBottom;
+            const pulse = .3 + .7 * (.5 + .5 * Math.sin(fr * .08 + f.phase));
+            const flyAlpha = (.45 + .45 * pulse) * ease;
+            g.save();
+            // Short motion streak gives the impression of flight without expensive particle physics.
+            g.globalAlpha = flyAlpha * .38; g.strokeStyle = '#91ffe2'; g.lineWidth = .9;
+            g.beginPath(); g.moveTo(x - Math.cos(fr * .012 * f.drift + f.phase) * 5, y + 3); g.lineTo(x, y); g.stroke();
+            g.globalAlpha = flyAlpha * .24; g.fillStyle = '#73ffd2';
+            g.beginPath(); g.arc(x, y, 7 + f.size * 2, 0, Math.PI * 2); g.fill();
+            g.globalAlpha = flyAlpha * .70; g.fillStyle = '#a9ffda';
+            g.beginPath(); g.arc(x, y, 2.2 * f.size, 0, Math.PI * 2); g.fill();
+            g.globalAlpha = flyAlpha; g.fillStyle = '#f3ffe0';
+            g.beginPath(); g.arc(x, y, .9 + f.size * .42, 0, Math.PI * 2); g.fill();
+            g.restore();
         }
-        g.globalAlpha = 1;
     }
     function drawUltraHUDFrame(width = 320, height = 182, topY = 8) {
         g.save();
@@ -16214,7 +16428,8 @@ let w = 0
             g.scale(Z, Z);
         }
         // Blend the ground palette gradually between biomes instead of snapping to new colours.
-        environmentBlend = Math.min(1, environmentBlend + 0.012);
+        environmentBlend = Math.min(1, environmentBlend + 0.006);
+        if (gameMode === 'classic' && level === 5) enchantedSceneProgress = Math.min(1, enchantedSceneProgress + .008);
         g.fillStyle = envColour('ground');
         g.fillRect(isBaseWorldMode() ? 0 : -40, isBaseWorldMode() ? 0 : -40, isBaseWorldMode() ? BASE_WORLD_W : w + 80, isBaseWorldMode() ? BASE_WORLD_H : h + 80);
         if (isBaseWorldMode()) {
@@ -17307,82 +17522,142 @@ let w = 0
                     targetY = v.y;
                 }
             }
-            const a = Math.atan2(targetY - q.y, targetX - q.x);
+            let a = Math.atan2(targetY - q.y, targetX - q.x);
             const sharedFollower = activeSharedRun() && !multiplayerIsAuthority;
             if (q.dead) {
                 q.deathT = (q.deathT || 0) + 1;
                 const t = q.deathT;
-                // Smooth, visibly horizontal fall: turn the body onto its side while
-                // compressing it vertically, then leave it lying flat on the ground.
-                const fall = Math.min(1, t / 36);
-                const ease = fall * fall * (3 - 2 * fall);
-                const drawFallenBody = (alpha) => {
+                // A once-revived skeleton keeps its old grave beside it until it is finally removed.
+                if (q.skeletonRevived && q.gravePlaced)
+                    drawGravestone(q.graveX, q.graveY, 1);
+                const canRiseSkeleton = gameMode === 'classic' && level === 4 && q.ty !== 6 && !q.skeletonRevived && !q.boss && !q.level5Boss;
+                if (!q.deathAngleSet) {
+                    q.deathFacing = Number.isFinite(a) ? a : 0;
+                    q.deathAngleSet = true;
+                    if (canRiseSkeleton) {
+                        q.gravePlaced = true;
+                        q.graveX = q.x - 16;
+                        q.graveY = q.y - 6;
+                        // The skeleton emerges just in front of the stone, not from its centre.
+                        q.skeletonSpawnX = q.graveX + 20;
+                        q.skeletonSpawnY = q.graveY + 17;
+                    }
+                }
+                // Rotate the whole body smoothly onto the ground. Do not compress its height:
+                // that was what made the old animation look like the zombie folded in half.
+                const drawFallenBody = (alpha, progress) => {
+                    const f = Math.max(0, Math.min(1, progress));
+                    const ease = f * f * (3 - 2 * f);
                     g.save();
-                    g.globalAlpha = alpha;
+                    g.globalAlpha = Math.max(0, Math.min(1, alpha));
                     g.translate(q.x, q.y);
-                    g.rotate((a || 0) + Math.PI / 2 * ease);
-                    g.scale(1, Math.max(.22, 1 - .72 * ease));
+                    g.rotate((Number(q.deathFacing) || 0) + Math.PI / 2 * ease);
                     g.translate(-q.x, -q.y);
                     drawZombie(q, 0);
                     g.restore();
                 };
-                if (t < 42) {
-                    drawFallenBody(1);
-                }
-                else if (level !== 4) {
-                    // Levels 1-3: the body stays visibly fallen, then slowly dissolves.
-                    const f = Math.min(1, (t - 42) / 36);
-                    drawFallenBody(1 - f);
-                    if (t > 44 && t % 3 === 0) {
-                        for (let i = 0; i < 2; i++)
-                            pt(q.x + (Math.random() - .5) * 18, q.y + (Math.random() - .5) * 18, (Math.random() - .5) * 1.6, -Math.random() * 1.8, 18, '#8e292b', 2 + Math.random() * 2, 0);
+                if (canRiseSkeleton) {
+                    const FALL_END = 36;
+                    const GRAVE_WAIT = 120; // two seconds at the game's 60-fps animation rate
+                    const RISE_DURATION = 42;
+                    const RISE_START = FALL_END + GRAVE_WAIT;
+                    const RISE_END = RISE_START + RISE_DURATION;
+                    if (t <= FALL_END) {
+                        drawFallenBody(1, t / FALL_END);
+                        if (t === FALL_END || t % 9 === 0) {
+                            for (let i = 0; i < 3; i++)
+                                pt(q.x + (Math.random() - .5) * 22, q.y + 9 + Math.random() * 5, (Math.random() - .5) * 1.5, -Math.random() * 1.8, 18, '#82796c', 2 + Math.random() * 2, 0);
+                        }
+                        g.globalAlpha = 1;
+                        return;
                     }
-                    q.removeAt = 78;
-                }
-                else if (t < 180) {
-                    // Level 4: dissolve into a one-life skeleton lying on its side; it never revives.
-                    const f = Math.min(1, (t - 42) / 35);
-                    if (t < 77) {
-                        drawFallenBody(1 - f);
-                        drawSkeleton(q, 0, f, 0, Math.PI / 2);
-                        if (t % 4 === 0)
-                            pt(q.x + (Math.random() - .5) * 18, q.y + (Math.random() - .5) * 18, (Math.random() - .5) * 1.2, -Math.random() * 1.5, 16, '#d8d2bb', 2, 0);
+                    const graveAlpha = Math.max(0, Math.min(1, (t - FALL_END) / 9));
+                    drawGravestone(q.graveX, q.graveY, graveAlpha);
+                    // Let the fallen body fade into the soil after it has clearly landed.
+                    if (t < FALL_END + 18) {
+                        const fade = (t - FALL_END) / 18;
+                        const easedFade = fade * fade * (3 - 2 * fade);
+                        drawFallenBody(1 - easedFade, 1);
                     }
-                    else {
-                        drawSkeleton(q, 0, 1, 0, Math.PI / 2);
+                    if (t < RISE_START) {
+                        g.globalAlpha = 1;
+                        return;
                     }
-                }
-                else if (level === 4) {
-                    // The Level 4 skeleton stays dead: no resurrection loop and no extra life.
-                    q.removeAt = 180;
-                }
-                else if (t < 222) {
-                    // Legacy rise animation remains for non-Level-4 modes only.
-                    const f = Math.min(1, (t - 180) / 42), ease = f * f * (3 - 2 * f);
-                    drawSkeleton(q, 0, 1, 24 * ease, Math.PI / 2 * (1 - ease));
-                    if (t % 5 === 0)
-                        pt(q.x, q.y - 8, (Math.random() - .5) * 1.1, -1 - Math.random(), 12, '#d8d2bb', 1.5, 0);
-                }
-                else {
+                    if (!q.emergenceStarted) {
+                        q.x = q.skeletonSpawnX;
+                        q.y = q.skeletonSpawnY;
+                        q.emergenceStarted = true;
+                    }
+                    const u = Math.max(0, Math.min(1, (t - RISE_START) / RISE_DURATION));
+                    const eased = u * u * (3 - 2 * u);
+                    // Reveal an upright skeleton through a moving ground line instead of rolling it
+                    // out of a horizontal pose. Early frames show only the skull and shoulders.
+                    const groundLine = q.y - 11 + 43 * eased;
+                    g.save();
+                    g.beginPath();
+                    g.rect(q.x - 48, q.y - 85, 96, Math.max(1, groundLine - (q.y - 85)));
+                    g.clip();
+                    // Keep the skeleton's final standing position fixed; the moving clip/soil line
+                    // reveals it from skull to feet without a final vertical snap.
+                    drawSkeleton(q, 0, Math.min(1, .35 + u * .65), 0, 0);
+                    g.restore();
+                    // Loose soil at the moving edge makes the climb-out read clearly against grass.
+                    el(q.x, groundLine + 1, 17 * (1 - .25 * eased), 3.5 * (1 - .25 * eased), 'rgba(39,29,23,.78)');
+                    if (t < RISE_END) {
+                        if (t % 5 === 0) {
+                            for (let i = 0; i < 2; i++)
+                                pt(q.x + (Math.random() - .5) * 18, q.y + 10 + Math.random() * 8, (Math.random() - .5) * 1.3, -1 - Math.random() * 1.5, 15, '#c8c0a8', 1.6 + Math.random(), 0);
+                        }
+                        g.globalAlpha = 1;
+                        return;
+                    }
+                    // One resurrection per original zombie. The resulting skeleton is a proper,
+                    // living enemy that tracks and attacks the player; killing it removes it for good.
                     q.dead = 0;
                     q.scored = false;
+                    q.skeletonRevived = true;
                     q.ty = 6;
-                    q.hp = gameMode === 'base' ? 4 : 2 + Math.floor(score / 50);
+                    q.hp = Math.max(3, 2 + Math.floor(score / 50));
                     q.mh = q.hp;
-                    q.sh = '#a8a391';
-                    q.sk = '#ded8c3';
+                    q.sh = '#d8d0b9';
+                    q.sk = '#f1ead7';
                     q.sv = 1.05 + Math.random() * .18;
                     q.wk = 0;
                     q.ar = 55;
                     q.deathT = 0;
+                    q.deathAngleSet = false;
+                    q.emergenceStarted = false;
+                    a = Math.atan2(targetY - q.y, targetX - q.x);
                 }
-                g.globalAlpha = 1;
-                return;
+                else {
+                    // Ordinary zombies and once-revived skeletons simply fall and dissolve.
+                    if (t < 36) {
+                        drawFallenBody(1, t / 36);
+                    }
+                    else if (t < 78) {
+                        const f = (t - 36) / 42;
+                        const ease = f * f * (3 - 2 * f);
+                        drawFallenBody(1 - ease, 1);
+                        if (t % 5 === 0) {
+                            const colour = q.ty === 6 ? '#ded8c3' : '#8e292b';
+                            pt(q.x + (Math.random() - .5) * 18, q.y + (Math.random() - .5) * 18, (Math.random() - .5) * 1.2, -Math.random() * 1.5, 14, colour, 1.8, 0);
+                        }
+                    }
+                    else {
+                        q.removeAt = 78;
+                    }
+                    g.globalAlpha = 1;
+                    return;
+                }
             }
+            // Leave the grave in the world after its skeleton has climbed out.
+            if (q.skeletonRevived && q.gravePlaced)
+                drawGravestone(q.graveX, q.graveY, 1);
             if (sharedWorldShouldRun() && !sharedFollower && bossCutscene <= 0 && !blackHoleWorldLocked()) {
                 // Cap movement speed so enemies remain manageable late in a long run.
                 const rawSpeed = q.boss ? sp * q.sv : sp * (q.ty == 1 ? 1.15 + Math.min(1.6, score / 70) : q.sv);
-                const v = Math.min(q.level5Boss ? 6.4 : q.boss ? (q.fortressBoss ? 3.0 : 1.5) : 3.2, rawSpeed);
+                const openingBossMultiplier = q.level5Boss && fr < (q.introSlowUntil || 0) ? .82 : 1;
+                const v = Math.min(q.level5Boss ? 6.4 : q.boss ? (q.fortressBoss ? 3.0 : 1.5) : 3.2, rawSpeed * openingBossMultiplier);
                 q.x += Math.cos(a) * v;
                 q.y += Math.sin(a) * v;
                 q.wk += v * .1;
@@ -17818,7 +18093,7 @@ let w = 0
             g.fillStyle = '#000';
             g.fillRect(0, 0, logicalCanvasW, logicalCanvasH);
             g.restore();
-            transitionFade = Math.max(0, transitionFade - .025);
+            transitionFade = Math.max(0, transitionFade - .0125);
         }
         if (ih > 30 && !dead) {
             g.fillStyle = 'rgba(200,0,0,.15)';
