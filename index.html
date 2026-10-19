@@ -1636,12 +1636,18 @@ h1 span {
 }
 
 .pause-button {
-  position: fixed;
-  right: 14px;
-  top: 14px;
-  z-index: 60;
+  position: relative;
+  right: auto;
+  top: auto;
+  z-index: 1201;
+  align-self: stretch;
+  justify-content: center;
+  width: auto;
+  min-width: 86px;
+  max-width: 100%;
+  flex: 0 0 auto;
   display: none;
-  padding: 10px 14px;
+  padding: 10px 12px;
   border: 1px solid #76577e;
   border-radius: 9px;
   background: rgba(18,11,24,.94);
@@ -1731,8 +1737,8 @@ h1 span {
 
 @media (max-width:600px) {
   .pause-button {
-    top: 10px;
-    right: 10px;
+    top: auto;
+    right: auto;
     padding: 9px 11px;
   }
   .lobby-badge {
@@ -1862,31 +1868,55 @@ h1 span {
 
 
 .home-credit-row {
-  position: relative;
-  z-index: 2;
+  position: fixed;
+  z-index: 9000;
+  left: 14px;
+  bottom: 14px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 10px auto 18px;
-  padding: 8px 14px;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
   color: #aab8ad;
-  font-size: 11px;
-  letter-spacing: .06em;
-  text-transform: lowercase;
+  font-size: 10px;
+  letter-spacing: .035em;
+  text-transform: none;
+  pointer-events: none;
 }
+.music-credit, .klip-home-ad {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  border: 1px solid rgba(117,151,105,.58);
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: rgba(9,17,12,.88);
+  box-shadow: 0 3px 14px rgba(0,0,0,.22);
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.music-credit strong { color: #dcebd7; font-weight: 700; }
 #klipAdHomeButton, #klipRewardWatchButton {
   border: 1px solid #5a8e4b;
-  border-radius: 9px;
+  border-radius: 999px;
   background: linear-gradient(135deg, #233c26, #17251b);
   color: #dcffd0;
   font-weight: 800;
-  letter-spacing: .045em;
-  padding: 11px 14px;
+  letter-spacing: .035em;
+  padding: 7px 11px;
   cursor: pointer;
+  text-decoration: none;
 }
-#klipAdHomeButton:hover, #klipRewardWatchButton:hover { background: #2d4c30; }
+.klip-home-ad { color: #dcffd0; text-decoration: none; }
+.klip-ad-brand { font-weight: 900; letter-spacing: .07em; }
+.klip-ad-cta { color: #b5d6aa; font-size: 9px; }
+#klipAdHomeButton:hover, #klipRewardWatchButton:hover { background: #2d4c30; border-color: #8ac575; }
+#klipAdHomeButton:focus-visible { outline: 2px solid #c4ff9a; outline-offset: 3px; }
 .klip-reward-modal {
   display: none;
   position: fixed;
@@ -1918,8 +1948,10 @@ h1 span {
 .klip-video-placeholder { display: grid; min-height: 200px; height: 100%; place-items: center; padding: 24px; color: #a4b3a5; text-align: center; }
 #klipRewardStatus { min-height: 32px; }
 @media (max-width: 600px) {
-  .home-credit-row { margin-bottom: 12px; }
-  #klipAdHomeButton { max-width: 100%; font-size: 10px; }
+  .home-credit-row { left: 8px; bottom: 8px; gap: 5px; max-width: calc(100vw - 100px); }
+  .music-credit, .klip-home-ad { min-height: 29px; padding: 6px 8px; font-size: 9px; }
+  .klip-ad-cta { display: none; }
+  #klipAdHomeButton { max-width: 100%; font-size: 9px; }
   .klip-reward-card { padding: 24px 16px 18px; }
 }
 
@@ -2086,7 +2118,10 @@ h1 span {
 </div>
 </aside>
     </div>
-    <div class="home-credit-row"><span>music by Noah Odell</span><button id="klipAdHomeButton" type="button">WATCH VIDEO TO UNLOCK THE KLIPgun</button></div>
+    <div class="home-credit-row" aria-label="Credits and sponsor">
+  <span class="music-credit">♫ music by <strong>Noah Odell</strong></span>
+  <a id="klipAdHomeButton" class="klip-home-ad" href="https://klipl.ink" target="_blank" rel="noopener noreferrer" aria-label="Visit Klipl.ink">AD <span class="klip-ad-brand">KLIPL.INK</span> <span class="klip-ad-cta">VISIT SITE ↗</span></a>
+</div>
   </main>
 
   <div id="klipRewardModal" class="klip-reward-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="klipRewardTitle">
@@ -6071,16 +6106,31 @@ h1 span {
         { key: 'ADMIN_REMOVE', title: '/remove or !remove', desc: 'Remove a visible chat message by number or message key (admin only)' },
         { key: 'ADMIN_JUMPSCARE', title: '/jumpscare or !jumpscare', desc: 'Broadcast the two-second jumpscare to all connected clients (admin only)' }
     ];
+    // All quick game controls share the top-left HUD area, rather than competing at opposite corners.
+    const topLeftHudDock = document.createElement('div');
+    topLeftHudDock.id = 'topLeftHudDock';
+    topLeftHudDock.setAttribute('aria-label', 'Game HUD controls');
+    Object.assign(topLeftHudDock.style, { position: 'fixed', top: '8px', left: '8px', zIndex: '1200', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'stretch', width: 'min(390px, calc(100vw - 16px))', maxHeight: 'calc(100vh - 16px)', overflowY: 'auto', pointerEvents: 'auto' });
+    document.body.appendChild(topLeftHudDock);
+    // Pause and the mode-specific action button share one compact HUD row at the upper-left.
+    // Keeping them as siblings gives each a reserved hit area so an active command toggle cannot cover Pause.
+    const topLeftHudActionRow = document.createElement('div');
+    topLeftHudActionRow.id = 'topLeftHudActionRow';
+    topLeftHudActionRow.setAttribute('aria-label', 'Primary game actions');
+    Object.assign(topLeftHudActionRow.style, { display: 'flex', flexDirection: 'row', alignItems: 'stretch', gap: '6px', width: '100%', minWidth: '0', pointerEvents: 'auto' });
+    topLeftHudDock.appendChild(topLeftHudActionRow);
+    topLeftHudActionRow.appendChild(pauseButton);
+
     // Small HUD toggles are generated from command metadata, so future persistent non-gun
     // modes can opt in by defining hudMode/hudLabel on their command definition.
     const commandModeHud = document.createElement('div');
     commandModeHud.id = 'commandModeHud';
     commandModeHud.setAttribute('aria-label', 'Active command mode toggles');
-    Object.assign(commandModeHud.style, { position: 'fixed', top: '12px', right: '12px', zIndex: '1200', display: 'none', flexDirection: 'column', gap: '7px', maxWidth: 'min(220px, 42vw)', pointerEvents: 'auto' });
+    Object.assign(commandModeHud.style, { position: 'relative', top: 'auto', right: 'auto', left: 'auto', zIndex: 'auto', display: 'none', flexDirection: 'column', gap: '6px', width: '100%', maxWidth: '100%', pointerEvents: 'auto' });
     const commandModeHudStyle = document.createElement('style');
-    commandModeHudStyle.textContent = '#commandModeHud button{border:1px solid #86c78d;background:rgba(8,24,14,.94);color:#effff0;border-radius:9px;padding:9px 12px;font:700 12px Arial,sans-serif;box-shadow:0 3px 12px #0008;cursor:pointer;text-align:left}#commandModeHud button[aria-pressed="true"]{background:#245d36;border-color:#b5ff9b}#commandModeHud button:focus-visible{outline:2px solid #fff;outline-offset:2px}';
+    commandModeHudStyle.textContent = '#commandModeHud button{display:block;box-sizing:border-box;width:100%;border:1px solid #86c78d;background:rgba(8,24,14,.94);color:#effff0;border-radius:9px;padding:9px 12px;font:700 12px Arial,sans-serif;box-shadow:0 3px 12px #0008;cursor:pointer;text-align:left;overflow-wrap:anywhere}#commandModeHud button[aria-pressed="true"]{background:#245d36;border-color:#b5ff9b}#commandModeHud button:focus-visible{outline:2px solid #fff;outline-offset:2px}';
     document.head.appendChild(commandModeHudStyle);
-    document.body.appendChild(commandModeHud);
+    topLeftHudDock.appendChild(commandModeHud);
     const commandModeAvailable = {
         timeSpeedMode: (() => { try { return localStorage.getItem('zs_timespeed_available') === '1' || localStorage.getItem('zs_timespeed') === '1'; } catch (_) { return false; } })(),
         mustafaMissileMode: false
@@ -6102,19 +6152,26 @@ h1 span {
         }
         refreshCommandModeHUD();
     }
+    let commandModeHudSignature = null;
     function refreshCommandModeHUD() {
         if (!commandModeHud) return;
         const inRun = !!gameStarted && !dead && !document.getElementById('homePage')?.classList.contains('visible');
         const modes = ZS_COMMAND_DEFS.filter(def => def.hudMode && isCommandEnabled(def.key) && !!commandModeAvailable[def.hudMode]);
-        commandModeHud.replaceChildren();
-        for (const def of modes) {
-            const active = def.hudMode === 'timeSpeedMode' ? timeSpeedMode : def.hudMode === 'mustafaMissileMode' ? mustafaMissileMode : false;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.textContent = (active ? 'ON · ' : 'OFF · ') + (def.hudLabel || def.title) + ' — click to toggle';
-            btn.setAttribute('aria-pressed', String(active));
-            btn.addEventListener('click', () => setCommandModeEnabled(def.hudMode, !active));
-            commandModeHud.appendChild(btn);
+        const signature = modes.map(def => def.key + ':' + (def.hudMode === 'timeSpeedMode' ? !!timeSpeedMode : def.hudMode === 'mustafaMissileMode' ? !!mustafaMissileMode : false)).join('|');
+        // This function is called from the canvas render loop. Only rebuild the buttons when
+        // modes actually change; repeated DOM replacement here caused avoidable frame-time spikes.
+        if (signature !== commandModeHudSignature) {
+            commandModeHud.replaceChildren();
+            for (const def of modes) {
+                const active = def.hudMode === 'timeSpeedMode' ? timeSpeedMode : def.hudMode === 'mustafaMissileMode' ? mustafaMissileMode : false;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = (active ? 'ON · ' : 'OFF · ') + (def.hudLabel || def.title) + ' — click to toggle';
+                btn.setAttribute('aria-pressed', String(active));
+                btn.addEventListener('click', () => setCommandModeEnabled(def.hudMode, !active));
+                commandModeHud.appendChild(btn);
+            }
+            commandModeHudSignature = signature;
         }
         commandModeHud.style.display = inRun && modes.length ? 'flex' : 'none';
     }
@@ -8154,6 +8211,9 @@ h1 span {
         dead = 0;
         gameStarted = true;
         refreshCommandModeHUD();
+        // Show the primary HUD actions immediately; do not wait for the first batch of frames.
+        updatePauseUI();
+        if (typeof updateGameActionButtons === 'function') updateGameActionButtons(true);
         startAmbientMusic(gameMode);
         syncAmbientMusicToBiome(true);
         homePage.classList.add('hidden');
@@ -8515,6 +8575,7 @@ h1 span {
         updateResumeButton();
         updateMobileUI();
         updatePauseUI();
+        if (typeof updateGameActionButtons === 'function') updateGameActionButtons(true);
     }
     document.getElementById('resumeRunBtn').addEventListener('click', resumeSavedRun);
     async function returnToHomepage() {
@@ -8717,7 +8778,6 @@ let w = 0
         cd = 0;
         klipCurrentSalvo = null;
         try { localStorage.setItem('zs_klipgun_unlocked', '1'); } catch (_) {}
-        if (klipAdHomeButton) klipAdHomeButton.textContent = 'KLIPgun UNLOCKED — VIEW REWARD';
         if (multiplayerRef && firebaseUser && firebaseUser.uid) {
             multiplayerRef.child(firebaseUser.uid).update({ klipgunUnlocked: true, klipSelected: true, wp: 12 }).catch(err => console.warn('Could not sync KLIPgun unlock:', err));
         }
@@ -8847,14 +8907,12 @@ let w = 0
         klipRewardModal.setAttribute('aria-hidden', 'true');
         stopKlipRewardPlayback();
     }
-    if (klipAdHomeButton) klipAdHomeButton.addEventListener('click', openKlipRewardModal);
     const klipRewardClose = document.getElementById('klipRewardClose');
     if (klipRewardClose) klipRewardClose.addEventListener('click', closeKlipRewardModal);
     if (klipRewardWatchButton) klipRewardWatchButton.addEventListener('click', loadKlipRewardVideo);
     if (klipRewardModal) klipRewardModal.addEventListener('click', event => { if (event.target === klipRewardModal) closeKlipRewardModal(); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && klipRewardModal?.classList.contains('open')) closeKlipRewardModal(); });
     if (klipgunUnlocked) {
-        if (klipAdHomeButton) klipAdHomeButton.textContent = 'KLIPgun UNLOCKED — VIEW REWARD';
         if (klipRewardWatchButton) klipRewardWatchButton.textContent = 'KLIPgun UNLOCKED';
     }
     function maxPlayerHp() {
@@ -9288,7 +9346,7 @@ let w = 0
     // A per-frame spatial grid for live zombies. Large hordes previously performed all-pairs
     // separation and repeatedly scanned the full enemy array for turrets, vortices and explosions.
     const ZOMBIE_GRID_CELL = 160;
-    let zombieSpatialGrid = new Map(), zombieGridSource = null;
+    let zombieSpatialGrid = new Map(), zombieGridSource = null, zombieGridFrame = -1, zombieGridCount = -1;
     function rebuildZombieSpatialGrid() {
         zombieSpatialGrid = new Map();
         for (const zombie of e) {
@@ -9300,9 +9358,11 @@ let w = 0
             bucket.push(zombie);
         }
         zombieGridSource = e;
+        zombieGridFrame = fr;
+        zombieGridCount = e.length;
     }
     function visitNearbyZombies(x, y, radius, visitor) {
-        if (zombieGridSource !== e) rebuildZombieSpatialGrid();
+        if (zombieGridSource !== e || zombieGridFrame !== fr || zombieGridCount !== e.length) rebuildZombieSpatialGrid();
         const minX = Math.floor((x - radius) / ZOMBIE_GRID_CELL), maxX = Math.floor((x + radius) / ZOMBIE_GRID_CELL);
         const minY = Math.floor((y - radius) / ZOMBIE_GRID_CELL), maxY = Math.floor((y + radius) / ZOMBIE_GRID_CELL);
         for (let gx = minX; gx <= maxX; gx++) {
@@ -10875,16 +10935,16 @@ let w = 0
     }
     const gameActionDock = document.createElement('div');
     gameActionDock.id = 'gameActionDock';
-    gameActionDock.style.cssText = 'position:fixed;right:14px;bottom:49px;z-index:44;display:none;flex-direction:column;gap:7px;align-items:stretch;max-width:min(245px,56vw);pointer-events:auto;';
+    gameActionDock.style.cssText = 'position:relative;right:auto;bottom:auto;z-index:auto;display:none;flex:1 1 auto;flex-direction:row;flex-wrap:wrap;gap:6px;align-items:stretch;width:auto;min-width:0;max-width:100%;pointer-events:auto;';
     function makeGameActionButton(id, text, accent) {
         const btn = document.createElement('button'); btn.id = id; btn.type = 'button'; btn.textContent = text;
-        btn.style.cssText = 'display:none;max-width:100%;padding:10px 13px;border:1px solid ' + accent + ';border-radius:9px;background:linear-gradient(135deg,rgba(12,25,17,.97),rgba(5,10,7,.96));color:#f0ffe9;font:800 11px Arial,sans-serif;letter-spacing:.035em;line-height:1.25;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer;';
+        btn.style.cssText = 'display:none;flex:1 1 120px;min-width:0;max-width:100%;padding:10px 9px;border:1px solid ' + accent + ';border-radius:9px;background:linear-gradient(135deg,rgba(12,25,17,.97),rgba(5,10,7,.96));color:#f0ffe9;font:800 11px Arial,sans-serif;letter-spacing:.035em;line-height:1.25;text-align:center;white-space:normal;overflow-wrap:anywhere;box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer;';
         gameActionDock.appendChild(btn); return btn;
     }
     const spawnTwoZombiesButton = makeGameActionButton('spawnTwoZombiesButton', '＋ SPAWN 2 ZOMBIES', '#a34d59');
     const skipClassicWaveButton = makeGameActionButton('skipClassicWaveButton', 'SKIP WAVE · QUEUE 30 ZOMBIES', '#b18df5');
     const upgradeTurretButton = makeGameActionButton('upgradeTurretButton', 'UPGRADE NEARBY TURRET', '#70d6b2');
-    document.body.appendChild(gameActionDock);
+    topLeftHudActionRow.appendChild(gameActionDock);
     spawnTwoZombiesButton.addEventListener('click', () => {
         if (gameMode !== 'base' || !gameStarted || dead !== 0) return;
         if (activeSharedRun() && !multiplayerIsAuthority) queueMultiplayerAction({ type: 'spawnBaseZombies', count: 2 });
@@ -10912,6 +10972,7 @@ let w = 0
         lastGameActionUiFrame = fr;
         const inRun = !!gameStarted && dead === 0 && !isPaused;
         gameActionDock.style.display = inRun ? 'flex' : 'none';
+        topLeftHudActionRow.style.display = inRun ? 'flex' : 'none';
         const showBaseSpawn = inRun && gameMode === 'base';
         const showClassicSkip = inRun && gameMode === 'classic';
         const nearbyTurret = showBaseSpawn ? findNearbyOwnedTurret() : null;
@@ -11588,6 +11649,16 @@ let w = 0
         k = {};
     });
     /* ---------- adaptive mobile controls ---------- */
+    // The touch-control styles and pointer handlers were present, but their DOM elements had
+    // gone missing. Create them once so touch devices do not silently lose movement/fire controls.
+    if (!document.getElementById('mobileControls')) {
+        const mobileControlsRoot = document.createElement('div');
+        mobileControlsRoot.id = 'mobileControls';
+        mobileControlsRoot.setAttribute('aria-label', 'Touch game controls');
+        mobileControlsRoot.setAttribute('aria-hidden', 'true');
+        mobileControlsRoot.innerHTML = '<div id="mobileHint">DRAG TO MOVE · HOLD FIRE TO SHOOT</div><div id="mobileJoystick" role="application" aria-label="Movement joystick"><div id="mobileStick"></div></div><button id="mobileFire" type="button" aria-label="Fire weapon">FIRE</button><div id="mobileActions" aria-label="Game actions"><button class="mobile-action" data-key="e" type="button">USE</button><button class="mobile-action" data-key="f" type="button">APPLE</button><button class="mobile-action" data-key="p" type="button">PEAR</button><button class="mobile-action" data-key="u" type="button">BUILD</button><button class="mobile-action" data-key="v" type="button">WALL</button><button class="mobile-action" data-key="g" type="button">VEH</button><button class="mobile-action" data-key="b" type="button">HOLD</button><button class="mobile-action" data-key="shift" type="button">RUN</button></div>';
+        document.body.appendChild(mobileControlsRoot);
+    }
     const mobileControls = document.getElementById('mobileControls');
     const mobileJoystick = document.getElementById('mobileJoystick');
     const mobileStick = document.getElementById('mobileStick');
@@ -11606,7 +11677,6 @@ let w = 0
         setMobileKey('d', false);
     }
     function updateMobileUI() {
-        const show = isMobileDevice() && !homePage.classList.contains('hidden');
         // Controls are hidden on the homepage and become active only after Play starts.
         const inGame = !homePage.classList.contains('hidden') ? false : true;
         const active = isMobileDevice() && inGame;
@@ -13460,8 +13530,9 @@ let w = 0
     function zom(q, a) {
         g.save();
         g.translate(q.x, q.y);
+        const busyZombieScene = e.length >= 8 || adaptiveQualityLevel >= 3;
         g.shadowColor = 'rgba(0,0,0,.34)';
-        g.shadowBlur = ULTRA_VISUALS ? 8 : 3;
+        g.shadowBlur = busyZombieScene ? 0 : ULTRA_VISUALS ? 8 : 3;
         const zScale = q.boss ? (gameMode === 'infinite' ? 1.12 : 1.35) : q.ty == 4 ? 1.55 : q.ty == 5 ? 1.05 : 1.3;
         g.scale(zScale, zScale);
         el(2, 3, 20, 17, 'rgba(0,0,0,.35)');
@@ -13475,14 +13546,67 @@ let w = 0
         }
         if (q.boss) {
             g.shadowColor = '#8b6b45';
-            g.shadowBlur = 10;
+            g.shadowBlur = busyZombieScene ? 0 : 10;
         }
         const sw = Math.sin(q.wk) * 5, ar = Math.sin(q.wk * .7) * 3;
+        const hy = Math.sin(q.wk * .5) * 1.8;
         el(sw, -6, 10, 5.5, '#2b2f36');
         el(-sw, 6, 10, 5.5, '#2b2f36');
         el(sw + 7, -6, 5, 4.5, '#3a2a20');
         el(-sw + 5, 6, 5, 4.5, '#3a2a20');
         el(-1, 0, 9.5, 17.5, q.ty == 2 ? '#3f8f32' : q.ty == 5 ? '#624174' : q.sh);
+        // Layered cloth, collar and skin shading distinguish the undead from the simpler
+        // player silhouettes. Under heavy horde load, the existing detail stays but this
+        // supplemental pass is skipped to protect frame rate.
+        if (!busyZombieScene || q.boss) {
+            g.save();
+            g.lineCap = 'round';
+            g.lineJoin = 'round';
+            g.fillStyle = 'rgba(220,215,185,.12)';
+            g.beginPath();
+            g.ellipse(-4.5, -5.5, 3.2, 7.2, -.22, 0, Math.PI * 2);
+            g.fill();
+            g.fillStyle = 'rgba(7,10,8,.28)';
+            g.beginPath();
+            g.moveTo(-7, -12); g.lineTo(-2, -9); g.lineTo(1, -12); g.lineTo(-1, -6); g.lineTo(-5, -6); g.closePath();
+            g.fill();
+            g.strokeStyle = 'rgba(11,14,12,.66)';
+            g.lineWidth = 1.15;
+            g.beginPath();
+            g.moveTo(-5.5, -3); g.lineTo(-2, -1); g.lineTo(-4, 3);
+            g.moveTo(-6, 6); g.lineTo(-2, 8); g.lineTo(-4, 12);
+            g.moveTo(1, -13); g.lineTo(4, -10); g.lineTo(2, -7);
+            g.stroke();
+            g.strokeStyle = 'rgba(226,206,175,.33)';
+            g.lineWidth = .9;
+            g.beginPath();
+            g.moveTo(-5, -5); g.lineTo(-2, -3);
+            g.moveTo(-4, 4); g.lineTo(-1, 5);
+            g.moveTo(2, -15); g.lineTo(5, -13);
+            g.stroke();
+            // Collar points, frayed cuffs and a few stitching marks add readable silhouette detail.
+            g.strokeStyle = q.ty === 2 ? 'rgba(179,255,108,.65)' : q.ty === 5 ? 'rgba(214,164,255,.62)' : 'rgba(194,180,150,.55)';
+            g.lineWidth = 1.1;
+            g.beginPath();
+            g.moveTo(-5, -14); g.lineTo(-1, -10); g.lineTo(2, -14);
+            g.moveTo(-7, 8); g.lineTo(-4, 10);
+            g.moveTo(-6, 10); g.lineTo(-3, 12);
+            g.moveTo(4, 8); g.lineTo(7, 10);
+            g.stroke();
+            // Crooked brow ridge and cheek scar make the face read better when zoomed in.
+            g.strokeStyle = 'rgba(29,18,18,.82)';
+            g.lineWidth = 1.6;
+            g.beginPath();
+            g.moveTo(-5, hy - 5); g.lineTo(-2, hy - 6); g.lineTo(0, hy - 4.8);
+            g.moveTo(2, hy - 5); g.lineTo(5, hy - 4.5);
+            g.stroke();
+            g.strokeStyle = 'rgba(122,22,23,.82)';
+            g.lineWidth = 1.15;
+            g.beginPath();
+            g.moveTo(-5, hy + 1); g.lineTo(-2, hy + 4); g.lineTo(-4, hy + 6);
+            g.stroke();
+            g.restore();
+        }
         if (q.ty == 4) {
             el(0, 0, 12, 19, '#7b4b2a');
             g.strokeStyle = '#3b2618';
@@ -13535,7 +13659,6 @@ let w = 0
             }
             g.stroke();
         });
-        const hy = Math.sin(q.wk * .5) * 1.8;
         el(1, hy - 8.4, 2.4, 2, q.sk);
         el(1, hy + 8.4, 2.4, 2, q.sk);
         cc(1, hy, 8.4, q.sk);
@@ -13597,7 +13720,7 @@ let w = 0
         // Specular pinpoints in the eyes and type-specific contamination glow.
         const eye = q.ty === 2 ? '#a8ff68' : q.ty === 5 ? '#d3a1ff' : q.boss ? '#ffd36a' : '#ff5e42';
         g.shadowColor = eye;
-        g.shadowBlur = q.ty === 2 || q.ty === 5 || q.boss ? 6 : 2;
+        g.shadowBlur = busyZombieScene ? 0 : q.ty === 2 || q.ty === 5 || q.boss ? 6 : 2;
         g.fillStyle = eye;
         g.beginPath();
         g.arc(5, hy - 2.3, 1.3, 0, Math.PI * 2);
@@ -14242,8 +14365,8 @@ let w = 0
             { x: BASE_WORLD_W * .34, y: BASE_WORLD_H * .20, rx: BASE_WORLD_W * .34, ry: BASE_WORLD_H * .35, c: '#78623a', label: 'AUTUMN WILDLANDS', seed: 7 },
             { x: BASE_WORLD_W * .51, y: BASE_WORLD_H * .52, rx: BASE_WORLD_W * .34, ry: BASE_WORLD_H * .40, c: '#203e30', label: 'THE BLACKWOOD • DANGER ZONE', seed: 13 },
             { x: BASE_WORLD_W * .78, y: BASE_WORLD_H * .27, rx: BASE_WORLD_W * .30, ry: BASE_WORLD_H * .38, c: '#b9d5df', label: 'FROSTPEAK SNOWFIELDS', seed: 21 },
-            { x: BASE_WORLD_W * .80, y: BASE_WORLD_H * .78, rx: BASE_WORLD_W * .31, ry: BASE_WORLD_H * .34, c: '#54232b', label: 'CRIMSON OUTBREAK • HIGH RISK', seed: 33 },
-            { x: BASE_WORLD_W * .90, y: BASE_WORLD_H * .70, rx: BASE_WORLD_W * .18, ry: BASE_WORLD_H * .23, c: '#3a3030', label: 'THE DEADLANDS • EXTREME', seed: 47 }
+            { x: BASE_WORLD_W * .80, y: BASE_WORLD_H * .78, rx: BASE_WORLD_W * .31, ry: BASE_WORLD_H * .34, c: '#54232b', label: 'CRIMSON FOREST • HIGH RISK', seed: 33 },
+            { x: BASE_WORLD_W * .90, y: BASE_WORLD_H * .70, rx: BASE_WORLD_W * .18, ry: BASE_WORLD_H * .23, c: '#b89a65', label: 'SANDSCAR DUNES • DUSK', seed: 47 }
         ];
         blobs.forEach((b, i) => {
             if (tileBounds && (b.x + b.rx < tileBounds.left || b.x - b.rx > tileBounds.right || b.y + b.ry < tileBounds.top || b.y - b.ry > tileBounds.bottom))
@@ -14279,6 +14402,21 @@ let w = 0
                 ctx.beginPath();
                 ctx.arc(tx, ty, 2 + seededNoise(n + 44) * 5, 0, Math.PI * 2);
                 ctx.fill();
+            }
+            // Fine wind-carved dune ridges are baked into the sandy biome's ground tiles, so
+            // they add depth without creating per-frame rendering cost.
+            if (i === 5) {
+                ctx.globalAlpha = .17;
+                for (let ridge = 0; ridge < 28; ridge++) {
+                    const ry = b.y - b.ry * .78 + ridge / 27 * b.ry * 1.56;
+                    const wave = 9 + seededNoise(ridge + b.seed * 9) * 24;
+                    ctx.strokeStyle = ridge % 3 === 0 ? 'rgba(255,226,165,.62)' : 'rgba(91,63,35,.43)';
+                    ctx.lineWidth = ridge % 4 === 0 ? 2.0 : 1.1;
+                    ctx.beginPath();
+                    ctx.moveTo(b.x - b.rx, ry);
+                    ctx.bezierCurveTo(b.x - b.rx * .45, ry - wave, b.x + b.rx * .33, ry + wave * .62, b.x + b.rx, ry - wave * .25);
+                    ctx.stroke();
+                }
             }
             ctx.restore();
             if (tileBounds && (b.x < tileBounds.left - 220 || b.x > tileBounds.right + 220 || b.y < tileBounds.top - 80 || b.y > tileBounds.bottom + 80))
@@ -14526,7 +14664,7 @@ let w = 0
                     cy: BASE_WORLD_H * .70,
                     rx: BASE_WORLD_W * .18,
                     ry: BASE_WORLD_H * .23,
-                    p: { moss: '#3e3533', light: '#8e817a', dark: '#211c1e', leaf: '#67534b', rock: '#57504d' }
+                    p: { moss: '#a48755', light: '#e4c987', dark: '#80603c', leaf: '#c09a5e', rock: '#927b58' }
                 }
             ];
             let best = Infinity, chosen = regions[0].p;
@@ -14556,7 +14694,7 @@ let w = 0
                     ctx.ellipse(px, py, size * (1.1 + seededNoise(key + 3)), size * (.38 + seededNoise(key + 4) * .5), seededNoise(key + 5) * Math.PI, 0, Math.PI * 2);
                     ctx.fill();
                 }
-                const count = ULTRA_VISUALS ? 5 : 3;
+                const count = ULTRA_VISUALS ? 6 : 4;
                 for (let k = 0; k < count; k++) {
                     const h = key + k * 43 + 101, fx = x + step * seededNoise(h), fy = y + step * seededNoise(h + 11), r = .7 + seededNoise(h + 21) * 2.3, roll = seededNoise(h + 31);
                     ctx.globalAlpha = .16 + seededNoise(h + 41) * .25;
@@ -14987,7 +15125,7 @@ let w = 0
         g.fillText('BLACKWOOD', mapX(BASE_WORLD_W * .51), mapY(BASE_WORLD_H * .52));
         g.fillText('FROSTPEAK', mapX(BASE_WORLD_W * .78), mapY(BASE_WORLD_H * .27));
         g.fillText('CRIMSON', mapX(BASE_WORLD_W * .80), mapY(BASE_WORLD_H * .78));
-        g.fillText('DEADLANDS', mapX(BASE_WORLD_W * .90), mapY(BASE_WORLD_H * .70));
+        g.fillText('SANDSCAR', mapX(BASE_WORLD_W * .90), mapY(BASE_WORLD_H * .70));
         const pois = [
             [.12, .48, 'CAMP'],
             [.18, .18, 'OLD TOWN'],
@@ -15138,7 +15276,7 @@ let w = 0
                     cy: BASE_WORLD_H * .70,
                     rx: BASE_WORLD_W * .18,
                     ry: BASE_WORLD_H * .23,
-                    p: { moss: '#3e3533', light: '#8e817a', dark: '#211c1e', leaf: '#67534b', rock: '#57504d' }
+                    p: { moss: '#a48755', light: '#e4c987', dark: '#80603c', leaf: '#c09a5e', rock: '#927b58' }
                 }
             ];
             let best = Infinity, chosen = regions[0].p;
@@ -15737,8 +15875,89 @@ let w = 0
         g.restore();
     }
     function drawAtmosphericLighting() {
-        // A restrained filmic grade: local light pools plus a vignette. It is screen-space and does not
-        // add large image assets, so it stays sharp at 4K and scales down cleanly on phones.
+        // Biome lighting is a translucent screen-space grade, not a black overlay: terrain,
+        // props and zombies stay visible, with soft color and light that blend as you travel.
+        if (isBaseWorldMode()) {
+            const regions = [
+                { key: 'grass', x: BASE_WORLD_W * .17, y: BASE_WORLD_H * .60, rx: BASE_WORLD_W * .36, ry: BASE_WORLD_H * .43 },
+                { key: 'autumn', x: BASE_WORLD_W * .34, y: BASE_WORLD_H * .20, rx: BASE_WORLD_W * .34, ry: BASE_WORLD_H * .35 },
+                { key: 'forest', x: BASE_WORLD_W * .51, y: BASE_WORLD_H * .52, rx: BASE_WORLD_W * .34, ry: BASE_WORLD_H * .40 },
+                { key: 'snow', x: BASE_WORLD_W * .78, y: BASE_WORLD_H * .27, rx: BASE_WORLD_W * .30, ry: BASE_WORLD_H * .38 },
+                { key: 'ember', x: BASE_WORLD_W * .80, y: BASE_WORLD_H * .78, rx: BASE_WORLD_W * .31, ry: BASE_WORLD_H * .34 },
+                { key: 'sand', x: BASE_WORLD_W * .90, y: BASE_WORLD_H * .70, rx: BASE_WORLD_W * .18, ry: BASE_WORLD_H * .23 }
+            ];
+            let closest = regions[0], closestDistance = Infinity;
+            for (const region of regions) {
+                const dx = (p.x - region.x) / region.rx, dy = (p.y - region.y) / region.ry;
+                const distance = dx * dx + dy * dy;
+                if (distance < closestDistance) { closestDistance = distance; closest = region; }
+            }
+            // RGB tint, opacity, glow color/opacity/position, sunset horizon strength and night ambience.
+            // Crimson Forest is a readable blue moonlit night; Sandscar is amber-violet evening.
+            const profiles = {
+                grass:  { r: 248, g: 245, b: 215, alpha: .025, gr: 255, gg: 231, gb: 157, ga: .13, gx: .80, gy: .10, horizon: .01, night: 0 },
+                autumn: { r: 119, g: 58,  b: 29,  alpha: .135, gr: 255, gg: 144, gb: 66,  ga: .18, gx: .83, gy: .54, horizon: .105, night: 0 },
+                forest: { r: 24,  g: 41,  b: 34,  alpha: .105, gr: 128, gg: 176, gb: 126, ga: .065, gx: .73, gy: .18, horizon: .025, night: .15 },
+                snow:   { r: 133, g: 179, b: 210, alpha: .055, gr: 192, gg: 226, gb: 255, ga: .09, gx: .77, gy: .14, horizon: .015, night: 0 },
+                ember:  { r: 12,  g: 20,  b: 47,  alpha: .205, gr: 151, gg: 194, gb: 255, ga: .12, gx: .78, gy: .13, horizon: .005, night: 1 },
+                sand:   { r: 83,  g: 49,  b: 39,  alpha: .145, gr: 255, gg: 164, gb: 91,  ga: .18, gx: .91, gy: .57, horizon: .12, night: .22 }
+            };
+            const state = drawAtmosphericLighting.dayState || (drawAtmosphericLighting.dayState = {
+                key: closest.key, current: { ...profiles[closest.key] }, from: { ...profiles[closest.key] }, t: 1
+            });
+            if (state.key !== closest.key) {
+                state.key = closest.key;
+                state.from = { ...state.current };
+                state.t = 0;
+            }
+            // About 1.4 seconds of eased blending prevents a harsh flash when crossing a biome edge.
+            if (state.t < 1) {
+                state.t = Math.min(1, state.t + .012);
+                const eased = state.t * state.t * (3 - 2 * state.t);
+                const target = profiles[state.key];
+                for (const key of Object.keys(target)) state.current[key] = state.from[key] + (target[key] - state.from[key]) * eased;
+            }
+            const mood = state.current;
+            g.save();
+            if (mood.alpha > .001) {
+                g.fillStyle = `rgba(${Math.round(mood.r)},${Math.round(mood.g)},${Math.round(mood.b)},${mood.alpha})`;
+                g.fillRect(0, 0, logicalCanvasW, logicalCanvasH);
+            }
+            if (mood.ga > .006) {
+                const gx = logicalCanvasW * mood.gx, gy = logicalCanvasH * mood.gy;
+                const radius = Math.max(logicalCanvasW, logicalCanvasH) * .76;
+                const glow = g.createRadialGradient(gx, gy, 0, gx, gy, radius);
+                glow.addColorStop(0, `rgba(${Math.round(mood.gr)},${Math.round(mood.gg)},${Math.round(mood.gb)},${mood.ga})`);
+                glow.addColorStop(.28, `rgba(${Math.round(mood.gr)},${Math.round(mood.gg)},${Math.round(mood.gb)},${mood.ga * .40})`);
+                glow.addColorStop(1, `rgba(${Math.round(mood.gr)},${Math.round(mood.gg)},${Math.round(mood.gb)},0)`);
+                g.fillStyle = glow;
+                g.fillRect(0, 0, logicalCanvasW, logicalCanvasH);
+            }
+            if (mood.horizon > .01) {
+                const horizon = g.createLinearGradient(0, logicalCanvasH * .30, 0, logicalCanvasH);
+                horizon.addColorStop(0, 'rgba(255,145,76,0)');
+                horizon.addColorStop(.60, `rgba(255,145,76,${mood.horizon * .28})`);
+                horizon.addColorStop(1, `rgba(255,145,76,${mood.horizon})`);
+                g.fillStyle = horizon;
+                g.fillRect(0, 0, logicalCanvasW, logicalCanvasH);
+            }
+            // A few faint fireflies in the moonlit forest add calm movement without expensive particle effects.
+            if (mood.night > .65 && adaptiveQualityLevel < 4) {
+                g.fillStyle = 'rgba(177,220,213,.72)';
+                for (let i = 0; i < 18; i++) {
+                    const x = (i * 149 + Math.sin(fr * .011 + i * 1.7) * 24 + logicalCanvasW) % logicalCanvasW;
+                    const y = (i * 83 + Math.cos(fr * .009 + i * 2.1) * 16 + logicalCanvasH) % logicalCanvasH;
+                    g.globalAlpha = .20 + .20 * (.5 + .5 * Math.sin(fr * .025 + i));
+                    g.beginPath();
+                    g.arc(x, y, i % 5 === 0 ? 1.4 : .8, 0, Math.PI * 2);
+                    g.fill();
+                }
+                g.globalAlpha = 1;
+            }
+            g.restore();
+        }
+        // Keep the restrained filmic vignette. The central light and edge falloff are subtle
+        // enough to preserve visibility and help the game feel atmospheric rather than muddy.
         const cx = (isBaseWorldMode() ? (p.x - cameraX) * Z * BASE_ZOOM : logicalCanvasW / 2), cy = (isBaseWorldMode() ? (p.y - cameraY) * Z * BASE_ZOOM : logicalCanvasH / 2);
         g.save();
         if (ULTRA_VISUALS && !(gameMode === 'classic' && adaptiveQualityLevel >= 3)) {
@@ -15770,7 +15989,7 @@ let w = 0
                 { k: 'forest', x: BASE_WORLD_W * .51, y: BASE_WORLD_H * .52, rx: BASE_WORLD_W * .34, ry: BASE_WORLD_H * .40 },
                 { k: 'snow', x: BASE_WORLD_W * .78, y: BASE_WORLD_H * .27, rx: BASE_WORLD_W * .30, ry: BASE_WORLD_H * .38 },
                 { k: 'ember', x: BASE_WORLD_W * .80, y: BASE_WORLD_H * .78, rx: BASE_WORLD_W * .31, ry: BASE_WORLD_H * .34 },
-                { k: 'ash', x: BASE_WORLD_W * .90, y: BASE_WORLD_H * .70, rx: BASE_WORLD_W * .18, ry: BASE_WORLD_H * .23 }
+                { k: 'sand', x: BASE_WORLD_W * .90, y: BASE_WORLD_H * .70, rx: BASE_WORLD_W * .18, ry: BASE_WORLD_H * .23 }
             ];
             let best = Infinity;
             for (const r of regions) {
@@ -15797,9 +16016,9 @@ let w = 0
             streakColor = 'rgba(239,97,77,.34)';
             sparkColor = '#ff875d';
         }
-        else if (climate === 'ash') {
-            streakColor = 'rgba(187,161,151,.25)';
-            sparkColor = '#bd9a8d';
+        else if (climate === 'sand') {
+            streakColor = 'rgba(226,189,123,.25)';
+            sparkColor = '#e6bc77';
         }
         else if (climate === 'forest' || climate === 'spores') {
             streakColor = 'rgba(161,199,150,.20)';
@@ -15903,17 +16122,17 @@ let w = 0
         }
         g.globalAlpha = 1;
     }
-    function drawUltraHUDFrame(width = 320, height = 182) {
+    function drawUltraHUDFrame(width = 320, height = 182, topY = 8) {
         g.save();
         g.strokeStyle = 'rgba(220,235,220,.13)';
         g.lineWidth = 1;
-        g.strokeRect(8, 8, width, height);
+        g.strokeRect(8, topY, width, height);
         g.strokeStyle = 'rgba(255,255,255,.04)';
-        g.strokeRect(12, 12, Math.max(40, width - 8), Math.max(30, height - 8));
+        g.strokeRect(12, topY + 4, Math.max(40, width - 8), Math.max(30, height - 8));
         // Subtle corner brackets give the HUD a game-client rather than debug-overlay appearance.
         g.strokeStyle = 'rgba(192,226,181,.28)';
         g.lineWidth = 2;
-        [[8, 8, 1, 1], [8 + width, 8, -1, 1], [8, 8 + height, 1, -1], [8 + width, 8 + height, -1, -1]].forEach(([x, y, sx, sy]) => {
+        [[8, topY, 1, 1], [8 + width, topY, -1, 1], [8, topY + height, 1, -1], [8 + width, topY + height, -1, -1]].forEach(([x, y, sx, sy]) => {
             g.beginPath();
             g.moveTo(x, y);
             g.lineTo(x + sx * 18, y);
@@ -17070,6 +17289,12 @@ let w = 0
         // Build the living remote-player target list once per frame. Previously each zombie allocated,
         // filtered and sorted a fresh array, creating avoidable garbage collection under horde load.
         const zombieTargetPlayers = Object.values(remotePlayers).filter(v => !v.dead && v.online !== false).map(v => ({ x: Number(v.x) || 0, y: Number(v.y) || 0, uid: v.uid }));
+        // The player's Base World safe-zone state is identical for every zombie during this frame.
+        // Calculate it once rather than re-checking the same region for every enemy.
+        const playerInSafeCampThisFrame = isInsideBaseSafeZone(p.x, p.y);
+        // Ensure the frame's spatial grid is fresh immediately before zombie separation/area effects.
+        // The visitor also refreshes on first use each frame, so avoid doing the same rebuild twice.
+        if (zombieGridSource !== e || zombieGridFrame !== fr || zombieGridCount !== e.length) rebuildZombieSpatialGrid();
         // zombies
         e.forEach(q => {
             let targetX = p.x, targetY = p.y;
@@ -17221,7 +17446,7 @@ let w = 0
                 cc(q.x, q.y, 42, '#7b5135');
                 g.restore();
             }
-            const inSafeCamp = isInsideBaseSafeZone(p.x, p.y);
+            const inSafeCamp = playerInSafeCampThisFrame;
             if (!dead && !isPaused && !blackHoleWorldLocked() && !inSafeCamp && bossCutscene <= 0 && ih <= 0 && Math.hypot(q.x - p.x, q.y - p.y) < (q.boss ? 48 : q.ty == 4 ? 40 : 34) + (mustafaMissileMode ? 10 : 0)) {
                 hp -= q.boss ? 35 : q.ty == 1 ? 12 : q.ty == 2 ? 15 : q.ty == 4 ? 28 : q.ty == 5 ? 18 : q.ty == 6 ? 16 : 20;
                 if (q.ty == 2)
@@ -17668,16 +17893,18 @@ let w = 0
         if (mustafaMissileMode) addHudRow('MISSILE FORM · SIZE ×3 · HP ×2 · SPEED ÷1.5', '#c8d9ff', 'bold 12px Arial');
         const hudRowStep = 18;
         const hudHeight = 32 + hudRows.length * hudRowStep;
+        const dockVisibleHeight = topLeftHudDock && topLeftHudDock.offsetHeight ? topLeftHudDock.offsetHeight : 0;
+        const hudTop = 8 + (dockVisibleHeight ? dockVisibleHeight + 8 : 0);
         g.fillStyle = 'rgba(7,12,9,.86)';
-        g.fillRect(8, 8, hudWidth, hudHeight);
+        g.fillRect(8, hudTop, hudWidth, hudHeight);
         g.fillStyle = 'rgba(100,150,105,.07)';
-        g.fillRect(10, 10, hudWidth - 4, hudHeight - 4);
-        drawUltraHUDFrame(hudWidth, hudHeight);
+        g.fillRect(10, hudTop + 2, hudWidth - 4, hudHeight - 4);
+        drawUltraHUDFrame(hudWidth, hudHeight, hudTop);
         hudRows.forEach((row, index) => {
             g.fillStyle = row.color;
             g.font = row.font;
             // maxWidth keeps long player/weapon names inside the panel instead of spilling over HUD elements.
-            g.fillText(row.text, 15, 31 + index * hudRowStep, Math.max(60, hudWidth - 15));
+            g.fillText(row.text, 15, hudTop + 23 + index * hudRowStep, Math.max(60, hudWidth - 15));
         });
         // Two compact, readable control rows replace the former long single line that ran off-screen.
         const controlLines = isBaseWorldMode()
