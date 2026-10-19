@@ -2036,8 +2036,8 @@ h1 span {
   <div id="adminPanel" class="utility-panel" aria-label="Secret administrator tools">
     <button class="panel-close" data-close="adminPanel" aria-label="Close admin panel">×</button>
     <h2>Admin · Control Centre</h2>
-    <p>Private tools for leaderboard management, global events and command controls.</p>
-    <div id="adminConnection" class="mode-status" role="status">LOCKED — checking Firebase admin permissions…</div>
+    <p>Local-only tools for this browser: local score notes, local jumpscare and command toggles.</p>
+    <div id="adminConnection" class="mode-status" role="status">LOCKED — enter the local admin code.</div>
     <div class="admin-tabbar" role="tablist" aria-label="Admin tool tabs">
       <button type="button" class="active" data-admin-tab="leaderboard" role="tab" aria-selected="true">SCORES</button>
       <button type="button" data-admin-tab="broadcast" role="tab" aria-selected="false">EVENTS</button>
@@ -2046,10 +2046,10 @@ h1 span {
     <section class="admin-tab-pane active" data-admin-pane="leaderboard">
       <label class="field-label" for="adminMode">LEADERBOARD MODE</label>
       <select id="adminMode" data-admin-control disabled><option value="classic">Classic</option><option value="infinite">Infinite</option><option value="base">Base World</option><option value="ffa">Free For All</option></select>
-      <label class="field-label" for="adminEntrySelect">EXISTING CLOUD ENTRY</label>
-      <select id="adminEntrySelect" data-admin-control disabled><option value="">Load entries after admin access is verified</option></select>
+      <label class="field-label" for="adminEntrySelect">EXISTING LOCAL ENTRY</label>
+      <select id="adminEntrySelect" data-admin-control disabled><option value="">Load local entries after admin access is unlocked</option></select>
       <div class="admin-grid">
-        <div><label class="field-label" for="adminTarget">PLAYER UID</label><input id="adminTarget" data-admin-control placeholder="Firebase user UID" disabled>
+        <div><label class="field-label" for="adminTarget">LOCAL PLAYER ID</label><input id="adminTarget" data-admin-control placeholder="Firebase user UID" disabled>
 </div>
         <div><label class="field-label" for="adminScore">SCORE</label><input id="adminScore" data-admin-control type="number" min="0" max="2147483647" step="1" placeholder="New score" disabled>
 </div>
@@ -2062,11 +2062,11 @@ h1 span {
     <section class="admin-tab-pane" data-admin-pane="broadcast">
       <p>Broadcast a full-screen two-second jumpscare to every connected game client, regardless of mode or lobby.</p>
       <button id="adminTriggerJumpscare" type="button" data-admin-control disabled style="width:100%;padding:13px;border-color:#a5aab5;background:linear-gradient(130deg,#e5e7eb,#626b7a);color:#111318;font-weight:900;letter-spacing:.5px">BROADCAST GLOBAL JUMPSCARE · 2 SECONDS</button>
-      <p id="adminBroadcastStatus" class="small-note" aria-live="polite">Only the authorised administrator can broadcast events.</p>
+      <p id="adminBroadcastStatus" class="small-note" aria-live="polite">The local admin can trigger a jumpscare in this browser only.</p>
       <p class="small-note">Every currently connected client will display the supplied scare image and play a synthesized scream when their browser audio is available.</p>
     </section>
     <section class="admin-tab-pane" data-admin-pane="commands">
-      <p>Tick commands that should work for players. Changes are shared to all clients through Firebase.</p>
+      <p>Tick commands that should work for players. Changes are saved in this browser only; they are not shared online.</p>
       <div id="adminCommandToggles" class="admin-command-list">
 </div>
       <div class="admin-actions"><button id="adminSaveCommands" type="button" data-admin-control disabled>Save command settings</button>
@@ -2074,7 +2074,7 @@ h1 span {
       <p id="adminCommandStatus" class="small-note" aria-live="polite">Loading shared command settings…</p>
     </section>
     <p id="adminActionStatus" class="small-note" aria-live="polite">No changes have been made.</p>
-    <p class="small-note">A hidden shortcut is not a security boundary. Firebase rules must authorise administrative writes independently.</p>
+    <p class="small-note">The PIN is visible in this HTML source. Admin changes here are local only and do not change Firebase data.</p>
   </div>
   <div id="zsJumpscareOverlay" aria-hidden="true"><img alt="A sudden horror face fills the screen">
 </div>
@@ -4854,58 +4854,25 @@ h1 span {
             stopChatWatch();
     }));
     document.getElementById('chatForm').addEventListener('submit', ev => ev.preventDefault());
-    // Cross-device admin login: the PIN is verified only by a callable Cloud Function.
-    // Never embed the PIN in this public HTML. A successful login grants an expiring claim
-    // to the currently signed-in Firebase account on this device.
-    async function requestAdminPanelOpen(forceRefresh = false) {
+    // Local-only admin panel. PIN is intentionally in this HTML; it is not secure against source inspection.
+    const LOCAL_ADMIN_PIN = '58317426';
+    async function requestAdminPanelOpen() {
         const panel = document.getElementById('adminPanel');
-        if (panel.classList.contains('open')) {
-            panel.classList.remove('open');
-            return;
-        }
+        if (panel.classList.contains('open')) { panel.classList.remove('open'); return; }
         const status = document.getElementById('adminConnection');
-        if (!window.firebase || !firebase.auth || !firebase.functions || !firebaseDb) {
-            if (status) status.textContent = 'Admin login service unavailable. Deploy the Firebase adminLogin function first.';
-            panel.classList.add('open');
+        const entered = window.prompt('Enter admin access code:');
+        if (entered === null) return;
+        if (String(entered).trim() !== LOCAL_ADMIN_PIN) {
+            window.alert('Incorrect admin access code.');
+            if (status) status.textContent = 'LOCKED — incorrect local access code.';
             return;
         }
-        let user = firebase.auth().currentUser;
-        try {
-            if (!user) {
-                const credential = await firebase.auth().signInAnonymously();
-                user = credential.user || firebase.auth().currentUser;
-            }
-            if (!user) throw new Error('Firebase sign-in did not return a user.');
-            let result = await user.getIdTokenResult(false);
-            const activeClaim = result && result.claims && result.claims.admin === true && Number(result.claims.adminUntil) > Date.now();
-            if (!activeClaim) {
-                const entered = window.prompt('Enter the numeric admin access code:');
-                if (entered === null) return;
-                if (!/^\d{8,24}$/.test(String(entered).trim())) {
-                    window.alert('The admin code must contain 8–24 digits.');
-                    return;
-                }
-                if (status) status.textContent = 'Verifying admin code securely…';
-                try {
-                    const login = firebase.functions('europe-west1').httpsCallable('adminLogin');
-                    await login({ pin: String(entered).trim() });
-                    await user.getIdToken(true);
-                } catch (loginError) {
-                    console.error('Admin login failed:', loginError);
-                    const message = loginError && loginError.message ? loginError.message : 'The code was not accepted.';
-                    window.alert('Admin login failed: ' + message + '\nCheck that the adminLogin Firebase Function has been deployed and its secret is configured.');
-                    if (status) status.textContent = 'Admin login failed. Check the deployed Cloud Function and code secret.';
-                    return;
-                }
-            }
-            panel.classList.add('open');
-            const ok = await verifyAdminAccess(true);
-            if (ok) await loadAdminLeaderboardEntries();
-        } catch (err) {
-            console.error('Unable to open admin panel:', err);
-            if (status) status.textContent = 'Admin sign-in failed (' + (err.code || err.message || 'unknown error') + ').';
-            panel.classList.add('open');
-        }
+        adminClaimVerified = true;
+        panel.classList.add('open');
+        if (status) status.textContent = 'LOCAL ADMIN UNLOCKED · changes apply only in this browser.';
+        setAdminControlsEnabled(true);
+        renderAdminCommandToggles();
+        await loadAdminLeaderboardEntries();
     }
     window.addEventListener('keydown', ev => {
         if (ev.ctrlKey && ev.shiftKey && ev.key.toLowerCase() === 'a') {
@@ -4924,71 +4891,33 @@ h1 span {
         if (remove)
             remove.disabled = !enabled;
     }
-    async function verifyAdminAccess(forceRefresh = false) {
+    async function verifyAdminAccess() {
         const status = document.getElementById('adminConnection');
-        adminClaimVerified = false;
+        if (adminClaimVerified) {
+            setAdminControlsEnabled(true);
+            if (status) status.textContent = 'LOCAL ADMIN UNLOCKED · changes apply only in this browser.';
+            return true;
+        }
         setAdminControlsEnabled(false);
-        const user = (window.firebase && firebase.auth && firebase.auth().currentUser) || null;
-        if (!firebaseDb || !user) {
-            if (status)
-                status.textContent = 'LOCKED — Firebase is not connected or no account is signed in.';
-            return false;
-        }
-        try {
-            const token = await user.getIdTokenResult(!!forceRefresh);
-            adminClaimVerified = !!(token && token.claims && token.claims.admin === true && Number(token.claims.adminUntil) > Date.now());
-            if (adminClaimVerified) {
-                if (status)
-                    status.textContent = 'ADMIN VERIFIED · ' + (user.email || user.uid) + ' · leaderboard edits enabled.';
-                setAdminControlsEnabled(true);
-                renderAdminCommandToggles();
-                const adminOpenButton = document.getElementById('adminOpenButton');
-                if (adminOpenButton)
-                    adminOpenButton.hidden = false;
-                return true;
-            }
-            if (status)
-                status.textContent = 'LOCKED — enter the admin access code with Ctrl+Shift+A or the Admin Access button.';
-            return false;
-        }
-        catch (err) {
-            if (status)
-                status.textContent = 'Could not verify admin permissions (' + (err.code || 'token error') + ').';
-            return false;
-        }
+        if (status) status.textContent = 'LOCKED — enter the local admin access code.';
+        return false;
     }
     async function loadAdminLeaderboardEntries() {
-        if (!await verifyAdminAccess(false))
-            return;
+        if (!adminClaimVerified) return;
         const mode = document.getElementById('adminMode').value;
         const select = document.getElementById('adminEntrySelect'), actionStatus = document.getElementById('adminActionStatus');
         select.replaceChildren();
+        const entries = JSON.parse(localStorage.getItem('zs_admin_local_scores') || '{}');
         const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = 'Choose a saved cloud score…';
-        select.appendChild(placeholder);
-        try {
-            const snap = await firebaseDb.ref('leaderboards/' + mode).once('value');
-            let count = 0;
-            snap.forEach(child => {
-                const v = child.val() || {}, uid = String(child.key || '');
-                if (!uid)
-                    return;
-                const opt = document.createElement('option');
-                opt.value = uid;
-                opt.textContent = String(v.name || 'Player') + ' — ' + (Number(v.score) || 0) + ' pts · ' + uid.slice(0, 8) + '…';
-                opt.dataset.name = String(v.name || 'Player');
-                opt.dataset.score = String(Math.max(0, Number(v.score) || 0));
-                select.appendChild(opt);
-                count++;
-            });
-            if (actionStatus)
-                actionStatus.textContent = count ? ('Loaded ' + count + ' cloud entries for ' + mode + '.') : 'No cloud entries exist in this mode yet.';
-        }
-        catch (err) {
-            if (actionStatus)
-                actionStatus.textContent = 'Could not load entries (' + (err.code || 'read failed') + '). Check the leaderboard read rules.';
-        }
+        placeholder.value = ''; placeholder.textContent = 'Choose a local score…'; select.appendChild(placeholder);
+        let count = 0;
+        Object.entries(entries[mode] || {}).forEach(([uid, v]) => {
+            const opt = document.createElement('option'); opt.value = uid;
+            opt.textContent = String(v.name || 'Player') + ' — ' + (Number(v.score) || 0) + ' pts · ' + uid;
+            opt.dataset.name = String(v.name || 'Player'); opt.dataset.score = String(Math.max(0, Number(v.score) || 0));
+            select.appendChild(opt); count++;
+        });
+        if (actionStatus) actionStatus.textContent = count ? 'Loaded ' + count + ' local score entries.' : 'No local score entries yet. Cloud leaderboard entries are not changed by this panel.';
     }
     document.getElementById('adminMode').addEventListener('change', () => loadAdminLeaderboardEntries());
     document.getElementById('adminEntrySelect').addEventListener('change', ev => {
@@ -5001,56 +4930,22 @@ h1 span {
     });
     async function adminWriteScore(removeEntry) {
         const status = document.getElementById('adminActionStatus');
-        if (!adminClaimVerified || !await verifyAdminAccess(false)) {
-            if (status)
-                status.textContent = 'Locked: admin permission could not be verified.';
-            return;
-        }
+        if (!adminClaimVerified) { if (status) status.textContent = 'Unlock local admin access first.'; return; }
         const mode = document.getElementById('adminMode').value, uid = String(document.getElementById('adminTarget').value || '').trim();
-        if (!['classic', 'infinite', 'base', 'ffa'].includes(mode)) {
-            if (status)
-                status.textContent = 'Choose a valid leaderboard mode.';
-            return;
+        if (!['classic', 'infinite', 'base', 'ffa'].includes(mode) || !uid || /[.#$\[\]\/]/.test(uid)) {
+            if (status) status.textContent = 'Enter a valid local player ID and mode.'; return;
         }
-        if (!uid || /[.#$\[\]\/]/.test(uid)) {
-            if (status)
-                status.textContent = 'Enter a valid Firebase player UID.';
-            return;
+        const all = JSON.parse(localStorage.getItem('zs_admin_local_scores') || '{}'); all[mode] ||= {};
+        if (removeEntry) { delete all[mode][uid]; }
+        else {
+            const score = Number(document.getElementById('adminScore').value);
+            const name = String(document.getElementById('adminPlayerName').value || '').trim().slice(0, 16);
+            if (!Number.isSafeInteger(score) || score < 0 || score > 2147483647 || !name) { if (status) status.textContent = 'Enter a name and a whole-number score.'; return; }
+            all[mode][uid] = { name, score, mode, uid, updatedAt: Date.now() };
         }
-        const ref = firebaseDb.ref('leaderboards/' + mode + '/' + uid);
-        try {
-            if (removeEntry) {
-                await ref.remove();
-                if (status)
-                    status.textContent = 'Removed ' + uid + ' from ' + mode + '.';
-            }
-            else {
-                const score = Number(document.getElementById('adminScore').value);
-                const name = String(document.getElementById('adminPlayerName').value || '').trim().replace(/[^a-zA-Z0-9 _-]/g, '').slice(0, 16);
-                if (!Number.isSafeInteger(score) || score < 0 || score > 2147483647) {
-                    if (status)
-                        status.textContent = 'Enter a whole-number score from 0 to 2,147,483,647.';
-                    return;
-                }
-                const snap = await ref.once('value'), current = snap.val() || {};
-                if (!name && !current.name) {
-                    if (status)
-                        status.textContent = 'Enter a display name for this new entry.';
-                    return;
-                }
-                await ref.set({ name: name || String(current.name || 'Player'), score, mode, uid, updatedAt: Date.now() });
-                if (status)
-                    status.textContent = 'Saved ' + (name || current.name) + ' with ' + score + ' points in ' + mode + '.';
-            }
-            await loadAdminLeaderboardEntries();
-            if (typeof watchLeaderboard === 'function' && !gameStarted)
-                watchLeaderboard(leaderboardMode);
-        }
-        catch (err) {
-            if (status)
-                status.textContent = 'Change denied (' + (err.code || 'database error') + '). Ensure this account has the admin claim and the Firebase rules allow admin leaderboard writes.';
-            console.warn('Admin leaderboard action failed:', err);
-        }
+        localStorage.setItem('zs_admin_local_scores', JSON.stringify(all));
+        if (status) status.textContent = removeEntry ? 'Removed local score entry.' : 'Saved local score entry. This does not alter the online leaderboard.';
+        await loadAdminLeaderboardEntries();
     }
     document.getElementById('adminSaveScore').addEventListener('click', () => adminWriteScore(false));
     document.getElementById('adminRemoveScore').addEventListener('click', () => {
@@ -6047,6 +5942,7 @@ h1 span {
         { key: 'UDAINGAJAVEERA', title: 'UDAINGAJAVEERA', desc: 'Unlock the face projectile launcher' },
         { key: 'BAILSSS', title: 'BAILSSS', desc: 'Unlock the grit-bag launcher and five-shot burst' },
         { key: 'OWENTHEDESTROYER', title: 'OWENTHEDESTROYER', desc: 'Unlock the burger launcher with UWU trail and oversized explosions' },
+        { key: 'PLAYERKILLER', title: 'PLAYERKILLER', desc: 'Unlock a gun that can kill players even when PvP is normally disabled' },
         { key: 'ADMIN_CLEAR', title: '/clear or !clear', desc: 'Clear the current chat channel (admin only)' },
         { key: 'ADMIN_REMOVE', title: '/remove or !remove', desc: 'Remove a visible chat message by number or message key (admin only)' },
         { key: 'ADMIN_JUMPSCARE', title: '/jumpscare or !jumpscare', desc: 'Broadcast the two-second jumpscare to all connected clients (admin only)' }
@@ -6096,48 +5992,16 @@ h1 span {
     document.getElementById('adminOpenButton').addEventListener('click', () => requestAdminPanelOpen(false));
     document.getElementById('adminTriggerJumpscare').addEventListener('click', async () => {
         const status = document.getElementById('adminBroadcastStatus');
-        if (!await verifyAdminAccess(false)) {
-            if (status)
-                status.textContent = 'Broadcast denied: administrator access is not verified.';
-            return;
-        }
-        if (!firebaseDb) {
-            if (status)
-                status.textContent = 'Firebase is not connected.';
-            return;
-        }
-        const event = { id: (clientSessionId || 'admin') + ':scare:' + Date.now().toString(36) + ':' + Math.random().toString(36).slice(2, 8), ts: Date.now(), by: firebaseUser.uid };
-        try {
-            await firebaseDb.ref('adminEvents/jumpscare').set(event);
-            if (status)
-                status.textContent = 'Global jumpscare broadcast sent to connected clients.';
-        }
-        catch (err) {
-            if (status)
-                status.textContent = 'Broadcast failed (' + (err.code || 'permission denied') + '). Publish the matching Firebase rules.';
-        }
+        if (!adminClaimVerified) { if (status) status.textContent = 'Unlock local admin access first.'; return; }
+        showGlobalJumpscare('local-admin-' + Date.now(), Date.now());
+        if (status) status.textContent = 'Local jumpscare triggered in this browser only.';
     });
     document.getElementById('adminSaveCommands').addEventListener('click', async () => {
         const status = document.getElementById('adminCommandStatus');
-        if (!await verifyAdminAccess(false)) {
-            if (status)
-                status.textContent = 'Locked: administrator access is required.';
-            return;
-        }
-        if (!firebaseDb) {
-            if (status)
-                status.textContent = 'Firebase is not connected.';
-            return;
-        }
-        try {
-            await firebaseDb.ref('adminSettings/commandsEnabled').set(zsCommandEnabled);
-            if (status)
-                status.textContent = 'Command settings saved and shared.';
-        }
-        catch (err) {
-            if (status)
-                status.textContent = 'Could not save command settings (' + (err.code || 'permission denied') + '). Publish the matching Firebase rules.';
-        }
+        if (!adminClaimVerified) { if (status) status.textContent = 'Unlock local admin access first.'; return; }
+        try { localStorage.setItem('zs_local_command_settings', JSON.stringify(zsCommandEnabled));
+            if (status) status.textContent = 'Command settings saved in this browser only.';
+        } catch (_) { if (status) status.textContent = 'Could not save local command settings.'; }
     });
     function playJumpscareScream() {
         if (!ensureAudioContext() || audioMuted || audioEffectsLevel < 1)
@@ -6178,119 +6042,40 @@ h1 span {
         }, 2000);
     }
     function setupAdminRealtimeFeatures() {
-        if (!firebaseDb)
-            return;
-        if (zsCommandSettingsRef && zsCommandSettingsHandler) {
-            try {
-                zsCommandSettingsRef.off('value', zsCommandSettingsHandler);
-            }
-            catch (_) { }
-        }
-        zsCommandSettingsRef = firebaseDb.ref('adminSettings/commandsEnabled');
-        zsCommandSettingsHandler = snap => {
-            const value = snap && snap.val();
-            if (value && typeof value === 'object')
-                ZS_COMMAND_DEFS.forEach(def => {
-                    if (typeof value[def.key] === 'boolean')
-                        zsCommandEnabled[def.key] = value[def.key];
-                });
-            renderAdminCommandToggles();
-        };
-        zsCommandSettingsRef.on('value', zsCommandSettingsHandler, err => {
-            const status = document.getElementById('adminCommandStatus');
-            if (status)
-                status.textContent = 'Command settings unavailable (' + (err.code || 'permission') + '); using local defaults.';
-        });
-        if (zsJumpscareRef && zsJumpscareHandler) {
-            try {
-                zsJumpscareRef.off('value', zsJumpscareHandler);
-            }
-            catch (_) { }
-        }
-        zsJumpscareRef = firebaseDb.ref('adminEvents/jumpscare');
-        zsJumpscareHandler = snap => {
-            const ev = snap && snap.val();
-            if (ev && ev.id && Number(ev.ts) && ev.id !== zsJumpscareSeenId && Date.now() - Number(ev.ts) <= 12000)
-                showGlobalJumpscare(String(ev.id), Number(ev.ts));
-        };
-        zsJumpscareRef.on('value', zsJumpscareHandler, err => console.warn('Global jumpscare listener could not start:', err));
+        // Admin command switches are deliberately local-only; no Firebase admin settings/events are read.
+        try {
+            const saved = JSON.parse(localStorage.getItem('zs_local_command_settings') || '{}');
+            if (saved && typeof saved === 'object') ZS_COMMAND_DEFS.forEach(def => {
+                if (typeof saved[def.key] === 'boolean') zsCommandEnabled[def.key] = saved[def.key];
+            });
+        } catch (_) { }
         renderAdminCommandToggles();
     }
     async function handleAdminChatCommand(command, input) {
-        const status = document.getElementById('chatConnection'), selectedRoom = document.getElementById('roomSelect').value;
+        const status = document.getElementById('chatConnection');
         const clear = command === '/CLEAR' || command === '!CLEAR';
         const removeMatch = command.match(/^[/!]REMOVE\s+(.+)$/);
         const scare = command === '/JUMPSCARE' || command === '!JUMPSCARE';
-        if (!clear && !removeMatch && !scare)
-            return false;
+        if (!clear && !removeMatch && !scare) return false;
         input.value = '';
         const key = clear ? 'ADMIN_CLEAR' : removeMatch ? 'ADMIN_REMOVE' : 'ADMIN_JUMPSCARE';
-        if (!isCommandEnabled(key)) {
-            if (status)
-                status.textContent = 'That admin chat command is disabled by the administrator.';
-            return true;
-        }
-        if (!await verifyAdminAccess(false)) {
-            if (status)
-                status.textContent = 'Admin command denied. The signed-in account is not authorised.';
-            return true;
-        }
+        if (!isCommandEnabled(key)) { if (status) status.textContent = 'That admin chat command is disabled in this browser.'; return true; }
+        if (!await verifyAdminAccess(false)) { if (status) status.textContent = 'Unlock the local admin panel first.'; return true; }
         if (scare) {
-            if (!firebaseDb) {
-                if (status)
-                    status.textContent = 'Firebase is not connected.';
-                return true;
-            }
-            const event = { id: (clientSessionId || 'admin') + ':scare:' + Date.now().toString(36) + ':' + Math.random().toString(36).slice(2, 8), ts: Date.now(), by: firebaseUser.uid };
-            try {
-                await firebaseDb.ref('adminEvents/jumpscare').set(event);
-                if (status)
-                    status.textContent = 'Global jumpscare broadcast sent.';
-            }
-            catch (err) {
-                if (status)
-                    status.textContent = 'Jumpscare failed (' + (err.code || 'permission denied') + ').';
-            }
+            showGlobalJumpscare('local-chat-' + Date.now(), Date.now());
+            if (status) status.textContent = 'Local jumpscare triggered in this browser only.';
             return true;
         }
-        if (!firebaseDb || !firebaseUser) {
-            if (status)
-                status.textContent = 'Chat moderation requires Firebase sign-in.';
+        if (clear) {
+            chatLog.replaceChildren();
+            chatSeenIds = {};
+            if (status) status.textContent = 'Cleared the messages currently displayed here only; online chat was not changed.';
             return true;
         }
-        const ref = chatMessagesRefFor(selectedRoom);
-        try {
-            if (clear) {
-                await ref.remove();
-                chatSeenIds = {};
-                chatLog.textContent = 'Messages cleared by administrator.';
-                if (status)
-                    status.textContent = 'Cleared ' + selectedRoom + ' chat.';
-            }
-            else {
-                const wanted = removeMatch[1].trim(), rows = Array.from(chatLog.querySelectorAll('[data-chat-message-id]'));
-                let row = null;
-                if (/^\d+$/.test(wanted))
-                    row = rows[Math.max(0, Number(wanted) - 1)] || null;
-                else
-                    row = rows.find(node => node.dataset.chatMessageId === wanted) || null;
-                const messageKey = row ? row.dataset.chatMessageId : wanted;
-                if (!messageKey || /[.#$\[\]\/]/.test(messageKey)) {
-                    if (status)
-                        status.textContent = 'Use /remove followed by the visible message number or message ID.';
-                    return true;
-                }
-                await ref.child(messageKey).remove();
-                if (row)
-                    row.remove();
-                if (status)
-                    status.textContent = 'Removed chat message ' + (row ? rows.indexOf(row) + 1 : messageKey) + '.';
-            }
-        }
-        catch (err) {
-            if (status)
-                status.textContent = 'Chat moderation failed (' + (err.code || 'permission denied') + '). Publish the matching rules and retry.';
-        }
+        const wanted = removeMatch[1].trim(), rows = Array.from(chatLog.querySelectorAll('[data-chat-message-id]'));
+        let row = /^\d+$/.test(wanted) ? rows[Math.max(0, Number(wanted) - 1)] || null : rows.find(node => node.dataset.chatMessageId === wanted) || null;
+        if (row) { row.remove(); if (status) status.textContent = 'Removed that message from this browser view only.'; }
+        else if (status) status.textContent = 'Message not found in the currently displayed chat.';
         return true;
     }
     renderAdminCommandToggles();
@@ -7692,6 +7477,19 @@ h1 span {
                 multiplayerPersonalRef.child(firebaseUser.uid).update({ udaingaJaveeraMode: true, wp: 9, updatedAt: Date.now() }).catch(() => { });
             return;
         }
+        if (command === 'PLAYERKILLER') {
+            input.value = '';
+            if (!isCommandEnabled(command)) {
+                chatConnection.textContent = 'That secret command is currently disabled by the administrator.';
+                return;
+            }
+            playerKillerMode = true;
+            wp = 0;
+            cd = 0;
+            md = 0;
+            chatConnection.textContent = 'PLAYERKILLER unlocked: your pistol can now kill players in shared modes, even when normal PvP is disabled.';
+            return;
+        }
         if (command === 'OWENTHEDESTROYER') {
             input.value = '';
             if (!isCommandEnabled(command)) {
@@ -8605,6 +8403,7 @@ let w = 0
     let skinGender = 'male', rosieMode = false, lastRosieBurst = null, remoteRosieSeen = {};
     let inevitableMode = false, lastInevitableBurst = null, remoteInevitableSeen = {};
     let mustafaMissileMode = false;
+    let playerKillerMode = false;
     let udaingaJaveeraMode = false, bailsBagMode = false, owenTheDestroyerMode = false, uwuTrail = [], lastSpecialWeaponBurst = null, remoteSpecialWeaponSeen = {}, gritBinScenery = [];
     function maxPlayerHp() {
         return mustafaMissileMode ? 200 : 100;
@@ -16024,7 +15823,7 @@ let w = 0
             }
             // Pistol rounds can damage teammates in multiplayer; the target client applies the hit
             // through a small sequenced action on the shooter's already-authorised player record.
-            if (!q.dead && activeSharedRun() && (gameMode === 'ffa' || q.weaponType === 0)) {
+            if (!q.dead && activeSharedRun() && (gameMode === 'ffa' || q.weaponType === 0 || playerKillerMode)) {
                 const dxp = q.x - prevX, dyp = q.y - prevY, denp = dxp * dxp + dyp * dyp;
                 let victim = null, nearest = Infinity;
                 for (const [uid, v] of Object.entries(remotePlayers)) {
@@ -16040,7 +15839,7 @@ let w = 0
                     }
                 }
                 if (victim) {
-                    queueMultiplayerAction({ type: 'playerHit', targetUid: victim.uid, damage: gameMode === 'ffa' ? Math.max(10, Math.min(60, Number(q.dmg) || 18)) : 12 });
+                    queueMultiplayerAction({ type: 'playerHit', targetUid: victim.uid, damage: playerKillerMode ? 100 : (gameMode === 'ffa' ? Math.max(10, Math.min(60, Number(q.dmg) || 18)) : 12) });
                     if (gameMode === 'ffa') {
                         playerScore += 2;
                         publishLeaderboardScore('ffa', playerScore);
