@@ -1961,6 +1961,10 @@ h1 span {
   .klip-reward-card { padding: 24px 16px 18px; }
 }
 
+.difficulty-panel { margin-top: 13px; padding: 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; border:1px solid #3c553d; border-radius:10px; background:linear-gradient(110deg,rgba(33,52,33,.78),rgba(13,20,15,.78)); color:#c5d3c6; font-size:11px; }
+.difficulty-panel label { font-weight:900; letter-spacing:.08em; color:#d9ecd0; }
+.difficulty-panel select { background:#101710; color:#f1f7ec; border:1px solid #55704f; border-radius:7px; padding:9px 10px; min-width:190px; }
+.difficulty-panel span { flex:1 1 180px; color:#9eaf9f; line-height:1.45; }
 .admin-resource-tools { margin-top: 18px; padding: 14px; border: 1px solid #435b3c; border-radius: 10px; background: rgba(35,56,35,.3); }
 .admin-resource-tools strong { color: #c0f49b; font-size: 11px; letter-spacing: .08em; }
 .admin-resource-tools p { color: #b9c7bb; font-size: 12px; line-height: 1.45; }
@@ -1984,7 +1988,7 @@ h1 span {
           <h1>THE FOREST IS <span>INFESTED.</span>
 </h1>
           <p class="lede">Enter a hostile forest, survive increasingly dangerous waves, collect supplies and see how high you can push your score. Every run is different — how long can you last?</p>
-          <div class="hero-pills"><span class="pill">4 evolving environments</span><span class="pill">Survival & multiplayer rooms</span><span class="pill">Free browser game</span>
+          <div class="hero-pills"><span class="pill">7 evolving environments</span><span class="pill">Survival & multiplayer rooms</span><span class="pill">Free browser game</span>
 </div>
         </header>
         <div class="home-content">
@@ -1995,12 +1999,22 @@ h1 span {
 </div>
             <div class="field-label" style="margin-top:16px">CHOOSE A GAME MODE</div>
             <div class="mode-grid" role="group" aria-label="Game mode">
-              <button class="mode-card selected" data-mode="classic" type="button" aria-pressed="true"><span class="mode-icon">☠</span><strong>CLASSIC LEVELS</strong><span>Five evolving environments, boss fights and the original survival challenge.</span></button>
+              <button class="mode-card selected" data-mode="classic" type="button" aria-pressed="true"><span class="mode-icon">☠</span><strong>CLASSIC LEVELS</strong><span>Seven evolving environments, a rocket mission, boss fights and the original survival challenge.</span></button>
               <button class="mode-card" data-mode="infinite" type="button" aria-pressed="false"><span class="mode-icon">∞</span><strong>INFINITE</strong><span>Endless waves. Difficulty keeps rising and there is no final level.</span></button>
               <button class="mode-card" data-mode="base" type="button" aria-pressed="false"><span class="mode-icon">⌂</span><strong>BASE WORLD</strong><span>Explore a vast world of distinct biomes, settlements and dangerous outbreak zones.</span></button>
               <button class="mode-card" data-mode="ffa" type="button" aria-pressed="false"><span class="mode-icon">⚔</span><strong>FREE FOR ALL</strong><span>Build, scavenge and survive in a shared world where players can fight each other.</span></button>
             </div>
 
+            <div class="difficulty-panel">
+              <label for="difficultySelect">RUN DIFFICULTY</label>
+              <select id="difficultySelect" aria-label="Choose run difficulty">
+                <option value="easy">Easy · score ×1</option>
+                <option value="medium" selected>Medium · score ×1.5</option>
+                <option value="hard">Hard · score ×2</option>
+                <option value="impossible">Impossible · score ×3</option>
+              </select>
+              <span id="difficultyDescription">Balanced survival · steady enemy progression.</span>
+            </div>
             <div id="classicPartyRow" style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:#c5d3c6;font-size:11px">
               <label for="classicPartySize">CLASSIC PARTY</label>
               <select id="classicPartySize" style="background:#101710;color:#eef6ed;border:1px solid #40513f;border-radius:7px;padding:8px;min-width:150px">
@@ -2306,6 +2320,49 @@ h1 span {
     const homeBest = document.getElementById('homeBest');
     const startGameBtn = document.getElementById('startGameBtn');
     let gameMode = 'classic';
+    const difficultySelect = document.getElementById('difficultySelect');
+    const difficultyDescription = document.getElementById('difficultyDescription');
+    const DIFFICULTY_PROFILES = {
+        easy: { score: 1, hp: .72, speed: .82, spawnMs: 900, label: 'EASY' },
+        medium: { score: 1.5, hp: .90, speed: 1, spawnMs: 760, label: 'MEDIUM' },
+        hard: { score: 2, hp: 1.12, speed: 1.13, spawnMs: 650, label: 'HARD' },
+        impossible: { score: 3, hp: 1.38, speed: 1.27, spawnMs: 540, label: 'IMPOSSIBLE' }
+    };
+    let selectedDifficulty = 'medium';
+    try {
+        const savedDifficulty = localStorage.getItem('zs_difficulty');
+        if (Object.prototype.hasOwnProperty.call(DIFFICULTY_PROFILES, savedDifficulty)) selectedDifficulty = savedDifficulty;
+    } catch (_) { }
+    if (difficultySelect) difficultySelect.value = selectedDifficulty;
+    function difficultyProfile() { return DIFFICULTY_PROFILES[selectedDifficulty] || DIFFICULTY_PROFILES.medium; }
+    function scoreMultiplier() { return difficultyProfile().score; }
+    function syncDifficultySelection() {
+        if (difficultySelect && DIFFICULTY_PROFILES[difficultySelect.value]) selectedDifficulty = difficultySelect.value;
+        if (difficultyDescription) {
+            const descriptions = {
+                easy: 'Relaxed pace, fewer health points and a ×1 score.',
+                medium: 'Balanced survival with a ×1.5 score multiplier.',
+                hard: 'Faster, tougher hordes with a ×2 score multiplier.',
+                impossible: 'Relentless speed and health scaling with a ×3 score multiplier.'
+            };
+            difficultyDescription.textContent = descriptions[selectedDifficulty] || descriptions.medium;
+        }
+        try { localStorage.setItem('zs_difficulty', selectedDifficulty); } catch (_) { }
+    }
+    if (difficultySelect) difficultySelect.addEventListener('change', syncDifficultySelection);
+    syncDifficultySelection();
+    function difficultyHealthScale() {
+        if (gameMode !== 'classic' && gameMode !== 'infinite') return 1;
+        const progression = 1 + Math.min(.42, Math.max(0, score) / 520) + Math.max(0, level - 1) * .035;
+        return difficultyProfile().hp * progression;
+    }
+    function difficultySpeedScale() {
+        if (gameMode !== 'classic' && gameMode !== 'infinite') return 1;
+        // Score growth is applied once in the movement loop; this function supplies
+        // only the selected difficulty and gentle per-level increase.
+        return difficultyProfile().speed * (1 + Math.max(0, level - 1) * .025);
+    }
+    function isExtendedClassicMap() { return gameMode === 'classic' && (level === 6 || level === 7); }
     function isBaseWorldMode() {
         return gameMode === 'base' || gameMode === 'ffa';
     }
@@ -4854,20 +4911,20 @@ h1 span {
         if (gameStarted && dead === 0) {
             const liveScore = Math.max(0, Number(playerScore) || 0, Number(score) || 0);
             if (liveScore > 0)
-                publishLeaderboardScore(gameMode, liveScore);
+                publishLeaderboardScore(gameMode, Math.round(liveScore * scoreMultiplier()));
         }
     }, 8000);
     function worldW() {
-        return isBaseWorldMode() ? BASE_WORLD_W : w;
+        return isBaseWorldMode() ? BASE_WORLD_W : isExtendedClassicMap() ? w * 1.26 : w;
     }
     function worldH() {
-        return isBaseWorldMode() ? BASE_WORLD_H : h;
+        return isBaseWorldMode() ? BASE_WORLD_H : isExtendedClassicMap() ? h * 1.22 : h;
     }
     let infiniteNextBossScore = 75;
     let coopRequested = false;
     const modeStatus = document.getElementById('modeStatus');
     const modeDescriptions = {
-        classic: 'Survive four levels, collect supplies and defeat the boss.',
+        classic: 'Survive seven varied levels, gather rocket supplies, launch into space and defeat the Red Planet titan.',
         infinite: 'Endless waves with gradually increasing difficulty. Gun upgrades are disabled.',
         base: 'Explore a huge world with grasslands, autumn woods, snowy mountains, settlements and a dangerous central forest.',
         ffa: 'A shared open world with base-building, persistent danger and player-versus-player combat.'
@@ -6362,7 +6419,9 @@ h1 span {
     let multiplayerIsAuthority = false, multiplayerAuthorityKnown = false, roomFull = false;
     let baseRosterInitialised = false, pendingBaseResourceGrants = 0;
     let classicManualSpawnQueue = 0, level5BossesRemaining = 0, level5Spawned = 0, level5Kills = 0;
-    let classicSpawnSubtick = 0;
+    let level6Spawned = 0, level6CollectedFuel = 0, level6CollectedEquipment = 0, level6AssemblyFrames = 0;
+    let level6Rocket = null, level6Items = [], level6LaunchT = 0, level7RockBossDefeated = false, rockBossHazards = [];
+    let lastZombieSpawnAt = 0, classicSpawnSubtick = 0;
     function classicSpawnQueueRoom() {
         if (gameMode !== 'classic' || !gameStarted) return 0;
         let target = 0, spawned = 0;
@@ -6375,6 +6434,7 @@ h1 span {
         else if (level === 3) { target = 150; spawned = level3Spawned; }
         else if (level === 4) { target = 60; spawned = level4Spawned; }
         else if (level === 5) return 0; // This level is a boss encounter, not a regular spawn wave.
+        else if (level === 6) { target = 110; spawned = level6Spawned; }
         else return 0;
         return Math.max(0, target - spawned - Math.max(0, classicManualSpawnQueue));
     }
@@ -8266,6 +8326,7 @@ h1 span {
     }
     function startLocalRun() {
         activateAudioFromGesture();
+        syncDifficultySelection();
         setHomeName();
         isPaused = false;
         if (gameMode === 'classic' && selectedClassicPartySize() > 1 && !selectedLobbyCode()) {
@@ -8814,6 +8875,7 @@ let w = 0
         level5Spawned = 0
         level5Kills = 0
         level5BossesRemaining = 0
+        level6Spawned = 0; level6CollectedFuel = 0; level6CollectedEquipment = 0; level6AssemblyFrames = 0; level6Rocket = null; level6Items = []; level6LaunchT = 0; level7RockBossDefeated = false; rockBossHazards = []; lastZombieSpawnAt = 0;
         classicManualSpawnQueue = 0
         enchantedTreehouses = []
         enchantedFireflies = []
@@ -9163,6 +9225,14 @@ let w = 0
             z.deathT = 0;
             if (gameMode === 'classic' && level === 5 && z.level5Boss)
                 level5BossesRemaining = Math.max(0, level5BossesRemaining - 1);
+            if (gameMode === 'classic' && level === 7 && z.rockBoss) {
+                level7RockBossDefeated = true;
+                rockBossHazards = [];
+                // The encounter ends cleanly when the titan falls; its summoned shards do not linger.
+                for (const shard of e) {
+                    if (shard && shard.rockMinion && !shard.dead) { shard.dead = 1; shard.deathT = 78; shard.removeAt = 78; }
+                }
+            }
             if (!blackHoleResolving) {
                 if (gameMode === 'infinite' && z.boss) {
                     bossSpawned = 0;
@@ -9208,6 +9278,10 @@ let w = 0
                 else if (level === 5) {
                     if (!z.level5Boss) level5Kills++;
                 }
+                if (gameMode === 'classic' && level === 5 && level5BossesRemaining === 0 && !z.deadTransitionDone) {
+                    z.deadTransitionDone = true;
+                    activateLevel6();
+                }
                 if (gameMode === 'classic' && score >= 100 && level === 1)
                     activateLevel2();
             }
@@ -9220,7 +9294,9 @@ let w = 0
         2: { ground: '#66533a', tile: '#806544', grassLight: '#b08a4d', grassDark: '#55412e', leaves: ['#b96c2d', '#d18a35', '#c5a13f', '#8f572b'] },
         3: { ground: '#101b17', tile: '#14231b', grassLight: '#263a2a', grassDark: '#0a120e', leaves: ['#263b2b', '#344b32', '#1b3024', '#40513a'] },
         4: { ground: '#21090e', tile: '#300d14', grassLight: '#5b1b25', grassDark: '#17070a', leaves: ['#68202a', '#81252b', '#4c171e', '#9a3430'] },
-        5: { ground: '#17312f', tile: '#21453f', grassLight: '#65b99b', grassDark: '#102625', leaves: ['#286a54', '#3b896a', '#538fa1', '#7862a8'] }
+        5: { ground: '#17312f', tile: '#21453f', grassLight: '#65b99b', grassDark: '#102625', leaves: ['#286a54', '#3b896a', '#538fa1', '#7862a8'] },
+        6: { ground: '#1a2b35', tile: '#243d4a', grassLight: '#6d96a4', grassDark: '#10202a', leaves: ['#344b56', '#425d68', '#5e7880', '#344d5a'] },
+        7: { ground: '#4e2923', tile: '#68362b', grassLight: '#c46d4c', grassDark: '#331c1b', leaves: ['#874536', '#a64f39', '#70362f', '#b96342'] }
     };
     function mixColour(a, b, t) {
         const A = [parseInt(a.slice(1, 3), 16), parseInt(a.slice(3, 5), 16), parseInt(a.slice(5, 7), 16)];
@@ -9243,7 +9319,8 @@ let w = 0
         environmentFromLevel = level;
         level = nextLevel;
         environmentBlend = 0;
-        transitionFade = .86;
+        // Level 1 → 2 keeps the eased biome-color blend but skips the full-screen loading wipe.
+        transitionFade = nextLevel === 2 ? 0 : .72;
     }
     function spawnLevelFruit(treeType) {
         apples = [];
@@ -9414,7 +9491,7 @@ let w = 0
         enchantedSceneProgress = 0;
         enchantedTreehouses = O.filter(o => o.t === 0).filter((o, i) => i % 2 === 0).slice(0, 14).map((o, i) => ({
             id: 'treehouse-' + i, x: o.x + Math.sin(o.s) * o.r * .42, y: o.y - o.r * .76,
-            scale: 1.72 + (i % 4) * .16, appearAt: (i % 4) * .035, phase: Math.random() * 6.28
+            scale: .98 + (i % 4) * .075, appearAt: (i % 4) * .035, phase: Math.random() * 6.28
         }));
         // Large, high-contrast chartreuse fireflies; individual seeds let them loop on different paths.
         enchantedFireflies = Array.from({ length: 88 }, (_, i) => ({
@@ -9433,10 +9510,148 @@ let w = 0
             let x = side === 0 ? -55 : w + 55;
             let y = 70 + Math.random() * Math.max(1, h - 140);
             if (Math.hypot(x - p.x, y - p.y) < 280) y = (y + h * .43) % h;
-            e.push({ id: newEntityId('enchanted-boss'), x, y, ty: 3, hp: 220, mh: 220, ar: 115,
+            const bossHp = Math.max(150, Math.round(220 * difficultyHealthScale()));
+            e.push({ id: newEntityId('enchanted-boss'), x, y, ty: 3, hp: bossHp, mh: bossHp, ar: 115,
                 wk: idx * 2.4, sv: 1.7, introSlowUntil: fr + 480, sh: '#42314f', sk: '#c8adff', boss: 1, level5Boss: 1, level5BossIndex: idx });
         };
         spawnBossAt(0, 1); spawnBossAt(1, 2);
+    }
+    function activateLevel6() {
+        classicManualSpawnQueue = 0;
+        wallCharges += 5;
+        beginEnvironmentTransition(6);
+        levelBanner = 300;
+        e = []; b = []; R = []; X = []; BLD = []; G = []; O = []; WPN = []; upgrades = []; AEX = []; firePatches = [];
+        apples = []; pears = []; AMMO = [];
+        level6Spawned = 0; level6CollectedFuel = 0; level6CollectedEquipment = 0; level6AssemblyFrames = 0; level6LaunchT = 0;
+        level7RockBossDefeated = false; rockBossHazards = [];
+        const mapW = worldW(), mapH = worldH();
+        level6Rocket = { x: mapW * .56, y: mapH * .50, assembled: 0 };
+        // Start away from the rocket so the player must cross the expanded map under fire.
+        p.x = mapW * .13; p.y = mapH * .50; cameraX = 0; cameraY = 0;
+        let tries = 0;
+        while (O.length < 38 && tries++ < 2400) {
+            const x = 45 + Math.random() * (mapW - 90), y = 45 + Math.random() * (mapH - 90), roll = Math.random();
+            const t = roll < .57 ? 0 : roll < .82 ? 1 : 2, r = t === 0 ? 18 + Math.random() * 14 : t === 1 ? 15 + Math.random() * 10 : 25 + Math.random() * 14;
+            if (Math.hypot(x-p.x,y-p.y)>125 && Math.hypot(x-level6Rocket.x,y-level6Rocket.y)>115 && O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+r+35)) O.push({id:newEntityId('launch-tree'),x,y,r,t,s:Math.random()*6});
+        }
+        // Scavenge four fuel canisters and three rocket components across the enlarged map.
+        level6Items = [];
+        const itemDefs = [
+            ['fuel','ROCKET FUEL'],['fuel','ROCKET FUEL'],['fuel','ROCKET FUEL'],['fuel','ROCKET FUEL'],
+            ['equipment','GUIDANCE COMPUTER'],['equipment','ENGINE COUPLING'],['equipment','IGNITION CORE']
+        ];
+        itemDefs.forEach(([kind,label],i) => {
+            let x=0,y=0,ok=false;
+            for(let n=0;n<300&&!ok;n++) {
+                x=70+Math.random()*(mapW-140); y=70+Math.random()*(mapH-140);
+                ok=Math.hypot(x-p.x,y-p.y)>140 && Math.hypot(x-level6Rocket.x,y-level6Rocket.y)>110 && O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+32) && level6Items.every(q=>Math.hypot(q.x-x,q.y-y)>125);
+            }
+            if(!ok){ x=mapW*(.2+(i%4)*.19); y=mapH*(.18+Math.floor(i/4)*.45); }
+            level6Items.push({id:newEntityId('mission-part'),kind,label,x,y,got:false,phase:Math.random()*6.28});
+        });
+        for(let i=0;i<1200;i++) G.push({x:Math.random()*mapW,y:Math.random()*mapH,a:Math.random()*.8-.4,l:Math.random()<.62});
+    }
+    function activateLevel7() {
+        classicManualSpawnQueue = 0;
+        beginEnvironmentTransition(7);
+        levelBanner = 300;
+        e=[]; b=[]; R=[]; X=[]; BLD=[]; O=[]; G=[]; WPN=[]; upgrades=[]; AEX=[]; firePatches=[];
+        apples=[]; pears=[]; AMMO=[]; level6Items=[]; level6Rocket=null; level6LaunchT=0;
+        rockBossHazards=[]; level7RockBossDefeated=false;
+        const mapW=worldW(), mapH=worldH();
+        p.x=mapW*.14; p.y=mapH*.52; cameraX=0; cameraY=0;
+        let tries=0;
+        while(O.length<34 && tries++<2200){
+            const x=40+Math.random()*(mapW-80),y=40+Math.random()*(mapH-80),r=18+Math.random()*16;
+            if(Math.hypot(x-p.x,y-p.y)>145 && O.every(o=>Math.hypot(o.x-x,o.y-y)>o.r+r+34)) O.push({id:newEntityId('mars-rock'),x,y,r,t:1,s:Math.random()*6,redPlanet:1});
+        }
+        for(let i=0;i<900;i++) G.push({x:Math.random()*mapW,y:Math.random()*mapH,a:Math.random()*.8-.4,l:Math.random()<.4});
+        const bossX=mapW*.76,bossY=mapH*.5;
+        const titanHp = Math.round(920 * difficultyHealthScale());
+        e.push({id:newEntityId('red-planet-titan'),x:bossX,y:bossY,ty:8,hp:titanHp,mh:titanHp,ar:180,wk:0,sv:.23,sh:'#7b6256',sk:'#d29c7b',boss:1,rockBoss:1,rockAttackCd:95,rockSummonCd:175});
+    }
+    function updateClassicMission() {
+        if(gameMode!=='classic') return;
+        if(level===6 && level6Rocket) {
+            if(level6LaunchT>0) {
+                level6LaunchT++;
+                if(level6LaunchT<=58) { p.x += (level6Rocket.x-p.x)*.095; p.y += (level6Rocket.y+7-p.y)*.095; }
+                if(level6LaunchT>=210) activateLevel7();
+                return;
+            }
+            for(const item of level6Items) {
+                if(item.got) continue;
+                if(Math.hypot(p.x-item.x,p.y-item.y)<30) {
+                    item.got=true; playGameSound('pickup');
+                    if(item.kind==='fuel') level6CollectedFuel++; else level6CollectedEquipment++;
+                    for(let i=0;i<10;i++) pt(item.x,item.y,(Math.random()-.5)*3,-1-Math.random()*2,18,item.kind==='fuel'?'#9ee9ff':'#c7ffae',2,0);
+                }
+            }
+            const allParts=level6CollectedFuel>=4 && level6CollectedEquipment>=3;
+            const nearRocket=Math.hypot(p.x-level6Rocket.x,p.y-level6Rocket.y)<112;
+            if(allParts && nearRocket) {
+                level6AssemblyFrames=Math.min(1800,level6AssemblyFrames+1);
+                level6Rocket.assembled=level6AssemblyFrames/1800;
+                if(level6AssemblyFrames>=1800) { level6LaunchT=1; playGameSound('build'); }
+            }
+        } else if(level===7 && level7RockBossDefeated) {
+            // Keep the cleared red-planet scene playable; no more boss attacks are scheduled.
+        }
+    }
+    function drawRocketMissionDecor() {
+        if(gameMode!=='classic') return;
+        if(level===6 && level6Rocket) {
+            const r=level6Rocket, progress=Math.max(0,Math.min(1,Number(r.assembled)||0)), launch=level6LaunchT>60?Math.min(190,(level6LaunchT-60)*1.25):0, y=r.y-launch;
+            g.save(); g.translate(r.x,y);
+            g.fillStyle='rgba(0,0,0,.36)'; g.beginPath(); g.ellipse(0,36+launch*.16,42,11,0,0,Math.PI*2); g.fill();
+            // Steel launch gantry and four legs.
+            g.strokeStyle='#65717b';g.lineWidth=5;g.beginPath();g.moveTo(-39,34);g.lineTo(-39,-44);g.lineTo(39,-44);g.lineTo(39,34);g.moveTo(-39,-10);g.lineTo(39,-10);g.stroke();
+            g.strokeStyle='#aebbc2';g.lineWidth=1.5;g.beginPath();g.moveTo(-39,-30);g.lineTo(-25,-30);g.moveTo(25,-30);g.lineTo(39,-30);g.moveTo(-39,12);g.lineTo(-26,12);g.moveTo(26,12);g.lineTo(39,12);g.stroke();
+            // White rocket body with nose cone, service bands, fins and window.
+            g.fillStyle='#d7dedf';g.beginPath();g.moveTo(-16,20);g.lineTo(-15,-44);g.quadraticCurveTo(0,-72,15,-44);g.lineTo(16,20);g.closePath();g.fill();
+            g.strokeStyle='#f5fbfb';g.lineWidth=2;g.stroke();
+            g.fillStyle='#b8c3c7';g.fillRect(-15,-4,30,6);g.fillStyle='#c63b36';g.fillRect(-15,2,30,7);g.fillStyle='#77858c';g.fillRect(-15,12,30,4);
+            g.fillStyle='#273f52';g.beginPath();g.arc(0,-24,6.5,0,Math.PI*2);g.fill();g.strokeStyle='#b9e8f2';g.lineWidth=2;g.stroke();
+            g.fillStyle='#e0e8ea';g.beginPath();g.moveTo(-14,12);g.lineTo(-27,31);g.lineTo(-15,27);g.closePath();g.fill();g.beginPath();g.moveTo(14,12);g.lineTo(27,31);g.lineTo(15,27);g.closePath();g.fill();
+            // Parts visibly come online as the build meter fills.
+            g.strokeStyle=progress>.25?'#9ceca4':'#42534a';g.lineWidth=3;g.beginPath();g.moveTo(-25,-38);g.lineTo(-18,-38);g.stroke();
+            g.fillStyle=progress>.5?'#76daff':'#35444a';g.fillRect(19,-13,8,19);
+            g.fillStyle=progress>.75?'#fff2a1':'#35444a';g.fillRect(-27,-7,7,12);
+            if(launch>0){
+                const flame= Math.min(1,(level6LaunchT-55)/25);
+                g.globalAlpha=.5+.35*Math.sin(fr*.4);g.fillStyle='#ffb83d';g.beginPath();g.moveTo(-11,19);g.quadraticCurveTo(-8,38+Math.random()*10,0,52+Math.random()*9);g.quadraticCurveTo(8,38+Math.random()*10,11,19);g.closePath();g.fill();
+                g.globalAlpha=flame;g.fillStyle='#e8fbff';g.beginPath();g.moveTo(-4,20);g.lineTo(0,43+Math.random()*8);g.lineTo(4,20);g.closePath();g.fill();
+            }
+            g.restore();
+            if(level6LaunchT===0){
+                g.save();g.textAlign='center';g.font='bold 12px Arial';g.fillStyle='#c9f6ff';g.shadowColor='#62d7ff';g.shadowBlur=9;g.fillText('INTO THE UNKNOWN',r.x,r.y-88);g.shadowBlur=0;
+                g.fillStyle='rgba(0,0,0,.65)';g.fillRect(r.x-48,r.y+48,96,5);g.fillStyle='#7effa2';g.fillRect(r.x-48,r.y+48,96*progress,5);g.restore();
+            }
+        }
+        if(level===6) level6Items.forEach(item=>{
+            if(item.got)return;
+            const pulse=.65+.35*Math.sin(fr*.08+item.phase);
+            g.save();g.translate(item.x,item.y);g.globalAlpha=.92;g.fillStyle='rgba(0,0,0,.32)';g.beginPath();g.ellipse(0,8,16,5,0,0,Math.PI*2);g.fill();
+            g.shadowColor=item.kind==='fuel'?'#83dfff':'#abff95';g.shadowBlur=10*pulse;
+            if(item.kind==='fuel'){
+                g.fillStyle='#488db0';g.fillRect(-8,-10,16,17);g.fillStyle='#b6eaff';g.fillRect(-4,-6,8,9);g.fillStyle='#d8e6e9';g.fillRect(-4,-14,8,4);g.strokeStyle='#233e4d';g.lineWidth=1.5;g.strokeRect(-8,-10,16,17);
+            } else {
+                g.fillStyle='#9eb3a5';g.beginPath();g.arc(0,0,9,0,Math.PI*2);g.fill();g.fillStyle='#28362f';g.beginPath();g.arc(0,0,4,0,Math.PI*2);g.fill();g.fillStyle='#d3ffb6';g.fillRect(-2,-13,4,5);g.fillRect(-2,8,4,5);g.fillRect(-13,-2,5,4);g.fillRect(8,-2,5,4);
+            }
+            g.shadowBlur=0;g.font='bold 8px Arial';g.textAlign='center';g.fillStyle='#f4fff3';g.fillText(item.kind==='fuel'?'FUEL':'PART',0,22);g.restore();
+        });
+        if(level===7){
+            rockBossHazards.forEach(hazard=>{
+                const age=hazard.age||0,fade=age>48?Math.max(0,(60-age)/12):1,pulse=age<15?(0.28+0.45*Math.abs(Math.sin(fr*.34))):.9;
+                g.save();g.globalAlpha=Math.max(0,fade);g.translate(hazard.x,hazard.y);
+                g.fillStyle=`rgba(190,65,41,${.13+.18*pulse})`;g.beginPath();g.ellipse(0,0,hazard.r*1.45,hazard.r*.83,0,0,Math.PI*2);g.fill();
+                g.strokeStyle=age<15?'#ffc078':'#b98b78';g.lineWidth=2;g.beginPath();g.ellipse(0,0,hazard.r*(.55+.04*(age%4)),hazard.r*.48,0,0,Math.PI*2);g.stroke();
+                if(age>=15){g.fillStyle='#8f7260';g.beginPath();g.moveTo(-hazard.r*.65,3);g.lineTo(-hazard.r*.3,-hazard.r*.68);g.lineTo(0,-hazard.r*.82);g.lineTo(hazard.r*.48,-hazard.r*.46);g.lineTo(hazard.r*.72,6);g.closePath();g.fill();g.strokeStyle='#d6a38a';g.lineWidth=1;g.stroke();}
+                g.restore();
+            });
+            if(level7RockBossDefeated){g.save();g.textAlign='center';g.fillStyle='#ffd0ad';g.font='900 28px Arial';g.shadowColor='#ff583e';g.shadowBlur=18;g.fillText('THE RED PLANET IS CLEARED',cameraX+w/2,cameraY+h*.18);g.restore();}
+        }
     }
     // Natural scenery is static between world generations. Index it once so collisions only
     // visit trees/rocks in the nearby cells instead of allocating O.filter(...) per zombie.
@@ -9719,13 +9934,14 @@ let w = 0
         return true;
     }
     function save() {
-        const finalScore = Math.max(Number(score) || 0, Number(playerScore) || 0);
+        const rawFinalScore = Math.max(Number(score) || 0, Number(playerScore) || 0);
+        const finalScore = Math.round(rawFinalScore * scoreMultiplier());
         publishLeaderboardScore(gameMode, finalScore, true);
         if (scoreSaved || finalScore <= 0)
             return;
         scoreSaved = true;
         const name = (playerName || 'Player').trim().slice(0, 16) || 'Player';
-        SC.push({ name, score: finalScore, mode: gameMode, savedAt: Date.now() });
+        SC.push({ name, score: finalScore, mode: gameMode, difficulty: selectedDifficulty, savedAt: Date.now() });
         SC.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
         SC = SC.slice(0, 20);
         H = SC.length ? Math.max(...SC.map(x => Number(x.score) || 0)) : 0;
@@ -11812,8 +12028,8 @@ let w = 0
         const sx = (lastPointerClient.clientX - r.left) * (logicalCanvasW / Math.max(1, r.width));
         const sy = (lastPointerClient.clientY - r.top) * (logicalCanvasH / Math.max(1, r.height));
         const scale = Z * (isBaseWorldMode() ? BASE_ZOOM : 1);
-        m.x = sx / scale + (isBaseWorldMode() ? cameraX : 0);
-        m.y = sy / scale + (isBaseWorldMode() ? cameraY : 0);
+        m.x = sx / scale + ((isBaseWorldMode() || isExtendedClassicMap()) ? cameraX : 0);
+        m.y = sy / scale + ((isBaseWorldMode() || isExtendedClassicMap()) ? cameraY : 0);
     }
     c.addEventListener('pointermove', updateMouseWorld);
     c.addEventListener('pointerdown', q => {
@@ -12289,7 +12505,8 @@ let w = 0
             if (Math.hypot(x - p.x, y - p.y) > 300)
                 break;
         }
-        e.push({ id: newEntityId('boss'), x: x, y: y, ty: 3, hp: 180, mh: 180, ar: 90, wk: 0, sv: (gameMode === 'classic' && level === 2 ? .525 : .35), sh: '#4a3828', sk: '#b79b72', boss: 1 });
+        const bossHp = Math.max(120, Math.round(180 * difficultyHealthScale()));
+        e.push({ id: newEntityId('boss'), x: x, y: y, ty: 3, hp: bossHp, mh: bossHp, ar: 90, wk: 0, sv: (gameMode === 'classic' && level === 2 ? .525 : .35), sh: '#4a3828', sk: '#b79b72', boss: 1 });
     }
     setInterval(() => {
         if (blackHoleWorldLocked() || bossCutscene > 0)
@@ -12299,18 +12516,15 @@ let w = 0
         if (!sharedWorldShouldRun())
             return;
         const manualClassicSpawn = gameMode === 'classic' && classicManualSpawnQueue > 0;
-        // Timer runs every 425 ms: queued Classic spawns use every tick (2× speed),
-        // while ordinary spawns use alternate ticks to keep the original 850 ms pace.
-        if (!manualClassicSpawn) {
-            classicSpawnSubtick = (classicSpawnSubtick + 1) % 2;
-            if (classicSpawnSubtick !== 0) return;
-        } else {
-            classicSpawnSubtick = 0;
-        }
+        // The normal rate is difficulty-scaled; the queued 2× button always halves that exact interval.
+        // A short scheduler interval keeps the faster difficulties responsive without changing the ratio.
+        const spawnInterval = Math.max(260, difficultyProfile().spawnMs * (manualClassicSpawn ? .5 : 1));
+        if (Date.now() - lastZombieSpawnAt < spawnInterval) return;
+        if (gameMode === 'classic' && level === 7) return; // Level 7 is the rock-boss encounter; it summons its own minions.
         if (isBaseWorldMode() && Math.random() < 0.97)
             return; // Very rare ambient spawns in the open world.
-        // Hard cap on living zombies. Level 5 permits a larger horde; queue size is also limited by its phase budget.
-        const maxLivingZombies = gameMode === 'classic' && level === 5 ? 50 : 30;
+        // Hard cap on living enemies. Boss/minion encounter has its own separate spawn controller.
+        const maxLivingZombies = gameMode === 'classic' && level === 5 ? 50 : gameMode === 'classic' && level === 6 ? 34 : 30;
         if (e.reduce((count, z) => count + (!z.dead ? 1 : 0), 0) >= maxLivingZombies)
             return;
         if (gameMode === 'infinite' && score >= infiniteNextBossScore && !e.some(z => z.boss && !z.dead)) {
@@ -12322,6 +12536,8 @@ let w = 0
         if (level === 3 && level3Spawned >= 150)
             return;
         if (level === 4 && level4Spawned >= 60)
+            return;
+        if (gameMode === 'classic' && level === 6 && level6Spawned >= 110)
             return;
         if (gameMode === 'classic' && level === 5 && level5BossesRemaining > 0 && !manualClassicSpawn)
             return;
@@ -12358,22 +12574,11 @@ let w = 0
             }
         }
         else {
-            if (side == 0) {
-                x = -40;
-                y = Math.random() * h;
-            }
-            else if (side == 1) {
-                x = w + 40;
-                y = Math.random() * h;
-            }
-            else if (side == 2) {
-                x = Math.random() * w;
-                y = -40;
-            }
-            else {
-                x = Math.random() * w;
-                y = h + 40;
-            }
+            const spawnW = worldW(), spawnH = worldH();
+            if (side == 0) { x = -40; y = Math.random() * spawnH; }
+            else if (side == 1) { x = spawnW + 40; y = Math.random() * spawnH; }
+            else if (side == 2) { x = Math.random() * spawnW; y = -40; }
+            else { x = Math.random() * spawnW; y = spawnH + 40; }
         }
         const r = Math.random();
         let ty = score >= 10 && r < .2 ? 2 : score >= 4 && r < .5 ? 1 : 0;
@@ -12403,8 +12608,9 @@ let w = 0
                 else if (lateType < .34) ty = 2;
                 else if (lateType < .48) ty = 4;
             }
+            if (gameMode === 'classic' && level === 3 && Math.random() < .20) ty = 7;
         }
-        let sh = SH[Math.random() * SH.length | 0], sk = SK[Math.random() * SK.length | 0], hp = Math.max(1, Math.ceil((1 + Math.floor(score / (gameMode === 'infinite' ? 25 : 10))) * (level == 2 ? 1.15 : 1))), sv = .75 + Math.random() * .3;
+        let sh = SH[Math.random() * SH.length | 0], sk = SK[Math.random() * SK.length | 0], hp = Math.max(1, Math.ceil((1 + Math.floor(score / (gameMode === 'infinite' ? 30 : 14))) * (level == 2 ? 1.15 : 1))), sv = .75 + Math.random() * .3;
         if (ty == 1) {
             sh = '#5a5a6a';
             sk = '#c9d0b8';
@@ -12429,6 +12635,9 @@ let w = 0
             hp = 4 + Math.floor(score / 35);
             sv = 1.35 + Math.random() * .22;
         }
+        if (ty === 7) { // Zombie dogs: fast, low-health flankers that hit more lightly.
+            sh = '#684932'; sk = '#b78a60'; hp = 2; sv = 2.05 + Math.random() * .28;
+        }
         if (level === 3 && ty !== 5) {
             sh = '#292d29';
             sk = '#555d50';
@@ -12441,9 +12650,18 @@ let w = 0
             hp = Math.ceil(hp * 1.35);
             sv *= 1.08;
         }
+        // General difficulty and score/level progression scale Classic/Infinite enemies only.
+        if (gameMode === 'classic' || gameMode === 'infinite') {
+            const hpScale = difficultyHealthScale();
+            if (ty !== 7) hp = Math.max(1, Math.ceil(hp * hpScale));
+            else hp = Math.max(1, Math.ceil(2 * hpScale));
+            // Keep each enemy's base speed here; the movement loop applies difficulty exactly once.
+
+        }
         // Base World has stable health values: score increases do not make newly spawned zombies tankier.
         if (gameMode === 'base') hp = ty === 1 ? 2 : ty === 2 ? 4 : ty === 4 ? 9 : ty === 5 ? 6 : 3;
-        e.push({ id: newEntityId('z'), x: x, y: y, ty: ty, hp: hp, mh: hp, ar: 70 + Math.min(60, score), wk: Math.random() * 6, sv: sv, sh: sh, sk: sk });
+        e.push({ id: newEntityId(ty === 7 ? 'dog' : 'z'), x: x, y: y, ty: ty, hp: hp, mh: hp, ar: 70 + Math.min(60, score), wk: Math.random() * 6, sv: sv, sh: sh, sk: sk });
+        lastZombieSpawnAt = Date.now();
         totalSpawned++;
         if (level == 2) {
             if (bossSpawned === 0)
@@ -12460,9 +12678,12 @@ let w = 0
         else if (level === 5) {
             level5Spawned++;
         }
+        else if (gameMode === 'classic' && level === 6) {
+            level6Spawned++;
+        }
         if (manualClassicSpawn && classicManualSpawnQueue > 0)
             classicManualSpawnQueue--;
-    }, 425);
+    }, 150);
     setInterval(() => {
         if (!isBaseWorldMode() || blackHoleWorldLocked() || bossCutscene > 0 || (activeSharedRun() && !multiplayerIsAuthority) || !sharedWorldShouldRun())
             return;
@@ -13794,6 +14015,8 @@ let w = 0
         g.restore();
     }
     function drawZombie(q, a) {
+        if (q.ty === 8 || q.ty === 9) { drawRockEnemy(q); return; }
+        if (q.ty === 7) { drawZombieDog(q, a); return; }
         if (isBaseWorldMode()) {
             const vw = logicalCanvasW / (Z * BASE_ZOOM), vh = logicalCanvasH / (Z * BASE_ZOOM), pad = 110;
             if (q.x < cameraX - pad || q.x > cameraX + vw + pad || q.y < cameraY - pad || q.y > cameraY + vh + pad) return;
@@ -13802,6 +14025,45 @@ let w = 0
             drawSkeleton(q, a, 1, 0, 0);
         else
             zom(q, a);
+    }
+    function drawZombieDog(q, angle) {
+        g.save(); g.translate(q.x,q.y); g.rotate(angle + Math.sin(q.wk)*.045);
+        const gait=Math.sin(q.wk*1.8)*4, coat=q.sh||'#684932';
+        g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(-1,8,19,7,0,0,Math.PI*2);g.fill();
+        // Low, forward-leaning canine body and a scruffy shoulder ruff.
+        g.fillStyle=coat;g.beginPath();g.ellipse(-1,0,17,9,-.06,0,Math.PI*2);g.fill();
+        g.fillStyle='#8d6947';g.beginPath();g.ellipse(-8,-2,7,8,-.45,0,Math.PI*2);g.fill();
+        g.strokeStyle='#39281d';g.lineWidth=4;g.lineCap='round';g.beginPath();
+        g.moveTo(-11,3);g.lineTo(-13+gait*.45,12);g.lineTo(-16+gait*.45,14);
+        g.moveTo(-2,4);g.lineTo(-1-gait*.45,12);g.lineTo(2-gait*.45,14);
+        g.moveTo(8,2);g.lineTo(10+gait*.45,11);g.lineTo(13+gait*.45,13);
+        g.moveTo(13,0);g.lineTo(16-gait*.45,8);g.lineTo(19-gait*.45,10);g.stroke();
+        g.strokeStyle='#b08b65';g.lineWidth=1.3;g.beginPath();g.moveTo(-12,4);g.lineTo(-13+gait*.45,11);g.moveTo(8,4);g.lineTo(10+gait*.45,10);g.stroke();
+        // Neck, pointed ears, muzzle and jaw make it read as a dog rather than a tiny humanoid.
+        g.fillStyle='#735238';g.beginPath();g.moveTo(7,-5);g.lineTo(13,-12);g.lineTo(18,-7);g.closePath();g.fill();
+        g.fillStyle='#463126';g.beginPath();g.moveTo(13,-8);g.lineTo(14,-17);g.lineTo(19,-8);g.closePath();g.fill();
+        g.fillStyle='#734b35';g.beginPath();g.moveTo(16,-6);g.lineTo(22,-12);g.lineTo(24,-4);g.closePath();g.fill();
+        g.fillStyle='#c7a27a';g.beginPath();g.ellipse(21,-2,8,5,-.10,0,Math.PI*2);g.fill();
+        g.fillStyle='#241a16';g.beginPath();g.arc(27,-3,2.4,0,Math.PI*2);g.fill();
+        g.fillStyle='#c0fa67';g.shadowColor='#aaff55';g.shadowBlur=5;g.beginPath();g.arc(19,-6,1.7,0,Math.PI*2);g.fill();g.shadowBlur=0;
+        g.strokeStyle='#2c1d17';g.lineWidth=1.3;g.beginPath();g.moveTo(18,1);g.lineTo(24,2);g.lineTo(27,0);g.stroke();
+        // Torn collar and a few fur strokes keep the dog detailed at normal camera scale.
+        g.strokeStyle='#b58b55';g.lineWidth=2;g.beginPath();g.moveTo(8,-6);g.lineTo(11,2);g.lineTo(15,1);g.stroke();
+        g.fillStyle='#aa3838';g.beginPath();g.arc(12,1,1.4,0,Math.PI*2);g.fill();
+        g.strokeStyle='rgba(34,20,14,.7)';g.lineWidth=1;for(let i=0;i<4;i++){g.beginPath();g.moveTo(-9+i*4,-5);g.lineTo(-12+i*4,-8);g.stroke();}
+        g.restore();
+    }
+    function drawRockEnemy(q) {
+        g.save();g.translate(q.x,q.y);g.rotate((q.wk||0)*.16);
+        const boss=!!q.rockBoss, r=boss?39:12;
+        g.fillStyle='rgba(0,0,0,.32)';g.beginPath();g.ellipse(2,r*.72,r*1.15,r*.38,0,0,Math.PI*2);g.fill();
+        g.fillStyle=boss?'#78645a':'#88766c';g.strokeStyle=boss?'#3d302d':'#51443f';g.lineWidth=boss?3:1.5;
+        g.beginPath();g.moveTo(-r*.95,r*.25);g.lineTo(-r*.76,-r*.44);g.lineTo(-r*.31,-r*.94);g.lineTo(r*.18,-r*.79);g.lineTo(r*.82,-r*.52);g.lineTo(r,r*.08);g.lineTo(r*.58,r*.67);g.lineTo(-r*.38,r*.83);g.closePath();g.fill();g.stroke();
+        g.fillStyle=boss?'#a68a78':'#b19b8e';g.beginPath();g.moveTo(-r*.57,-r*.34);g.lineTo(-r*.25,-r*.78);g.lineTo(r*.1,-r*.61);g.lineTo(-r*.08,-r*.2);g.closePath();g.fill();
+        g.strokeStyle='#df6947';g.lineWidth=boss?3:1.5;g.lineCap='round';g.beginPath();g.moveTo(-r*.43,-r*.18);g.lineTo(-r*.1,r*.04);g.lineTo(-r*.21,r*.35);g.moveTo(r*.2,-r*.51);g.lineTo(r*.08,-r*.18);g.lineTo(r*.42,r*.04);g.stroke();
+        if(boss){g.fillStyle='#ffb05f';g.shadowColor='#ff4e31';g.shadowBlur=12;g.beginPath();g.arc(-r*.2,-r*.05,3.6,0,Math.PI*2);g.arc(r*.35,-r*.02,3.6,0,Math.PI*2);g.fill();g.shadowBlur=0;g.strokeStyle='#c0a497';g.lineWidth=2;g.beginPath();g.moveTo(-r*.7,r*.62);g.lineTo(-r*.87,r*.95);g.moveTo(r*.55,r*.65);g.lineTo(r*.68,r*.97);g.stroke();}
+        else{g.fillStyle='#f5c16e';g.beginPath();g.arc(-3,-2,1.6,0,Math.PI*2);g.fill();}
+        g.restore();
     }
     function zom(q, a) {
         g.save();
@@ -14031,14 +14293,9 @@ let w = 0
             g.arc(0, 0, 12, Math.PI * .25, Math.PI * .9);
             g.stroke();
         }
+        // The caller draws the boss label in world coordinates above its health bar.
+        // Do not draw a second label here: this function may be inside a scaled boss transform.
         g.restore();
-        if (q.boss) {
-            g.shadowBlur = 0;
-            g.fillStyle = '#ffd400';
-            g.font = 'bold 13px Arial';
-            g.textAlign = 'center';
-            g.fillText('BOSS', 0, -30);
-        }
         g.restore();
     }
     function seededNoise(n) {
@@ -15494,13 +15751,18 @@ let w = 0
             return;
         // Stable coordinate hashing makes the texture feel authored rather than flickering randomly.
         const step = ULTRA_VISUALS ? 78 : 132;
-        const vw = isBaseWorldMode() ? logicalCanvasW / (Z * BASE_ZOOM) : w;
-        const vh = isBaseWorldMode() ? logicalCanvasH / (Z * BASE_ZOOM) : h;
-        const ox = isBaseWorldMode() ? cameraX : 0, oy = isBaseWorldMode() ? cameraY : 0;
+        const worldCamera = isBaseWorldMode() || isExtendedClassicMap();
+        const vw = isBaseWorldMode() ? logicalCanvasW / (Z * BASE_ZOOM) : isExtendedClassicMap() ? logicalCanvasW / Z : w;
+        const vh = isBaseWorldMode() ? logicalCanvasH / (Z * BASE_ZOOM) : isExtendedClassicMap() ? logicalCanvasH / Z : h;
+        const ox = worldCamera ? cameraX : 0, oy = worldCamera ? cameraY : 0;
         const minX = Math.floor(ox / step) * step, maxX = ox + vw + step;
         const minY = Math.floor(oy / step) * step, maxY = oy + vh + step;
         const biomeAt = (x, y) => {
             if (!isBaseWorldMode()) {
+                if (level === 7)
+                    return { moss: '#65372d', light: '#d88862', dark: '#2a1718', leaf: '#a9503b', rock: '#9d6553' };
+                if (level === 6)
+                    return { moss: '#344b56', light: '#9bbbc4', dark: '#101f27', leaf: '#718e98', rock: '#7a8788' };
                 if (level === 5)
                     return { moss: '#245d48', light: '#92e3ad', dark: '#071a17', leaf: '#64a985', rock: '#486c67' };
                 if (level === 4)
@@ -15645,6 +15907,9 @@ let w = 0
         // Cap its backing resolution, then omit this decorative layer if adaptive quality detects lag.
         if (isBaseWorldMode() || !ULTRA_VISUALS || (gameMode === 'classic' && adaptiveQualityLevel >= 3))
             return;
+        // Levels 6–7 scroll over an expanded map: paint detail in current world coordinates,
+        // rather than blitting a fixed screen-sized canvas that would vanish as the camera moves.
+        if (isExtendedClassicMap()) { paintClassicTerrainDetail(g); return; }
         const detailScale = Math.min(renderScale, adaptiveQualityLevel >= 2 ? 1 : 1.35);
         const key = [gameMode, level, logicalCanvasW, logicalCanvasH, Math.round(detailScale * 100)].join(':');
         let layer = classicTerrainLayerCache.get(key);
@@ -15932,9 +16197,10 @@ let w = 0
     const NATURAL_DETAIL_CACHE_LIMIT = 128;
     const naturalObjectDetailCache = new Map();
     function drawNaturalObjectDetailPass() {
-        const base = isBaseWorldMode();
-        const vw = base ? logicalCanvasW / (Z * BASE_ZOOM) : w, vh = base ? logicalCanvasH / (Z * BASE_ZOOM) : h;
-        const ox = base ? cameraX : 0, oy = base ? cameraY : 0;
+        const base = isBaseWorldMode(), extended = isExtendedClassicMap();
+        const vw = base ? logicalCanvasW / (Z * BASE_ZOOM) : extended ? logicalCanvasW / Z : w;
+        const vh = base ? logicalCanvasH / (Z * BASE_ZOOM) : extended ? logicalCanvasH / Z : h;
+        const ox = base || extended ? cameraX : 0, oy = base || extended ? cameraY : 0;
         const minX = ox - 100, maxX = ox + vw + 100, minY = oy - 100, maxY = oy + vh + 100;
         const detailScale = Math.max(.9, Math.min(1.6, renderScale * (base ? Z * BASE_ZOOM : Z)));
         g.save();
@@ -16188,9 +16454,9 @@ let w = 0
             // RGB tint, opacity, glow color/opacity/position, sunset horizon strength and night ambience.
             // Crimson Forest is a readable blue moonlit night; Sandscar is amber-violet evening.
             const profiles = {
-                grass:  { r: 248, g: 245, b: 215, alpha: .025, gr: 255, gg: 231, gb: 157, ga: .13, gx: .80, gy: .10, horizon: .01, night: 0 },
-                autumn: { r: 119, g: 58,  b: 29,  alpha: .135, gr: 255, gg: 144, gb: 66,  ga: .18, gx: .83, gy: .54, horizon: .105, night: 0 },
-                forest: { r: 24,  g: 41,  b: 34,  alpha: .105, gr: 128, gg: 176, gb: 126, ga: .065, gx: .73, gy: .18, horizon: .025, night: .15 },
+                grass:  { r: 248, g: 245, b: 215, alpha: .018, gr: 255, gg: 231, gb: 157, ga: .16, gx: .80, gy: .10, horizon: .01, night: 0 },
+                autumn: { r: 119, g: 58,  b: 29,  alpha: .15, gr: 255, gg: 144, gb: 66,  ga: .22, gx: .83, gy: .54, horizon: .12, night: 0 },
+                forest: { r: 22,  g: 36,  b: 31,  alpha: .13, gr: 128, gg: 176, gb: 126, ga: .075, gx: .73, gy: .18, horizon: .025, night: .26 },
                 snow:   { r: 133, g: 179, b: 210, alpha: .055, gr: 192, gg: 226, gb: 255, ga: .09, gx: .77, gy: .14, horizon: .015, night: 0 },
                 ember:  { r: 12,  g: 20,  b: 47,  alpha: .205, gr: 151, gg: 194, gb: 255, ga: .12, gx: .78, gy: .13, horizon: .005, night: 1 },
                 sand:   { r: 83,  g: 49,  b: 39,  alpha: .145, gr: 255, gg: 164, gb: 91,  ga: .18, gx: .91, gy: .57, horizon: .12, night: .22 }
@@ -16249,6 +16515,29 @@ let w = 0
             }
             g.restore();
         }
+        if (!isBaseWorldMode()) {
+            const key = gameMode === 'classic' ? ({1:'midday',2:'sunset',3:'forestNight',4:'crimsonNight',5:'enchanted',6:'predawn',7:'mars'})[level] || 'midday' : gameMode === 'infinite' ? 'survivalDusk' : 'midday';
+            const profiles = {
+                midday:{tint:[247,244,215,.018],glow:[255,232,158,.16,.78,.10],horizon:0,night:0},
+                sunset:{tint:[143,76,44,.095],glow:[255,137,66,.23,.82,.58],horizon:.13,night:0},
+                forestNight:{tint:[17,32,35,.145],glow:[127,181,154,.11,.78,.15],horizon:0,night:.38},
+                crimsonNight:{tint:[12,17,42,.22],glow:[91,137,255,.15,.78,.12],horizon:0,night:.82},
+                enchanted:{tint:[34,25,72,.09],glow:[108,242,190,.18,.50,.32],horizon:0,night:.36},
+                predawn:{tint:[23,38,51,.13],glow:[126,188,211,.15,.77,.18],horizon:.02,night:.45},
+                mars:{tint:[77,37,30,.17],glow:[255,126,73,.19,.82,.42],horizon:.085,night:.12},
+                survivalDusk:{tint:[48,42,53,.09],glow:[255,174,115,.13,.82,.35],horizon:.04,night:.12}
+            };
+            const state=drawAtmosphericLighting.classicDayState || (drawAtmosphericLighting.classicDayState={key,current:profiles[key],from:profiles[key],t:1});
+            if(state.key!==key){state.from={tint:[...state.current.tint],glow:[...state.current.glow],horizon:state.current.horizon,night:state.current.night};state.key=key;state.t=0;}
+            if(state.t<1){state.t=Math.min(1,state.t+.012);const u=state.t*state.t*(3-2*state.t),to=profiles[state.key];state.current={tint:state.current.tint.map((v,i)=>state.from.tint[i]+(to.tint[i]-state.from.tint[i])*u),glow:state.current.glow.map((v,i)=>state.from.glow[i]+(to.glow[i]-state.from.glow[i])*u),horizon:state.from.horizon+(to.horizon-state.from.horizon)*u,night:state.from.night+(to.night-state.from.night)*u};}
+            const mood=state.current;g.save();
+            g.fillStyle=`rgba(${mood.tint[0]},${mood.tint[1]},${mood.tint[2]},${mood.tint[3]})`;g.fillRect(0,0,logicalCanvasW,logicalCanvasH);
+            const sunX=logicalCanvasW*mood.glow[4],sunY=logicalCanvasH*mood.glow[5],rad=Math.max(logicalCanvasW,logicalCanvasH)*.8,glow=g.createRadialGradient(sunX,sunY,0,sunX,sunY,rad);
+            glow.addColorStop(0,`rgba(${mood.glow[0]},${mood.glow[1]},${mood.glow[2]},${mood.glow[3]})`);glow.addColorStop(.35,`rgba(${mood.glow[0]},${mood.glow[1]},${mood.glow[2]},${mood.glow[3]*.32})`);glow.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=glow;g.fillRect(0,0,logicalCanvasW,logicalCanvasH);
+            if(mood.horizon>.005){const hgrad=g.createLinearGradient(0,logicalCanvasH*.3,0,logicalCanvasH);hgrad.addColorStop(0,'rgba(255,133,78,0)');hgrad.addColorStop(.62,`rgba(255,133,78,${mood.horizon*.35})`);hgrad.addColorStop(1,`rgba(255,133,78,${mood.horizon})`);g.fillStyle=hgrad;g.fillRect(0,0,logicalCanvasW,logicalCanvasH);}
+            if(mood.night>.25 && adaptiveQualityLevel<5){g.fillStyle='rgba(213,234,255,.75)';for(let i=0;i<36;i++){const x=(i*167+Math.sin(fr*.009+i*1.8)*14)%logicalCanvasW,y=(i*89+Math.cos(fr*.008+i)*11)%logicalCanvasH;g.globalAlpha=(.10+.18*Math.abs(Math.sin(fr*.02+i)))*mood.night;g.beginPath();g.arc(x,y,i%7===0?1.3:.7,0,Math.PI*2);g.fill();}g.globalAlpha=1;}
+            g.restore();
+        }
         if (!isBaseWorldMode() && gameMode === 'classic' && level === 5) {
             const u = Math.max(0, Math.min(1, enchantedSceneProgress));
             const a = .075 + .045 * u;
@@ -16290,7 +16579,7 @@ let w = 0
             return;
         g.save();
         g.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-        let climate = level === 5 ? 'enchanted' : level === 4 ? 'ember' : level === 3 ? 'spores' : level === 2 ? 'snow' : 'dust';
+        let climate = level === 7 ? 'mars' : level === 6 ? 'predawn' : level === 5 ? 'enchanted' : level === 4 ? 'ember' : level === 3 ? 'spores' : level === 2 ? 'snow' : 'dust';
         if (isBaseWorldMode()) {
             const regions = [
                 { k: 'grass', x: BASE_WORLD_W * .17, y: BASE_WORLD_H * .60, rx: BASE_WORLD_W * .36, ry: BASE_WORLD_H * .43 },
@@ -16332,6 +16621,14 @@ let w = 0
         else if (climate === 'enchanted') {
             streakColor = 'rgba(170,151,255,.24)';
             sparkColor = '#a8ffe2';
+        }
+        else if (climate === 'predawn') {
+            streakColor = 'rgba(125,190,220,.23)';
+            sparkColor = '#b4eaff';
+        }
+        else if (climate === 'mars') {
+            streakColor = 'rgba(227,115,79,.24)';
+            sparkColor = '#ffb17c';
         }
         else if (climate === 'forest' || climate === 'spores') {
             streakColor = 'rgba(161,199,150,.20)';
@@ -16455,6 +16752,11 @@ let w = 0
             g.fillStyle = '#26584c'; g.beginPath(); g.moveTo(-32, -11); g.quadraticCurveTo(-15, -18, -7, -30); g.quadraticCurveTo(1, -39, 9, -30); g.quadraticCurveTo(20, -18, 32, -11); g.quadraticCurveTo(0, -4, -32, -11); g.closePath(); g.fill();
             g.strokeStyle = '#9cf3be'; g.lineWidth = 1.8; g.beginPath(); g.moveTo(-31, -11); g.quadraticCurveTo(-11, -19, 1, -36); g.quadraticCurveTo(16, -19, 31, -11); g.stroke();
             g.strokeStyle = '#d1ffc3'; g.lineWidth = .9; g.beginPath(); g.moveTo(-3, -17); g.quadraticCurveTo(8, -25, 4, -32); g.stroke();
+            // Fine roof shingles, timber grain and a tiny rope ladder keep the smaller cottages detailed.
+            g.strokeStyle = 'rgba(205,255,204,.58)'; g.lineWidth = .8;
+            for (let shingle=0; shingle<5; shingle++) { const sx=-23+shingle*11; g.beginPath(); g.moveTo(sx,-13); g.lineTo(sx+6,-10); g.stroke(); }
+            g.strokeStyle = 'rgba(220,190,151,.70)'; g.lineWidth = .7; g.beginPath(); g.moveTo(-17,0); g.lineTo(-17,12); g.moveTo(-13,3); g.lineTo(-13,12); g.moveTo(17,0); g.lineTo(17,12); g.stroke();
+            g.strokeStyle = '#9a8066'; g.lineWidth = 1.1; g.beginPath(); g.moveTo(18,18); g.lineTo(20,37); g.moveTo(25,18); g.lineTo(27,37); for(let rung=0;rung<4;rung++){g.moveTo(18+rung*0+0,22+rung*4);g.lineTo(25,22+rung*4);} g.stroke();
             g.globalAlpha = show * (.75 + .25 * pulse); g.fillStyle = '#ffe7a0';
             g.fillRect(-15, -4, 8, 10); g.fillRect(7, -4, 8, 10);
             g.globalAlpha = show * .55; g.fillStyle = '#a4fce3'; g.fillRect(-14, -3, 5, 8); g.fillRect(8, -3, 5, 8);
@@ -16581,12 +16883,19 @@ let w = 0
         }
         else {
             g.scale(Z, Z);
+            if (isExtendedClassicMap()) {
+                cameraX = Math.max(0, Math.min(worldW() - w, p.x - w / 2));
+                cameraY = Math.max(0, Math.min(worldH() - h, p.y - h / 2));
+                g.translate(-cameraX, -cameraY);
+                updateMouseWorld();
+            }
         }
         // Blend the ground palette gradually between biomes instead of snapping to new colours.
         environmentBlend = Math.min(1, environmentBlend + 0.006);
         if (gameMode === 'classic' && level === 5) enchantedSceneProgress = Math.min(1, enchantedSceneProgress + .008);
         g.fillStyle = envColour('ground');
-        g.fillRect(isBaseWorldMode() ? 0 : -40, isBaseWorldMode() ? 0 : -40, isBaseWorldMode() ? BASE_WORLD_W : w + 80, isBaseWorldMode() ? BASE_WORLD_H : h + 80);
+        const extendedMap = isExtendedClassicMap();
+        g.fillRect(isBaseWorldMode() ? 0 : extendedMap ? cameraX - 40 : -40, isBaseWorldMode() ? 0 : extendedMap ? cameraY - 40 : -40, isBaseWorldMode() ? BASE_WORLD_W : w + 80, isBaseWorldMode() ? BASE_WORLD_H : h + 80);
         if (isBaseWorldMode()) {
             drawCachedBaseGroundTiles();
             drawBaseStructures();
@@ -16596,8 +16905,10 @@ let w = 0
         }
         else {
             g.fillStyle = envColour('tile');
-            for (let i = 0; i < w; i += 70)
-                for (let j = 0; j < h; j += 70)
+            const tileLeft = isExtendedClassicMap() ? Math.floor(cameraX / 70) * 70 : 0;
+            const tileTop = isExtendedClassicMap() ? Math.floor(cameraY / 70) * 70 : 0;
+            for (let i = tileLeft; i < (isExtendedClassicMap() ? cameraX + w : w); i += 70)
+                for (let j = tileTop; j < (isExtendedClassicMap() ? cameraY + h : h); j += 70)
                     g.fillRect(i, j, 66, 66);
         }
         drawUltraTerrainDetail();
@@ -16613,8 +16924,8 @@ let w = 0
         g.lineWidth = 1.5;
         g.lineCap = 'round';
         {
-            const baseGrass = isBaseWorldMode(), viewW = baseGrass ? logicalCanvasW / (Z * BASE_ZOOM) : w, viewH = baseGrass ? logicalCanvasH / (Z * BASE_ZOOM) : h;
-            const left = baseGrass ? cameraX - 20 : 0, right = baseGrass ? cameraX + viewW + 20 : w, top = baseGrass ? cameraY - 20 : 0, bottom = baseGrass ? cameraY + viewH + 20 : h;
+            const baseGrass = isBaseWorldMode(), classicCamera = isExtendedClassicMap(), viewW = baseGrass ? logicalCanvasW / (Z * BASE_ZOOM) : w, viewH = baseGrass ? logicalCanvasH / (Z * BASE_ZOOM) : h;
+            const left = baseGrass || classicCamera ? cameraX - 20 : 0, right = baseGrass || classicCamera ? cameraX + viewW + 20 : w, top = baseGrass || classicCamera ? cameraY - 20 : 0, bottom = baseGrass || classicCamera ? cameraY + viewH + 20 : h;
             const grassStride = adaptiveQualityLevel >= 4 ? 4 : adaptiveQualityLevel >= 3 ? 3 : adaptiveQualityLevel >= 2 ? 2 : 1;
             const drawGrassBlade = q => {
                 if (q.x < left || q.x > right || q.y < top || q.y > bottom) return;
@@ -16647,6 +16958,7 @@ let w = 0
         const envTop = isBaseWorldMode() ? cameraY - 100 : -100, envBottom = isBaseWorldMode() ? cameraY + envViewH + 100 : h + 100;
         drawNaturalObjectDetailPass();
         if (gameMode === 'classic' && level === 5) drawEnchantedLevelDecor();
+        if (gameMode === 'classic' && (level === 6 || level === 7)) drawRocketMissionDecor();
         // Flickering fire hazards in Level 4.
         firePatches.forEach(f => {
             f.phase += .08;
@@ -16985,9 +17297,10 @@ let w = 0
                 p.y = mountedVehicle.y;
             }
         }
-        p.x = Math.max(20, Math.min(isBaseWorldMode() ? BASE_WORLD_W - 20 : w - 20, p.x));
-        p.y = Math.max(20, Math.min(isBaseWorldMode() ? BASE_WORLD_H - 20 : h - 20, p.y));
+        p.x = Math.max(20, Math.min(worldW() - 20, p.x));
+        p.y = Math.max(20, Math.min(worldH() - 20, p.y));
         col(p, playerCollisionRadius());
+        updateClassicMission();
         if (isBaseWorldMode())
             updateBaseCamera();
         if (isBaseWorldMode()) {
@@ -17026,7 +17339,7 @@ let w = 0
                 drawMilitaryVehicle(v);
             });
         }
-        if (!isPaused && !(isBaseWorldMode() && vehicleMode))
+        if (!isPaused && !(isBaseWorldMode() && vehicleMode) && !(gameMode === 'classic' && level === 6 && level6LaunchT > 58))
             human(p.x, p.y, Math.atan2(m.y - p.y, m.x - p.x), skinForPlayer(ci, skinGender), wk, playerDrawScale(), wp == 2 ? 1 : 0, fl, !!(rosieMode && wp === 6), !!(inevitableMode && wp === 7), !!(blackHoleUnlocked && wp === 8), wp);
         drawRemotePlayers();
         syncMultiplayer();
@@ -17413,48 +17726,6 @@ let w = 0
                         }
                     }
                 }
-                else if (q.sandwichBullet) {
-                    q.sandwichHitTargets = q.sandwichHitTargets || [];
-                    for (let zi = 0; zi < e.length; zi++) {
-                        const z = e[zi];
-                        if (!z || z.dead || (gameMode === 'base' && isInsideBaseSafeZone(z.x, z.y))) continue;
-                        const id = String(z.id || ('z-' + zi));
-                        if (q.sandwichHitTargets.includes(id)) continue;
-                        const u = den ? Math.max(0, Math.min(1, ((z.x - prevX) * dx + (z.y - prevY) * dy) / den)) : 0;
-                        const cx = prevX + u * dx, cy = prevY + u * dy;
-                        if (Math.hypot(z.x - cx, z.y - cy) <= (z.boss ? 40 : z.ty === 4 ? 31 : 25)) {
-                            q.sandwichHitTargets.push(id);
-                            fillingTaunts.push({ x: z.x, y: z.y, age: 0, life: 82 });
-                            if (fillingTaunts.length > 35) fillingTaunts.splice(0, fillingTaunts.length - 35);
-                            hit(z, 999999);
-                            for (let k = 0; k < 18; k++) { const aa = Math.random() * Math.PI * 2, v = 1 + Math.random() * 4; pt(z.x, z.y, Math.cos(aa) * v, Math.sin(aa) * v, 16 + Math.random() * 15 | 0, ['#30e34d', '#f5dc70', '#fff0c2'][k % 3], 1.5 + Math.random() * 2.5, 0); }
-                        }
-                    }
-                }
-                else if (q.basketballBullet) {
-                    q.basketballHitTargets = q.basketballHitTargets || [];
-                    let target = null, nearest = Infinity, hitT = 0;
-                    for (let zi = 0; zi < e.length; zi++) {
-                        const z = e[zi];
-                        if (!z || z.dead || (gameMode === 'base' && isInsideBaseSafeZone(z.x, z.y))) continue;
-                        const id = String(z.id || ('z-' + zi));
-                        if (q.basketballHitTargets.includes(id)) continue;
-                        const u = den ? Math.max(0, Math.min(1, ((z.x - prevX) * dx + (z.y - prevY) * dy) / den)) : 0;
-                        const cx = prevX + u * dx, cy = prevY + u * dy;
-                        const radius = z.boss ? 40 : z.ty === 4 ? 31 : 25, distance = Math.hypot(z.x - cx, z.y - cy);
-                        if (distance <= radius && u < nearest) { target = z; nearest = u; hitT = u; }
-                    }
-                    if (target) {
-                        q.x = prevX + hitT * dx; q.y = prevY + hitT * dy;
-                        const targetId = String(target.id || ('z-' + e.indexOf(target)));
-                        q.basketballHitTargets.push(targetId);
-                        hit(target, 999999);
-                        basketballHoops.push({ x: target.x, y: target.y, age: 0, life: 130 });
-                        if (basketballHoops.length > 14) basketballHoops.splice(0, basketballHoops.length - 14);
-                        for (let k = 0; k < 20; k++) { const aa = Math.random() * Math.PI * 2, v = 1.3 + Math.random() * 4.5; pt(target.x, target.y, Math.cos(aa) * v, Math.sin(aa) * v, 15 + Math.random() * 13 | 0, k % 2 ? '#f47c2e' : '#302a28', 1.5 + Math.random() * 2.4, 0); }
-                        if (q.basketballHitTargets.length >= 3 || !aimBasketballAtNextZombie(q, q.x, q.y)) q.dead = 1;
-                    }
-                }
                 else if (q.faceProjectile) {
                     const angle = Number(q.angle) || Math.atan2(q.vy, q.vx), ca = Math.cos(angle), sa = Math.sin(angle);
                     let impacted = 0;
@@ -17838,6 +18109,17 @@ let w = 0
             }
         });
         VORTEX = VORTEX.filter(v => v.t < v.life);
+        if (gameMode === 'classic' && level === 7 && rockBossHazards.length) {
+            for (const hazard of rockBossHazards) {
+                hazard.age = (hazard.age || 0) + 1;
+                if (hazard.age >= 15 && hazard.age <= 48 && !hazard.hitPlayer && !dead && Math.hypot(p.x-hazard.x,p.y-hazard.y) < hazard.r + 10) {
+                    hazard.hitPlayer = true; hp = Math.max(0,hp-10); ih=Math.max(ih,12); S=Math.max(S,3); playGameSound('playerHurt');
+                    for(let i=0;i<9;i++) pt(p.x,p.y,(Math.random()-.5)*4,-1-Math.random()*3,17,'#d18c70',2+Math.random()*2,0);
+                    if(hp<=0){dead=1;if(reviveUsed)save();showRevivePopup();}
+                }
+            }
+            rockBossHazards = rockBossHazards.filter(h => h.age < 60);
+        }
         // Build the living remote-player target list once per frame. Previously each zombie allocated,
         // filtered and sorted a fresh array, creating avoidable garbage collection under horde load.
         const zombieTargetPlayers = Object.values(remotePlayers).filter(v => !v.dead && v.online !== false).map(v => ({ x: Number(v.x) || 0, y: Number(v.y) || 0, uid: v.uid }));
@@ -17861,6 +18143,47 @@ let w = 0
             }
             let a = Math.atan2(targetY - q.y, targetX - q.x);
             const sharedFollower = activeSharedRun() && !multiplayerIsAuthority;
+            if (q.rockBoss && !q.dead && sharedWorldShouldRun() && !sharedFollower && !isPaused) {
+                q.rockAttackCd = Math.max(0, (q.rockAttackCd || 0) - 1);
+                q.rockSummonCd = Math.max(0, (q.rockSummonCd || 0) - 1);
+                if (q.rockAttackCd <= 0) {
+                    for (let i=0;i<3;i++) {
+                        const aa=Math.random()*Math.PI*2, rr=42+Math.random()*92;
+                        rockBossHazards.push({x:Math.max(24,Math.min(worldW()-24,targetX+Math.cos(aa)*rr)),y:Math.max(24,Math.min(worldH()-24,targetY+Math.sin(aa)*rr)),r:19+Math.random()*9,age:0,life:60,hitPlayer:false});
+                    }
+                    q.rockAttackCd=150;
+                }
+                if (q.rockSummonCd <= 0 && e.filter(z=>z && !z.dead && z.rockMinion).length < 2) {
+                    for (let i=0;i<2;i++) {
+                        const aa=a+(i===0?-.85:.85), rr=62+i*18;
+                        e.push({id:newEntityId('mars-shard'),x:Math.max(20,Math.min(worldW()-20,q.x+Math.cos(aa)*rr)),y:Math.max(20,Math.min(worldH()-20,q.y+Math.sin(aa)*rr)),ty:9,hp:3,mh:3,ar:45,wk:Math.random()*6,sv:1.02,sh:'#8b7667',sk:'#f5c16e',rockMinion:1});
+                    }
+                    q.rockSummonCd=240;
+                }
+            }
+            if (q.dead && (q.rockBoss || q.rockMinion)) {
+                // Rock enemies fracture and crumble rather than using the humanoid fall animation.
+                q.deathT = (q.deathT || 0) + 1;
+                const t = q.deathT;
+                if (!q.rockDeathBurst) {
+                    q.rockDeathBurst = true;
+                    X.push({ x: q.x, y: q.y, t: 0 });
+                    for (let i = 0; i < (q.rockBoss ? 28 : 10); i++) {
+                        const a = Math.random() * Math.PI * 2, speed = 1.1 + Math.random() * (q.rockBoss ? 5.5 : 2.8);
+                        pt(q.x, q.y, Math.cos(a) * speed, Math.sin(a) * speed - 1.2, 24 + Math.random() * 22, i % 3 === 0 ? '#e87850' : '#a99183', q.rockBoss ? 3 + Math.random() * 5 : 1.5 + Math.random() * 2.5, 0);
+                    }
+                }
+                if (t < 28) {
+                    g.save();
+                    g.globalAlpha = Math.max(0, 1 - t / 28);
+                    g.translate(q.x, q.y);
+                    g.scale(Math.max(.08, 1 - t / 30), Math.max(.08, 1 - t / 30));
+                    g.translate(-q.x, -q.y);
+                    drawRockEnemy(q);
+                    g.restore();
+                } else q.removeAt = 28;
+                return;
+            }
             if (q.dead) {
                 q.deathT = (q.deathT || 0) + 1;
                 const t = q.deathT;
@@ -17996,8 +18319,10 @@ let w = 0
                 const openingBossMultiplier = q.level5Boss && fr < (q.introSlowUntil || 0) ? .82 : 1;
                 const multiplayerHaarisSlow = multiplayerIsAuthority && Object.values(remotePlayers).some(v => !!v.haarisSpeedHalved);
                 const haarisSpeedMultiplier = (haarisSpeedHalved || multiplayerHaarisSlow) ? .5 : 1;
-                const speedCap = q.level5Boss ? 5.5 : q.boss ? (q.fortressBoss ? 3.0 : 1.5) : (gameMode === 'classic' && level === 5 ? 2.7 : 3.2);
-                const v = Math.min(speedCap, rawSpeed * openingBossMultiplier * haarisSpeedMultiplier);
+                const difficultyMotion = q.rockBoss ? 1 : difficultySpeedScale();
+                const speedProgress = (gameMode === 'classic' || gameMode === 'infinite') ? 1 + Math.min(.32, Math.max(0, score) / 620) : 1;
+                const speedCap = q.rockBoss ? .52 : q.level5Boss ? 5.5 : q.boss ? (q.fortressBoss ? 3.0 : 1.5) : q.ty === 7 ? 4.1 : (gameMode === 'classic' && level === 5 ? 2.15 : 3.2);
+                const v = Math.min(speedCap * difficultyMotion, rawSpeed * openingBossMultiplier * haarisSpeedMultiplier * difficultyMotion * speedProgress);
                 q.x += Math.cos(a) * v;
                 q.y += Math.sin(a) * v;
                 q.wk += v * .1;
@@ -18017,7 +18342,7 @@ let w = 0
                         q.y += dy / dd * .6;
                     }
                 });
-                const zombieRadius = q.boss ? (q.fortressBoss ? 17 : 24) : q.ty == 4 ? 20 : q.ty == 5 ? 12 : q.ty == 6 ? 13 : 14;
+                const zombieRadius = q.rockBoss ? 40 : q.boss ? (q.fortressBoss ? 17 : 24) : q.ty == 4 ? 20 : q.ty == 5 ? 12 : q.ty == 6 ? 13 : q.ty == 7 ? 10 : q.ty == 9 ? 11 : 14;
                 collWall(q, zombieRadius);
                 const damageWall = (o) => {
                     if (!o.dead && pointWallDist(q.x, q.y, o) < zombieRadius + 3) {
@@ -18063,7 +18388,7 @@ let w = 0
             }
             const inSafeCamp = playerInSafeCampThisFrame;
             if (!dead && !isPaused && !blackHoleWorldLocked() && !inSafeCamp && bossCutscene <= 0 && ih <= 0 && Math.hypot(q.x - p.x, q.y - p.y) < (q.boss ? 48 : q.ty == 4 ? 40 : 34) + (mustafaMissileMode ? 10 : 0)) {
-                hp -= q.boss ? 35 : q.ty == 1 ? 12 : q.ty == 2 ? 15 : q.ty == 4 ? 28 : q.ty == 5 ? 18 : q.ty == 6 ? 16 : 20;
+                hp -= q.rockBoss ? 24 : q.boss ? 35 : q.ty == 1 ? 12 : q.ty == 2 ? 15 : q.ty == 4 ? 28 : q.ty == 5 ? 18 : q.ty == 6 ? 16 : q.ty === 7 ? 6 : q.ty === 9 ? 9 : 20;
                 if (q.ty == 2)
                     po = 60;
                 triggerHalfHealthBlast();
@@ -18484,7 +18809,7 @@ let w = 0
         // Return to true screen coordinates for the Base World HUD.
         // Do not leave the world-camera translation active, otherwise the HUD/keybinds
         // can be drawn thousands of world units away from the visible screen.
-        if (isBaseWorldMode()) {
+        if (isBaseWorldMode() || isExtendedClassicMap()) {
             g.restore();
             g.save();
             g.setTransform(renderScale, 0, 0, renderScale, 0, 0);
@@ -18516,9 +18841,19 @@ let w = 0
         }
         else {
             const progression = gameMode === 'infinite' ? 'INFINITE · WAVES ' + Math.floor(score / 10)
-                : 'LEVEL ' + level + (level === 2 ? (bossSpawned === 0 ? ' · PRE-BOSS ' + level2Spawned + '/55' : bossSpawned === 1 ? ' · BOSS FIGHT' : bossCutscene > 0 ? ' · BOSS DEFEATED' : ' · AFTER BOSS ' + level2PostBossSpawned + '/100')
+                : 'LEVEL ' + level + (level === 6 ? ' · INTO THE UNKNOWN' : level === 7 ? ' · THE RED PLANET' : level === 2 ? (bossSpawned === 0 ? ' · PRE-BOSS ' + level2Spawned + '/55' : bossSpawned === 1 ? ' · BOSS FIGHT' : bossCutscene > 0 ? ' · BOSS DEFEATED' : ' · AFTER BOSS ' + level2PostBossSpawned + '/100')
                 : level === 3 ? ' · DARK FOREST ' + level3Kills + '/150' : level === 4 ? ' · CRIMSON FOREST ' + level4Kills + '/60' : level === 5 ? ' · ENCHANTED FOREST ' + level5Kills + ' KILLS · BOSSES ' + level5BossesRemaining + ' LEFT' : '');
-            addHudRow(progression, level === 5 ? '#a8ffd5' : level === 4 ? '#ff6578' : level === 3 ? '#b89cde' : level === 2 ? '#f2d39b' : '#9ddc80', 'bold 13px Arial');
+            addHudRow(progression, level === 5 ? '#a8ffd5' : level === 4 ? '#ff6578' : level === 3 ? '#b89cde' : level === 2 ? '#f2d39b' : level >= 6 ? '#f6b39c' : '#9ddc80', 'bold 13px Arial');
+            addHudRow('DIFFICULTY: ' + difficultyProfile().label + ' · FINAL SCORE ×' + scoreMultiplier(), '#d2e5ff', 'bold 12px Arial');
+            if (gameMode === 'classic' && level === 6) {
+                addHudRow('INTO THE UNKNOWN · FUEL ' + level6CollectedFuel + '/4 · EQUIPMENT ' + level6CollectedEquipment + '/3', '#bceeff', 'bold 12px Arial');
+                const ready = level6CollectedFuel >= 4 && level6CollectedEquipment >= 3;
+                addHudRow(ready ? (level6LaunchT > 0 ? 'ROCKET LAUNCH SEQUENCE ACTIVE' : 'HOLD POSITION NEAR ROCKET · ASSEMBLY ' + Math.floor(level6AssemblyFrames/18) + '%') : 'SCAVENGE FUEL CANISTERS AND ROCKET PARTS', '#9fe2ca', '12px Arial');
+            }
+            if (gameMode === 'classic' && level === 7) {
+                const titan=e.find(z=>z&&z.rockBoss&&!z.dead);
+                addHudRow(level7RockBossDefeated ? 'THE RED PLANET · TITAN DEFEATED' : 'THE RED PLANET · ROCK TITAN ' + (titan ? Math.ceil(100*titan.hp/Math.max(1,titan.mh)) + '% HEALTH' : ''), '#ffb292', 'bold 12px Arial');
+            }
             addHudRow('BEST: ' + H, '#ffd400', 'bold 13px Arial');
             addHudRow('PLAYER: ' + playerName, '#c8d1ca', '13px Arial');
             addHudRow('WALL CHARGES: ' + wallCharges, '#d8c0a0', '12px Arial');
@@ -18573,18 +18908,12 @@ let w = 0
                 g.fillText(text + (typedCount < phrase.length && Math.floor(elapsed / 220) % 2 === 0 ? '▌' : ''), logicalCanvasW / 2, boxY + boxH / 2); g.shadowBlur = 0; g.restore();
             } else { haarisTextStartedAt = 0; }
         }
-        if ((level == 2 || level === 3 || level === 4 || level === 5) && !dead && logicalCanvasW >= 720) {
-            g.fillStyle = level === 5 ? 'rgba(8,42,34,.88)' : level === 4 ? 'rgba(38,4,10,.88)' : level === 3 ? 'rgba(5,12,9,.82)' : 'rgba(70,40,20,.7)';
-            g.fillRect(logicalCanvasW / 2 - 150, 20, 300, 48);
-            g.textAlign = 'center';
-            g.fillStyle = level === 5 ? '#a8ffd5' : level === 4 ? '#ff8b98' : level === 3 ? '#bca0e8' : '#f2d39b';
-            g.font = 'bold 24px Arial';
-            g.fillText(level === 5 ? 'LEVEL 5' : level === 4 ? 'LEVEL 4' : level === 3 ? 'LEVEL 3' : 'LEVEL 2', logicalCanvasW / 2, 50);
-            g.font = '12px Arial';
-            g.fillText(level === 5 ? 'THE ENCHANTED FOREST' : level === 4 ? 'THE CRIMSON FOREST' : level === 3 ? 'THE DARK FOREST' : 'THE WILDLANDS', logicalCanvasW / 2, 64);
-            g.textAlign = 'left';
+        if ((level >= 2 && level <= 7) && !dead && logicalCanvasW >= 720) {
+            const titleColours={2:['rgba(70,40,20,.7)','#f2d39b','THE WILDLANDS'],3:['rgba(5,12,9,.82)','#bca0e8','THE DARK FOREST'],4:['rgba(38,4,10,.88)','#ff8b98','THE CRIMSON FOREST'],5:['rgba(8,42,34,.88)','#a8ffd5','THE ENCHANTED FOREST'],6:['rgba(8,27,39,.90)','#a9eaff','INTO THE UNKNOWN'],7:['rgba(54,18,11,.90)','#ffb292','THE RED PLANET']};
+            const banner=titleColours[level];
+            if(banner){g.fillStyle=banner[0];g.fillRect(logicalCanvasW/2-150,20,300,48);g.textAlign='center';g.fillStyle=banner[1];g.font='bold 24px Arial';g.fillText('LEVEL '+level,logicalCanvasW/2,50);g.font='12px Arial';g.fillText(banner[2],logicalCanvasW/2,64);g.textAlign='left';}
         }
-        if (isBaseWorldMode())
+        if (isBaseWorldMode() || isExtendedClassicMap())
             g.restore();
         // Cinematic is the final screen-space pass, so it covers the HUD and works in every mode.
         drawBlackHoleCinematic();
